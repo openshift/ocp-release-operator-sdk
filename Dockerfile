@@ -19,7 +19,7 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev-x86_64-linux-gnu ${OPERATOR}
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin /usr/local/bin
-COPY library/k8s_status.py /usr/share/ansible/openshift/
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/library/k8s_status.py /usr/share/ansible/openshift/
 
 RUN /usr/local/bin/user_setup
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
