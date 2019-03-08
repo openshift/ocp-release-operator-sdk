@@ -126,11 +126,29 @@ func testLocalGoFunc(cmd *cobra.Command, args []string) {
 
 	// if no namespaced manifest path is given, combine deploy/service_account.yaml, deploy/role.yaml, deploy/role_binding.yaml and deploy/operator.yaml
 	if tlConfig.namespacedManPath == "" && !tlConfig.noSetup {
-		file, err := yamlutil.GenerateCombinedNamespacedManifest()
-		if err != nil {
-			log.Fatal(err)
+		if !tlConfig.upLocal {
+			file, err := yamlutil.GenerateCombinedNamespacedManifest()
+			if err != nil {
+				log.Fatal(err)
+			}
+			tlConfig.namespacedManPath = file.Name()
+		} else {
+			file, err := ioutil.TempFile("", "empty.yaml")
+			if err != nil {
+				log.Fatalf("Could not create empty manifest file: (%v)", err)
+			}
+			tlConfig.namespacedManPath = file.Name()
+			emptyBytes := []byte{}
+			if err := file.Chmod(os.FileMode(fileutil.DefaultFileMode)); err != nil {
+				log.Fatalf("Could not chown temporary namespaced manifest file: (%v)", err)
+			}
+			if _, err := file.Write(emptyBytes); err != nil {
+				log.Fatalf("Could not write temporary namespaced manifest file: (%v)", err)
+			}
+			if err := file.Close(); err != nil {
+				log.Fatal(err)
+			}
 		}
-		tlConfig.namespacedManPath = file.Name()
 		defer func() {
 			err := os.Remove(tlConfig.namespacedManPath)
 			if err != nil {
@@ -240,7 +258,9 @@ func replaceImage(manifestPath, image string) error {
 		foundDeployment = true
 		scheme := runtime.NewScheme()
 		// scheme for client go
-		cgoscheme.AddToScheme(scheme)
+		if err := cgoscheme.AddToScheme(scheme); err != nil {
+			log.Fatalf("Failed to add client-go scheme to runtime client: (%v)", err)
+		}
 		dynamicDecoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 		obj, _, err := dynamicDecoder.Decode(yamlSpec, nil, nil)
