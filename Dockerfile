@@ -4,7 +4,7 @@ RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
 
 FROM ansible-runner:1.2.0
-RUN yum -y install ansible-runner-http python-kubernetes python-openshift inotify-tools
+RUN yum -y install ansible-runner-http python-kubernetes python-openshift
 
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
