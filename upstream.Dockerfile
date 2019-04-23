@@ -1,6 +1,7 @@
 FROM openshift/origin-release:golang-1.11 AS builder
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
+ && rm -rf vendor/github.com/operator-framework/operator-sdk \
  && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
 
 FROM ansible/ansible-runner:1.2.0
