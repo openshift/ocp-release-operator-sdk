@@ -245,7 +245,7 @@ func (r *AnsibleOperatorReconciler) markRunning(u *unstructured.Unstructured, na
 	)
 	ansiblestatus.SetCondition(&crStatus, *c)
 	u.Object["status"] = crStatus.GetJSONMap()
-	err := r.Client.Status().Update(context.TODO(), u)
+	err = r.Client.Status().Update(context.TODO(), u)
 	if err != nil {
 		return err
 	}

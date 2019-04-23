@@ -25,6 +25,8 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/util/fileutil"
 	"github.com/spf13/afero"
 
+	"github.com/operator-framework/operator-sdk/internal/util/fileutil"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

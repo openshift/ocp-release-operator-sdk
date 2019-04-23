@@ -80,7 +80,7 @@ func Add(mgr manager.Manager, options Options) *controller.Controller {
 	}
 
 	scheme := mgr.GetScheme()
-	_, err = scheme.New(options.GVK)
+	_, err := scheme.New(options.GVK)
 	if runtime.IsNotRegisteredError(err) {
 		// Register the GVK with the schema
 		scheme.AddKnownTypeWithName(options.GVK, &unstructured.Unstructured{})
