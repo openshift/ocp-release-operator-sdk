@@ -10,7 +10,69 @@
 
 ### Bug Fixes
 
-- Do not create namespaced resources when running `test local` subcommand with `--up-local` flag
+## v0.7.0
+
+### Added
+
+- New optional flag `--header-file` for commands [`operator-sdk generate k8s`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#k8s) and [`operator-sdk add api`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#api) to supply a boilerplate header file for generated code. ([#1239](https://github.com/operator-framework/operator-sdk/pull/1239))
+
+### Changed
+
+- Updated the helm-operator to store release state in kubernetes secrets in the same namespace of the custom resource that defines the release. ([#1102](https://github.com/operator-framework/operator-sdk/pull/1102))
+  - **WARNING**: Users with active CRs and releases who are upgrading their helm-based operator should not skip this version. Future versions will not seamlessly transition release state to the persistent backend, and will instead uninstall and reinstall all managed releases.
+- Change `namespace-manifest` flag in scorecard subcommand to `namespaced-manifest` to match other subcommands
+- Subcommands of [`operator-sdk generate`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#generate) are now verbose by default. ([#1271](https://github.com/operator-framework/operator-sdk/pull/1271))
+- [`operator-sdk olm-catalog gen-csv`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#gen-csv) parses Custom Resource manifests from `deploy/crds` or a custom path specified in `csv-config.yaml`, encodes them in a JSON array, and sets the CSV's [`metadata.annotations.alm-examples`](https://github.com/operator-framework/operator-lifecycle-manager/blob/master/Documentation/design/building-your-csv.md#crd-templates) field to that JSON. ([#1116](https://github.com/operator-framework/operator-sdk/pull/1116))
+
+### Deprecated
+
+### Removed
+
+### Bug Fixes
+
+- Fixed an issue that caused `operator-sdk new --type=helm` to fail for charts that have template files in nested template directories. ([#1235](https://github.com/operator-framework/operator-sdk/pull/1235))
+- Fix bug in the YAML scanner used by `operator-sdk test` and `operator-sdk scorecard` that could result in a panic if a manifest file started with `---` ([#1258](https://github.com/operator-framework/operator-sdk/pull/1258))
+
+## v0.6.0
+
+### Added
+
+- New flags for [`operator-sdk new --type=helm`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#new), which can be used to populate the project with an existing chart. ([#949](https://github.com/operator-framework/operator-sdk/pull/949))
+- Command [`operator-sdk olm-catalog`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#olm-catalog) flag `--update-crds` optionally copies CRD's from `deploy/crds` when creating a new CSV or updating an existing CSV, and `--from-version` uses another versioned CSV manifest as a base for a new CSV version. ([#1016](https://github.com/operator-framework/operator-sdk/pull/1016))
+- New flag `--olm-deployed` to direct the [`scorecard`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#scorecard) command to only use the CSV at `--csv-path` for manifest data, except for those provided to `--cr-manifest`. ([#1044](https://github.com/operator-framework/operator-sdk/pull/1044))
+- Command [`version`](https://github.com/operator-framework/operator-sdk/pull/1171) prints the version of operator-sdk. ([#1171](https://github.com/operator-framework/operator-sdk/pull/1171))
+
+### Changed
+
+- Changed the Go, Helm, and Scorecard base images to `registry.access.redhat.com/ubi7-dev-preview/ubi-minimal:7.6` ([#1142](https://github.com/operator-framework/operator-sdk/pull/1142))
+- CSV manifest are now versioned according to the `operator-registry` [manifest format](https://github.com/operator-framework/operator-registry#manifest-format). See issue [#900](https://github.com/operator-framework/operator-sdk/issues/900) for more details. ([#1016](https://github.com/operator-framework/operator-sdk/pull/1016))
+- Unexported `CleanupNoT` function from `pkg/test`, as it is only intended to be used internally ([#1167](https://github.com/operator-framework/operator-sdk/pull/1167))
+
+### Bug Fixes
+
+- Fix issue where running `operator-sdk test local --up-local` would sometimes leave a running process in the background after exit ([#1089](https://github.com/operator-framework/operator-sdk/pull/1020))
+
+## v0.5.0
+
+### Added
+
+- Updated the Kubernetes dependencies to `1.13.1` ([#1020](https://github.com/operator-framework/operator-sdk/pull/1020))
+- Updated the controller-runtime version to `v0.1.10`. See the [controller-runtime `v0.1.10` release notes](https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.1.10) for new features and bug fixes. ([#1020](https://github.com/operator-framework/operator-sdk/pull/1020))
+- By default the controller-runtime metrics are exposed on port 8383. This is done as part of the scaffold in the main.go file, the port can be adjusted by modifying the `metricsPort` variable. [#786](https://github.com/operator-framework/operator-sdk/pull/786)
+- A new command [`operator-sdk olm-catalog`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#olm-catalog) to be used as a parent for SDK subcommands generating code related to Operator Lifecycle Manager (OLM) Catalog integration, and subcommand [`operator-sdk olm-catalog gen-csv`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#gen-csv) which generates a Cluster Service Version for an operator so the OLM can deploy the operator in a cluster. ([#673](https://github.com/operator-framework/operator-sdk/pull/673))
+- Helm-based operators have leader election turned on by default. When upgrading, add environment variable `POD_NAME` to your operator's Deployment using the Kubernetes downward API. To see an example, run `operator-sdk new --type=helm ...` and see file `deploy/operator.yaml`. [#1000](https://github.com/operator-framework/operator-sdk/pull/1000)
+- A new command [`operator-sdk generate openapi`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#openapi) which generates OpenAPIv3 validation specs in Go and in CRD manifests as YAML. ([#869](https://github.com/operator-framework/operator-sdk/pull/869))
+- The `operator-sdk add api` command now generates OpenAPIv3 validation specs in Go for that API, and in all CRD manifests as YAML.
+
+### Changed
+
+- In new Helm operator projects, the scaffolded CR `spec` field now contains the default values.yaml from the generated chart. ([#967](https://github.com/operator-framework/operator-sdk/pull/967))
+
+### Deprecated
+
+### Removed
+
+### Bug Fixes
 
 ## v0.4.1
 
@@ -34,16 +96,13 @@
 - Ansible operator proxy added the cache handler which allows the get requests to use the operators cache. [#760](https://github.com/operator-framework/operator-sdk/pull/760)
 - Ansible operator proxy added ability to dynamically watch dependent resource that were created by ansible operator. [#857](https://github.com/operator-framework/operator-sdk/pull/857)
 - Ansible-based operators have leader election turned on by default. When upgrading, add environment variable `POD_NAME` to your operator's Deployment using the Kubernetes downward API. To see an example, run `operator-sdk new --type=ansible ...` and see file `deploy/operator.yaml`.
+- A new command [`operator-sdk scorecard`](https://github.com/operator-framework/operator-sdk/blob/master/doc/sdk-cli-reference.md#scorecard) which runs a series of generic tests on operators to ensure that an operator follows best practices. For more information, see the [`Scorecard Documentation`](doc/test-framework/scorecard.md)
 
 ### Changed
 
 - The official images for the Ansible and Helm operators have moved! Travis now builds, tags, and pushes operator base images during CI ([#832](https://github.com/operator-framework/operator-sdk/pull/832)).
   - [quay.io/operator-framework/ansible-operator](https://quay.io/repository/operator-framework/ansible-operator)
   - [quay.io/operator-framework/helm-operator](https://quay.io/repository/operator-framework/helm-operator)
-
-### Deprecated
-
-### Removed
 
 ### Bug Fixes
 
@@ -59,7 +118,7 @@
 
 - The SDK's Kubernetes Golang dependency versions/revisions have been updated from `v1.11.2` to `v1.12.3`. ([#807](https://github.com/operator-framework/operator-sdk/pull/807))
 - The controller-runtime version has been updated from `v0.1.4` to `v0.1.8`. See the `v0.1.8` [release notes](https://github.com/kubernetes-sigs/controller-runtime/releases/tag/v0.1.8) for details.
-- The SDK now generates the CRD with the status subresource enabled by default. See the [client doc](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/client.md#updating-status-subresource) on how to update the status ssubresource. ([#787](https://github.com/operator-framework/operator-sdk/pull/787))
+- The SDK now generates the CRD with the status subresource enabled by default. See the [client doc](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/client.md#updating-status-subresource) on how to update the status subresource. ([#787](https://github.com/operator-framework/operator-sdk/pull/787))
 
 ### Deprecated
 

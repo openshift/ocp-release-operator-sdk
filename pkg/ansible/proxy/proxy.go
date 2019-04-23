@@ -219,7 +219,7 @@ func recoverDependentWatches(req *http.Request, un *unstructured.Unstructured, c
 }
 
 // InjectOwnerReferenceHandler will handle proxied requests and inject the
-// owner refernece found in the authorization header. The Authorization is
+// owner reference found in the authorization header. The Authorization is
 // then deleted so that the proxy can re-set with the correct authorization.
 func InjectOwnerReferenceHandler(h http.Handler, cMap *controllermap.ControllerMap, restMapper meta.RESTMapper, watchedNamespaces map[string]interface{}) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -319,7 +319,12 @@ func InjectOwnerReferenceHandler(h http.Handler, cMap *controllermap.ControllerM
 				}
 			}
 		}
-		// Removing the authorization so that the proxy can set the correct authorization.
+		h.ServeHTTP(w, req)
+	})
+}
+
+func removeAuthorizationHeader(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		req.Header.Del("Authorization")
 		h.ServeHTTP(w, req)
 	})
@@ -386,7 +391,7 @@ type Options struct {
 	Address           string
 	Port              int
 	Handler           HandlerChain
-	NoOwnerInjection  bool
+	OwnerInjection    bool
 	LogRequests       bool
 	KubeConfig        *rest.Config
 	Cache             cache.Cache
@@ -443,14 +448,18 @@ func Run(done chan error, o Options) error {
 		o.Cache = informerCache
 	}
 
-	if !o.NoOwnerInjection {
+	server.Handler = removeAuthorizationHeader(server.Handler)
+
+	if o.OwnerInjection {
 		server.Handler = InjectOwnerReferenceHandler(server.Handler, o.ControllerMap, o.RESTMapper, watchedNamespaceMap)
+	} else {
+		log.Info("Warning: injection of owner references and dependent watches is turned off")
 	}
 	if o.LogRequests {
 		server.Handler = RequestLogHandler(server.Handler)
 	}
 	if !o.DisableCache {
-		server.Handler = CacheResponseHandler(server.Handler, o.Cache, o.RESTMapper, watchedNamespaceMap, o.ControllerMap, !o.NoOwnerInjection)
+		server.Handler = CacheResponseHandler(server.Handler, o.Cache, o.RESTMapper, watchedNamespaceMap, o.ControllerMap, o.OwnerInjection)
 	}
 
 	l, err := server.Listen(o.Address, o.Port)
@@ -490,44 +499,38 @@ func addWatchToController(owner kubeconfig.NamespacedOwnerReference, cMap *contr
 	if !ok {
 		return errors.New("failed to find controller in map")
 	}
-	wMap := contents.WatchMap
-	uMap := contents.UIDMap
+	owMap := contents.OwnerWatchMap
+	awMap := contents.AnnotationWatchMap
 	u := &unstructured.Unstructured{}
 	u.SetGroupVersionKind(ownerMapping.GroupVersionKind)
 	// Add a watch to controller
 	if contents.WatchDependentResources {
-		// Store UID
-		uMap.Store(owner.UID, types.NamespacedName{
-			Name:      owner.Name,
-			Namespace: owner.Namespace,
-		})
-		_, exists := wMap.Get(resource.GroupVersionKind())
-		// If already watching resource no need to add a new watch
-		if exists {
-			return nil
-		}
 		// Store watch in map
-		wMap.Store(resource.GroupVersionKind())
 		// Use EnqueueRequestForOwner unless user has configured watching cluster scoped resources and we have to
 		switch {
 		case useOwnerRef:
+			_, exists := owMap.Get(resource.GroupVersionKind())
+			// If already watching resource no need to add a new watch
+			if exists {
+				return nil
+			}
+
+			owMap.Store(resource.GroupVersionKind())
 			log.Info("Watching child resource", "kind", resource.GroupVersionKind(), "enqueue_kind", u.GroupVersionKind())
 			// Store watch in map
 			err := contents.Controller.Watch(&source.Kind{Type: resource}, &handler.EnqueueRequestForOwner{OwnerType: u})
 			if err != nil {
 				return err
 			}
-		case !useOwnerRef && dataNamespaceScoped:
+		case (!useOwnerRef && dataNamespaceScoped) || contents.WatchClusterScopedResources:
+			_, exists := awMap.Get(resource.GroupVersionKind())
+			// If already watching resource no need to add a new watch
+			if exists {
+				return nil
+			}
+			awMap.Store(resource.GroupVersionKind())
 			typeString := fmt.Sprintf("%v.%v", owner.Kind, ownerGV.Group)
 			log.Info("Watching child resource", "kind", resource.GroupVersionKind(), "enqueue_annotation_type", typeString)
-			err = contents.Controller.Watch(&source.Kind{Type: resource}, &osdkHandler.EnqueueRequestForAnnotation{Type: typeString})
-			if err != nil {
-				return err
-			}
-		case contents.WatchClusterScopedResources:
-			typeString := fmt.Sprintf("%v.%v", owner.Kind, ownerGV.Group)
-			log.Info("Watching child resource which can be cluster-scoped", "kind", resource.GroupVersionKind(), "enqueue_annotation_type", typeString)
-			// Add watch
 			err = contents.Controller.Watch(&source.Kind{Type: resource}, &osdkHandler.EnqueueRequestForAnnotation{Type: typeString})
 			if err != nil {
 				return err

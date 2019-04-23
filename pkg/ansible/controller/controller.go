@@ -48,6 +48,7 @@ type Options struct {
 	ManageStatus                bool
 	WatchDependentResources     bool
 	WatchClusterScopedResources bool
+	MaxWorkers                  int
 }
 
 // Add - Creates a new ansible operator controller and adds it to the manager
@@ -79,7 +80,7 @@ func Add(mgr manager.Manager, options Options) *controller.Controller {
 	}
 
 	scheme := mgr.GetScheme()
-	_, err = scheme.New(options.GVK)
+	_, err := scheme.New(options.GVK)
 	if runtime.IsNotRegisteredError(err) {
 		// Register the GVK with the schema
 		scheme.AddKnownTypeWithName(options.GVK, &unstructured.Unstructured{})
@@ -94,7 +95,8 @@ func Add(mgr manager.Manager, options Options) *controller.Controller {
 
 	//Create new controller runtime controller and set the controller to watch GVK.
 	c, err := controller.New(fmt.Sprintf("%v-controller", strings.ToLower(options.GVK.Kind)), mgr, controller.Options{
-		Reconciler: aor,
+		Reconciler:              aor,
+		MaxConcurrentReconciles: options.MaxWorkers,
 	})
 	if err != nil {
 		log.Error(err, "")
