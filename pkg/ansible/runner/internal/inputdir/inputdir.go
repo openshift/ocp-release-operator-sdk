@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/operator-framework/operator-sdk/internal/util/fileutil"
 	"github.com/spf13/afero"
 
 	"github.com/operator-framework/operator-sdk/internal/util/fileutil"
