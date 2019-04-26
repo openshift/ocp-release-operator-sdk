@@ -46,14 +46,20 @@ OPERATORDIR="$(pwd)"
 TEST_CLUSTER_PORT=24443 operator-sdk test local --namespace default
 
 # Test cluster
-# Disable cluster test as it is covered by the bash script and it flaky
-#DEST_IMAGE="quay.io/example/memcached-operator:v0.0.2-test"
-#operator-sdk build --enable-tests "$DEST_IMAGE"
-#trap_add 'remove_prereqs' EXIT
-#deploy_prereqs
-#TEST_CLUSTER_PORT=25443 operator-sdk test cluster --image-pull-policy Never --namespace default --service-account memcached-operator ${DEST_IMAGE}
+DEST_IMAGE="quay.io/example/memcached-operator:v0.0.2-test"
+operator-sdk build --enable-tests "$DEST_IMAGE"
+trap_add 'remove_prereqs' EXIT
+deploy_prereqs
+operator-sdk test cluster --image-pull-policy Never --namespace default --service-account memcached-operator ${DEST_IMAGE}
 
-#remove_prereqs
+remove_prereqs
 
 popd
+popd
+
+pushd "${ROOTDIR}/test/ansible-inventory"
+
+sed -i 's|\(FROM quay.io/operator-framework/ansible-operator\)\(:.*\)\?|\1:dev|g' build/Dockerfile
+TEST_CLUSTER_PORT=24443 operator-sdk test local --namespace default
+
 popd
