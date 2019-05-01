@@ -3,14 +3,15 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
 
-FROM ansible-runner:1.2.0
-RUN yum -y install ansible-runner-http python-kubernetes python-openshift
+FROM registry.access.redhat.com/ubi7-dev-preview/ubi:7.6
+RUN minidnf -y install ansible-runner-http python-kubernetes python-openshift
 
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
     && echo '[defaults]' > /etc/ansible/ansible.cfg \
     && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg \
     && echo 'library = /usr/share/ansible/openshift' >> /etc/ansible/ansible.cfg
+    && echo 'remote_tmp = /opt/ansible/.ansible/tmp' >> /etc/ansible/ansible.cfg
 
 ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_UID=1001 \
