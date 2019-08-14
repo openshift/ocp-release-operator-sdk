@@ -38,41 +38,33 @@ The following workflow is for a new **Helm** operator:
 
 ## Prerequisites
 
-- [dep][dep_tool] version v0.5.0+.
 - [git][git_tool]
-- [go][go_tool] version v1.10+.
+- [go][go_tool] version v1.12+.
+- [mercurial][mercurial_tool] version 3.9+
 - [docker][docker_tool] version 17.03+.
+  - Alternatively [podman][podman_tool] `v1.2.0+` or [buildah][buildah_tool] `v1.7+`
 - [kubectl][kubectl_tool] version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
+- Optional: [dep][dep_tool] version v0.5.0+.
+- Optional: [delve](https://github.com/go-delve/delve/tree/master/Documentation/installation) version 1.2.0+ (for `up local --enable-delve`).
 
 ## Quick Start
 
-First, checkout and install the operator-sdk CLI:
+### Install the Operator SDK CLI
 
-```sh
-$ mkdir -p $GOPATH/src/github.com/operator-framework
-$ cd $GOPATH/src/github.com/operator-framework
-$ git clone https://github.com/operator-framework/operator-sdk
-$ cd operator-sdk
-$ git checkout master
-$ make dep
-$ make install
-```
+Follow the steps in the [installation guide][install_guide] to learn how to install the Operator SDK CLI tool.
 
-Alternatively, if you are using [Homebrew][homebrew_tool], you can install the SDK CLI tool with the following command:
+**Note:** If you are using a release version of the SDK, make sure to follow the documentation for that version. e.g.: For version 0.8.1, see docs in https://github.com/operator-framework/operator-sdk/tree/v0.8.1.
 
-```sh
-$ brew install operator-sdk
-```
-
-Create and deploy an app-operator using the SDK CLI:
+### Create and deploy an app-operator
 
 ```sh
 # Create an app-operator project that defines the App CR.
-$ mkdir -p $GOPATH/src/github.com/example-inc/
+$ mkdir -p $HOME/projects/example-inc/
 # Create a new app-operator project
-$ cd $GOPATH/src/github.com/example-inc/
-$ operator-sdk new app-operator
+$ cd $HOME/projects/example-inc/
+$ export GO111MODULE=on
+$ operator-sdk new app-operator --repo github.com/example-inc/app-operator
 $ cd app-operator
 
 # Add a new API for the custom resource AppService
@@ -149,6 +141,10 @@ The SDK also supports developing an operator using Ansible or Helm. See the [Ans
 
 To explore any operator samples built using the operator-sdk, see the [operator-sdk-samples][samples].
 
+## FAQ
+
+For common Operator SDK related questions, see the [FAQ][faq].
+
 ## Contributing
 
 See [CONTRIBUTING][contrib] for details on submitting patches and the contribution workflow.
@@ -163,6 +159,7 @@ See [reporting bugs][bug_guide] for details about reporting any issues.
 
 Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file for details.
 
+[install_guide]: ./doc/user/install-operator-sdk.md
 [operator_link]: https://coreos.com/operators/
 [proposals_docs]: ./doc/proposals
 [sdk_cli_ref]: ./doc/sdk-cli-reference.md
@@ -173,12 +170,15 @@ Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file f
 [contrib]: ./CONTRIBUTING.MD
 [bug_guide]:./doc/dev/reporting_bugs.md
 [license_file]:./LICENSE
-[homebrew_tool]:https://brew.sh/
 [dep_tool]:https://golang.github.io/dep/docs/installation.html
 [git_tool]:https://git-scm.com/downloads
 [go_tool]:https://golang.org/dl/
+[mercurial_tool]:https://www.mercurial-scm.org/downloads
 [docker_tool]:https://docs.docker.com/install/
+[podman_tool]:https://github.com/containers/libpod/blob/master/install.md
+[buildah_tool]:https://github.com/containers/buildah/blob/master/install.md
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
 [controller_runtime]: https://github.com/kubernetes-sigs/controller-runtime
 [ansible_user_guide]:./doc/ansible/user-guide.md
 [helm_user_guide]:./doc/helm/user-guide.md
+[faq]: ./doc/faq.md

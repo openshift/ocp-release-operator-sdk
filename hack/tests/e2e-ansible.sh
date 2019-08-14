@@ -9,11 +9,12 @@ go test -count=1 ./pkg/ansible/proxy/...
 
 DEST_IMAGE="quay.io/example/memcached-operator:v0.0.2"
 ROOTDIR="$(pwd)"
-GOTMP="$(mktemp -d -p $GOPATH/src)"
+GOTMP="$(mktemp -d)"
 trap_add 'rm -rf $GOTMP' EXIT
 
 deploy_operator() {
     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
+    oc adm policy add-cluster-role-to-user cluster-admin -z memcached-operator || :
     kubectl create -f "$OPERATORDIR/deploy/role.yaml"
     kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl create -f "$OPERATORDIR/deploy/crds/ansible_v1alpha1_memcached_crd.yaml"
@@ -96,7 +97,10 @@ if which oc 2>/dev/null; then oc project default; fi
 
 # create and build the operator
 pushd "$GOTMP"
-operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 --kind=Memcached --type=ansible
+operator-sdk new memcached-operator \
+  --api-version=ansible.example.com/v1alpha1 \
+  --kind=Memcached \
+  --type=ansible
 cp "$ROOTDIR/test/ansible-memcached/tasks.yml" memcached-operator/roles/memcached/tasks/main.yml
 cp "$ROOTDIR/test/ansible-memcached/defaults.yml" memcached-operator/roles/memcached/defaults/main.yml
 cp -a "$ROOTDIR/test/ansible-memcached/memfin" memcached-operator/roles/
@@ -124,7 +128,8 @@ echo "### Base image testing passed"
 echo "### Now testing migrate to hybrid operator"
 echo "###"
 
-operator-sdk migrate
+export GO111MODULE=on
+operator-sdk migrate --repo=github.com/example-inc/memcached-operator
 
 if [[ ! -e build/Dockerfile.sdkold ]];
 then
@@ -132,15 +137,9 @@ then
     exit 1
 fi
 
-# We can't reliably run `dep ensure` because when there are changes to
-# operator-sdk itself, and those changes are not merged upstream, we hit this
-# bug: https://github.com/golang/dep/issues/1747
-# Instead, this re-uses operator-sdk's own vendor directory.
-cp -a "$ROOTDIR"/vendor ./
-mkdir -p vendor/github.com/operator-framework/operator-sdk/
-# We cannot just use operator-sdk from $GOPATH because compilation tries to use
-# its vendor directory, which can conflict with the local one.
-cp -a "$ROOTDIR"/{internal,pkg,version,LICENSE} vendor/github.com/operator-framework/operator-sdk/
+add_go_mod_replace "github.com/operator-framework/operator-sdk" "$ROOTDIR"
+# Build the project to resolve dependency versions in the modfile.
+go build ./...
 
 operator-sdk build "$DEST_IMAGE"
 
