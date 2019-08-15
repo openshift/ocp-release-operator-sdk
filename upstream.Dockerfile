@@ -1,4 +1,7 @@
-FROM openshift/origin-release:golang-1.11 AS builder
+FROM openshift/origin-release:golang-1.12 AS builder
+
+ENV GO111MODULE=on
+
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && rm -rf vendor/github.com/operator-framework/operator-sdk \
