@@ -4,7 +4,7 @@
 
 `ServiceMonitor` is a CustomResource of the prometheus-operator, which discovers the `Endpoints` in `Service` objects and configures Prometheus to monitor those pods. See the prometheus-operator [documentation][service-monitor] to learn more about `ServiceMonitor`.
 
-The `GenerateServiceMonitor` function takes a `Service` object and generates a `ServiceMonitor` resource based on it. To add `Service` target discovery of your created monitoring `Service` you can use the `metrics.CreateServiceMonitor()` helper function, which accepts the newly created `Service`.
+The `CreateServiceMonitors` function takes `Service` objects and generates `ServiceMonitor` resources based on the endpoints. To add `Service` target discovery of your created monitoring `Service` you can use the `metrics.CreateServiceMonitors()` helper function, which accepts the newly created `Service`.
 
 ### Prerequisites:
 
@@ -18,8 +18,8 @@ The `GenerateServiceMonitor` function takes a `Service` object and generates a `
         "github.com/operator-framework/operator-sdk/pkg/metrics"
     )
 
-    func main() {    
-        
+    func main() {
+
         ...
 
         // Populate below with the Service(s) for which you want to create ServiceMonitors.
@@ -28,7 +28,7 @@ The `GenerateServiceMonitor` function takes a `Service` object and generates a `
         // Create one `ServiceMonitor` per application per namespace.
         // Change below value to name of the Namespace you want the `ServiceMonitor` to be created in.
         ns := "default"
-        
+
         // Pass the Service(s) to the helper function, which in turn returns the array of `ServiceMonitor` objects.
         serviceMonitors, err := metrics.CreateServiceMonitors(restConfig, ns, services)
         if err != nil {

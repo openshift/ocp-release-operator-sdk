@@ -1,44 +1,22 @@
 # User Guide
 
-This guide walks through an example of building a simple nginx-operator
-powered by Helm using tools and libraries provided by the Operator SDK.
+This guide walks through an example of building a simple nginx-operator powered by Helm using tools and libraries provided by the Operator SDK.
 
 ## Prerequisites
 
-- [git][git_tool]
-- [docker][docker_tool] version 17.03+.
-- [kubectl][kubectl_tool] version v1.11.3+.
-- [dep][dep_tool] version v0.5.0+. (Optional if you aren't installing from source)
-- [go][go_tool] version v1.10+. (Optional if you aren't installing from source)
-- Access to a Kubernetes v.1.11.3+ cluster.
+- [git][git-tool]
+- [docker][docker-tool] version 17.03+.
+- [kubectl][kubectl-tool] version v1.11.3+.
+- [dep][dep-tool] version v0.5.0+. (Optional if you aren't installing from source)
+- [go][go-tool] version v1.12+. (Optional if you aren't installing from source)
+- Access to a Kubernetes v1.11.3+ cluster.
 
-**Note**: This guide uses [minikube][minikube_tool] version v0.25.0+ as the
-local Kubernetes cluster and [quay.io][quay_link] for the public registry.
+**Note**: This guide uses [minikube][minikube-tool] version v0.25.0+ as the
+local Kubernetes cluster and [quay.io][quay-link] for the public registry.
 
 ## Install the Operator SDK CLI
 
-The Operator SDK has a CLI tool that helps the developer to create, build, and
-deploy a new operator project.
-
-Checkout the desired release tag and install the SDK CLI tool:
-
-```sh
-mkdir -p $GOPATH/src/github.com/operator-framework
-cd $GOPATH/src/github.com/operator-framework
-git clone https://github.com/operator-framework/operator-sdk
-cd operator-sdk
-git checkout master
-make dep
-make install
-```
-
-This installs the CLI binary `operator-sdk` at `$GOPATH/bin`.
-
-Alternatively, if you are using [Homebrew][homebrew_tool], you can install the SDK CLI tool with the following command:
-
-```sh
-$ brew install operator-sdk
-```
+Follow the steps in the [installation guide][install-guide] to learn how to install the Operator SDK CLI tool.
 
 ## Create a new project
 
@@ -53,8 +31,13 @@ This creates the nginx-operator project specifically for watching the
 Nginx resource with APIVersion `example.com/v1alpha1` and Kind
 `Nginx`.
 
+For Helm-based projects, `operator-sdk new` also generates the RBAC rules
+in `deploy/role.yaml` based on the resources that would be deployed by the
+chart's default manifest. Be sure to double check that the rules generated
+in `deploy/role.yaml` meet the operator's permission requirements.
+
 To learn more about the project directory structure, see the
-[project layout][layout_doc] doc.
+[project layout][layout-doc] doc.
 
 ### Use an existing chart
 
@@ -83,21 +66,8 @@ If `--helm-chart-version` is not set, the SDK will fetch the latest available ve
 
 ### Operator scope
 
-A namespace-scoped operator (the default) watches and manages resources in a single namespace, whereas a cluster-scoped operator watches and manages resources cluster-wide. Namespace-scoped operators are preferred because of their flexibility. They enable decoupled upgrades, namespace isolation for failures and monitoring, and differing API definitions. However, there are use cases where a cluster-scoped operator may make sense. For example, the [cert-manager](https://github.com/jetstack/cert-manager) operator is often deployed with cluster-scoped permissions and watches so that it can manage issuing certificates for an entire cluster.
+Read the [operator scope][operator-scope] documentation on how to run your operator as namespace-scoped vs cluster-scoped.
 
-If you'd like to create your nginx-operator project to be cluster-scoped use the following `operator-sdk new` command instead:
-
-```sh
-operator-sdk new nginx-operator --cluster-scoped --api-version=example.com/v1alpha1 --kind=Nginx --type=helm
-```
-
-Using `--cluster-scoped` will scaffold the new operator with the following modifications:
-* `deploy/operator.yaml` - Set `WATCH_NAMESPACE=""` instead of setting it to the pod's namespace
-* `deploy/role.yaml` - Use `ClusterRole` instead of `Role`
-* `deploy/role_binding.yaml`:
-  * Use `ClusterRoleBinding` instead of `RoleBinding`
-  * Use `ClusterRole` instead of `Role` for roleRef
-  * Set the subject namespace to `REPLACE_NAMESPACE`. This must be changed to the namespace in which the operator is deployed.
 
 ## Customize the operator logic
 
@@ -132,11 +102,11 @@ resources, along with a NOTES.txt template, which Helm chart developers use
 to convey helpful information about a release.
 
 If you aren't already familiar with Helm Charts, take a moment to review
-the [Helm Chart developer documentation][helm_charts].
+the [Helm Chart developer documentation][helm-charts].
 
 ### Understanding the Nginx CR spec
 
-Helm uses a concept called [values][helm_values] to provide customizations
+Helm uses a concept called [values][helm-values] to provide customizations
 to a Helm chart's defaults, which are defined in the Helm chart's `values.yaml`
 file.
 
@@ -213,19 +183,11 @@ deployment image in this file needs to be modified from the placeholder
 sed -i 's|REPLACE_IMAGE|quay.io/example/nginx-operator:v0.0.1|g' deploy/operator.yaml
 ```
 
-If you created your operator using `--cluster-scoped=true`, update the service account namespace in the generated `ClusterRoleBinding` to match where you are deploying your operator.
-
-```sh
-export OPERATOR_NAMESPACE=$(kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}')
-sed -i "s|REPLACE_NAMESPACE|$OPERATOR_NAMESPACE|g" deploy/role_binding.yaml
-```
-
-**Note**  
-If you are performing these steps on OSX, use the following commands instead:
+**Note**
+If you are performing these steps on OSX, use the following `sed` command instead:
 
 ```sh
 sed -i "" 's|REPLACE_IMAGE|quay.io/example/nginx-operator:v0.0.1|g' deploy/operator.yaml
-sed -i "" "s|REPLACE_NAMESPACE|$OPERATOR_NAMESPACE|g" deploy/role_binding.yaml
 ```
 
 Deploy the nginx-operator:
@@ -359,14 +321,16 @@ kubectl delete -f deploy/service_account.yaml
 kubectl delete -f deploy/crds/example_v1alpha1_nginx_crd.yaml
 ```
 
-[layout_doc]:./project_layout.md
-[homebrew_tool]:https://brew.sh/
-[dep_tool]:https://golang.github.io/dep/docs/installation.html
-[git_tool]:https://git-scm.com/downloads
-[go_tool]:https://golang.org/dl/
-[docker_tool]:https://docs.docker.com/install/
-[kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[minikube_tool]:https://github.com/kubernetes/minikube#installation
-[helm_charts]:https://helm.sh/docs/developing_charts/
-[helm_values]:https://helm.sh/docs/using_helm/#customizing-the-chart-before-installing
-[quay_link]:https://quay.io
+[operator-scope]:./../operator-scope.md
+[install-guide]: ../user/install-operator-sdk.md
+[layout-doc]:./project_layout.md
+[homebrew-tool]:https://brew.sh/
+[dep-tool]:https://golang.github.io/dep/docs/installation.html
+[git-tool]:https://git-scm.com/downloads
+[go-tool]:https://golang.org/dl/
+[docker-tool]:https://docs.docker.com/install/
+[kubectl-tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[minikube-tool]:https://github.com/kubernetes/minikube#installation
+[helm-charts]:https://helm.sh/docs/developing_charts/
+[helm-values]:https://helm.sh/docs/using_helm/#customizing-the-chart-before-installing
+[quay-link]:https://quay.io

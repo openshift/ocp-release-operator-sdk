@@ -23,7 +23,7 @@ import (
 const MoleculeTestLocalMoleculeFile = "molecule.yml"
 
 type MoleculeTestLocalMolecule struct {
-	input.Input
+	StaticInput
 }
 
 // GetInput - gets the input
@@ -48,7 +48,7 @@ platforms:
 - name: kind-test-local
   groups:
   - k8s
-  image: bsycorp/kind:latest-1.12
+  image: bsycorp/kind:latest-1.14
   privileged: True
   override_command: no
   exposed_ports:
