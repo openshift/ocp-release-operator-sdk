@@ -1,6 +1,7 @@
 FROM openshift/origin-release:golang-1.12 AS builder
 
-ENV GO111MODULE=on
+ENV GO111MODULE=on \
+    GOFLAGS=-mod=vendor
 
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
