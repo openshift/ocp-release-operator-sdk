@@ -32,6 +32,7 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.n
       ansible-runner-http==1.0.0 \
       openshift==0.8.9 \
       ansible==2.8 \
+      jmespath \
  && yum remove -y gcc python-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
