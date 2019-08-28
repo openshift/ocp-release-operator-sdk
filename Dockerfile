@@ -15,6 +15,7 @@ RUN yum install -y \
       ansible-runner-http \
       python-kubernetes \
       python-openshift \
+      python-jmespath \
       tini \
       inotify-tools \
  && yum clean all \
