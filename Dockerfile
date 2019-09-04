@@ -41,6 +41,6 @@ RUN mkdir -p ${HOME}/.ansible/tmp \
  && chown -R ${USER_UID}:0 ${HOME} \
  && chmod -R ug+rwx ${HOME}
 
-ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}
