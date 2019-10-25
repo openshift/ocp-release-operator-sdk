@@ -7,7 +7,7 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
 
-FROM registry.access.redhat.com/ubi7/ubi
+FROM registry.access.redhat.com/ubi8/ubi
 
 RUN yum install -y \
       ansible \
@@ -35,6 +35,8 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev-x86_64-linux-gnu ${OPERATOR}
 COPY bin /usr/local/bin
 COPY library/k8s_status.py /usr/share/ansible/openshift/
+
+RUN /usr/local/bin/user_setup
 
 # Ensure directory permissions are properly set
 RUN mkdir -p ${HOME}/.ansible/tmp \
