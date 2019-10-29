@@ -36,6 +36,8 @@ COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ope
 COPY bin /usr/local/bin
 COPY library/k8s_status.py /usr/share/ansible/openshift/
 
+RUN /usr/local/bin/user_setup
+
 # Ensure directory permissions are properly set
 RUN mkdir -p ${HOME}/.ansible/tmp \
  && chown -R ${USER_UID}:0 ${HOME} \
