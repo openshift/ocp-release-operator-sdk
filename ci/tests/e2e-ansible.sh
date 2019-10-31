@@ -9,14 +9,14 @@ eval IMAGE=$IMAGE_FORMAT
 component="osdk-ansible-e2e-hybrid"
 eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
-TMPDIR="$(mktemp -d)"
-trap_add 'rm -rf $TMPDIR' EXIT
+GOTMP="$(mktemp -d -p $GOPATH/src)"
+trap_add 'rm -rf $GOTMP' EXIT
 
 mkdir -p $ROOTDIR/bin
 export PATH=$ROOTDIR/bin:$PATH
 
 if ! [ -x "$(command -v kubectl)" ]; then
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.15.4/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
+    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.2/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
 fi
 
 if ! [ -x "$(command -v oc)" ]; then
@@ -41,29 +41,22 @@ deploy_operator() {
 }
 
 remove_operator() {
-    kubectl delete --wait=true --ignore-not-found=true --timeout=60s -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true --timeout=60s -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
 }
-
-operator_logs() {
-    kubectl describe pods
-    kubectl logs deployment/memcached-operator -c operator
-    kubectl logs deployment/memcached-operator -c ansible
-}
-
 
 test_operator() {
-    local metrics_test_image="registry.access.redhat.com/ubi8/ubi-minimal:latest"
-
     # wait for operator pod to run
     if ! timeout 1m kubectl rollout status deployment/memcached-operator;
     then
         echo FAIL: operator failed to run
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
@@ -71,23 +64,29 @@ test_operator() {
     if ! timeout 20s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
     # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
     # verify that the operator metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
@@ -96,15 +95,19 @@ test_operator() {
     if ! timeout 20s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
     then
         echo FAIL: operator failed to create memcached Deployment
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
     # verify that metrics reflect cr creation
-    if ! timeout 1m bash -c -- "until kubectl run -it --rm --restart=Never test-metrics --image=$metrics_test_image -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached; do sleep 1; done";
+    if ! bash -c -- 'kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached';
     then
         echo "Failed to verify custom resource metrics"
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
@@ -112,7 +115,7 @@ test_operator() {
     if ! timeout 1m kubectl rollout status deployment/${memcached_deployment};
     then
         echo FAIL: memcached Deployment failed rollout
-        operator_logs
+        kubectl describe pods
         kubectl logs deployment/${memcached_deployment}
         exit 1
     fi
@@ -127,7 +130,9 @@ test_operator() {
     if kubectl get configmap deleteme 2> /dev/null;
     then
         echo FAIL: the finalizer did not delete the configmap
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
@@ -135,7 +140,9 @@ test_operator() {
     if ! timeout 20s bash -c -- "while kubectl get deployment ${memcached_deployment} 2> /dev/null; do sleep 1; done";
     then
         echo FAIL: memcached Deployment did not get garbage collected
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 
@@ -143,7 +150,9 @@ test_operator() {
     if kubectl logs deployment/memcached-operator -c operator | grep -i error;
     then
         echo FAIL: the operator log includes errors
-        operator_logs
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator -c operator
+        kubectl logs deployment/memcached-operator -c ansible
         exit 1
     fi
 }
@@ -152,7 +161,7 @@ test_operator() {
 oc project default
 
 # create and build the operator
-pushd "$TMPDIR"
+pushd "$GOTMP"
 operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 --kind=Memcached --type=ansible
 
 pushd memcached-operator
@@ -173,7 +182,9 @@ remove_operator
 if ! timeout 60s bash -c -- "until kubectl get pods -l name=memcached-operator |& grep \"No resources found\"; do sleep 2; done";
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
-    operator_logs
+    kubectl describe pods
+    kubectl logs deployment/memcached-operator -c operator
+    kubectl logs deployment/memcached-operator -c ansible
     exit 1
 fi
 

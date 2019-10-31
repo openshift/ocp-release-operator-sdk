@@ -147,6 +147,9 @@ test-e2e-go:
 test-e2e-ansible: image-build-ansible
 	./hack/tests/e2e-ansible.sh
 
+test-e2e-ansible2 test/e2e/ansible2:
+	./ci/tests/e2e-ansible.sh
+
 test-e2e-ansible-molecule: image-build-ansible
 	./hack/tests/e2e-ansible-molecule.sh
 
