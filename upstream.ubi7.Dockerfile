@@ -1,4 +1,4 @@
-FROM openshift/origin-release:golang-1.12 AS builder
+FROM openshift/origin-release:golang-1.13 AS builder
 
 ENV GO111MODULE=on \
     GOFLAGS=-mod=vendor
@@ -24,11 +24,10 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
 # Install python dependencies
 
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
- && yum install -y python-devel gcc inotify-tools \
- && easy_install pip \
+ && yum install -y python2-pip python-devel gcc inotify-tools \
  && pip install -U --no-cache-dir setuptools pip \
  && pip install --no-cache-dir --ignore-installed ipaddress \
-      ansible-runner==1.2 \
+      ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift==0.8.9 \
       ansible==2.8 \
@@ -42,11 +41,6 @@ COPY bin /usr/local/bin
 COPY library/k8s_status.py /usr/share/ansible/openshift/
 
 RUN /usr/local/bin/user_setup
-
-# Ensure directory permissions are properly set
-RUN mkdir -p ${HOME}/.ansible/tmp \
- && chown -R ${USER_UID}:0 ${HOME} \
- && chmod -R ug+rwx ${HOME}
 
 ADD https://github.com/krallin/tini/releases/latest/download/tini /tini
 RUN chmod +x /tini

@@ -1,11 +1,11 @@
-# CLI Guide
+# Operator SDK Command Line Interface (CLI) Reference
 
 ```bash
 Usage:
   operator-sdk [command]
 ```
 
-### Global Flags
+## Global Flags
 
 * `--verbose` - enable debug logging
 
@@ -36,7 +36,7 @@ building example-operator...
 
 building container quay.io/example/operator:v0.0.1...
 Sending build context to Docker daemon  163.9MB
-Step 1/4 : FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
+Step 1/4 : FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
  ---> 77144d8c6bdc
 Step 2/4 : ADD tmp/_output/bin/example-operator /usr/local/bin/example-operator
  ---> 2ada0d6ca93c
@@ -89,36 +89,10 @@ $ operator-sdk completion bash
 
 Prints the most recent Golang packages and versions required by operators. Prints in columnar format by default.
 
-### Flags
-
-* `--as-file` - Print packages and versions in go.mod or Gopkg.toml format, depending on the dependency manager chosen when initializing or migrating a project.
-
 ### Example
 
-With dependency manager `dep`:
-
 ```console
-$ operator-sdk print-deps --as-file
-required = [
-  "k8s.io/code-generator/cmd/deepcopy-gen",
-  "k8s.io/code-generator/cmd/conversion-gen",
-  "k8s.io/code-generator/cmd/client-gen",
-  "k8s.io/code-generator/cmd/lister-gen",
-  "k8s.io/code-generator/cmd/informer-gen",
-  "k8s.io/code-generator/cmd/openapi-gen",
-  "k8s.io/gengo/args",
-]
-
-[[override]]
-  name = "k8s.io/code-generator"
-  revision = "6702109cc68eb6fe6350b83e14407c8d7309fd1a"
-...
-```
-
-With dependency manager `modules`, i.e. go mod:
-
-```console
-$ operator-sdk print-deps --as-file
+$ operator-sdk print-deps
 module github.com/example-inc/memcached-operator
 
 require (
@@ -175,7 +149,7 @@ pkg/apis/app/v1alpha1/
 
 $ operator-sdk generate openapi
 INFO[0000] Running OpenAPI code-generation for Custom Resource group versions: [app:[v1alpha1], ]
-INFO[0001] Created deploy/crds/app_v1alpha1_appservice_crd.yaml
+INFO[0001] Created deploy/crds/app.example.com_appservices_crd.yaml
 INFO[0001] Code-generation complete.
 
 $ tree pkg/apis/app/v1alpha1/
@@ -227,9 +201,8 @@ you will need to rename it before running migrate or manually add it to your Doc
 
 #### Flags
 
-* `--dep-manager` string - Dependency manager the migrated project will use (choices: "dep", "modules") (default "modules")
 * `--header-file` string - Path to file containing headers for generated Go files. Copied to hack/boilerplate.go.txt
-* `--repo` string - Project repository path for Go operators. Used as the project's Go import path. This must be set if outside of `$GOPATH/src` with Go modules, and cannot be set if `--dep-manager=dep`
+* `--repo` string - Project repository path for Go operators. Used as the project's Go import path. This must be set if outside of `$GOPATH/src` (e.g. github.com/example-inc/my-operator)
 
 ### Example
 
@@ -264,10 +237,9 @@ Scaffolds a new operator project.
 * `--helm-chart-repo` string - Chart repository URL for the requested helm chart
 * `--helm-chart-version` string - Specific version of the helm chart (default is latest version)
 * `--header-file` string - Path to file containing headers for generated Go files. Copied to hack/boilerplate.go.txt
-* `--dep-manager` string - Dependency manager the new project will use (choices: "dep", "modules") (default "modules")
-* `--repo` string - Project repository path for Go operators. Used as the project's Go import path. This must be set if outside of `$GOPATH/src` with Go modules, and cannot be set if `--dep-manager=dep`
+* `--repo` string - Project repository path for Go operators. Used as the project's Go import path. This must be set if outside of `$GOPATH/src` (e.g. github.com/example-inc/my-operator)
 * `--git-init` - Initialize the project directory as a git repository (default `false`)
-* `--vendor` - Use a vendor directory for dependencies. This flag only applies when `--dep-manager=modules` (the default)
+* `--vendor` - Use a vendor directory for dependencies
 * `--skip-validation` - Do not validate the resulting project's structure and dependencies. (Only used for --type go)
 * `-h, --help` - help for new
 
@@ -332,8 +304,9 @@ Adds the API definition for a new custom resource under `pkg/apis` and generates
 
 #### Flags
 
-* `--api-version` string - CRD APIVersion in the format `$GROUP_NAME/$VERSION` (e.g app.example.com/v1alpha1)
-* `--kind` string - CRD Kind. (e.g AppService)
+* `--api-version` string - (required) CRD APIVersion in the format `$GROUP_NAME/$VERSION` (e.g app.example.com/v1alpha1)
+* `--kind` string - (required) CRD Kind. (e.g AppService)
+* `--skip-generation` - Skip generation of deepcopy and OpenAPI code and OpenAPI CRD specs.
 
 #### Example
 
@@ -344,12 +317,12 @@ INFO[0000] Created pkg/apis/app/v1alpha1/appservice_types.go
 INFO[0000] Created pkg/apis/addtoscheme_app_v1alpha1.go
 INFO[0000] Created pkg/apis/app/v1alpha1/register.go
 INFO[0000] Created pkg/apis/app/v1alpha1/doc.go
-INFO[0000] Created deploy/crds/app_v1alpha1_appservice_cr.yaml
-INFO[0000] Created deploy/crds/app_v1alpha1_appservice_crd.yaml
+INFO[0000] Created deploy/crds/app.example.com_v1alpha1_appservice_cr.yaml
+INFO[0000] Created deploy/crds/app.example.com_appservices_crd.yaml
 INFO[0001] Running deepcopy code-generation for Custom Resource group versions: [app:[v1alpha1], ]
 INFO[0002] Code-generation complete.
 INFO[0002] Running OpenAPI code-generation for Custom Resource group versions: [app:[v1alpha1], ]
-INFO[0004] Created deploy/crds/app_v1alpha1_appservice_crd.yaml
+INFO[0004] Created deploy/crds/app.example.com_appservices_crd.yaml
 INFO[0004] Code-generation complete.
 INFO[0004] API generation complete.
 ```
@@ -386,8 +359,8 @@ Generates the CRD and the CR files for the specified api-version and kind.
 ```console
 $ operator-sdk add crd --api-version app.example.com/v1alpha1 --kind AppService
 Generating custom resource definition (CRD) files
-Created deploy/crds/app_v1alpha1_appservice_crd.yaml
-Created deploy/crds/app_v1alpha1_appservice_cr.yaml
+Created deploy/crds/app.example.com_appservices_crd.yaml
+Created deploy/crds/app.example.com_v1alpha1_appservice_cr.yaml
 ```
 
 ## run
@@ -435,7 +408,7 @@ Run scorecard tests on an operator
 * `basic-tests` - Enable basic operator checks (default true)
 * `config` string - config file (default is '<project_dir>/.osdk-scorecard'; the config file's extension and format can be .yaml, .json, or .toml)
 * `cr-manifest` string - (required) Path to manifest for Custom Resource
-* `crds-dir` string - Directory containing CRDs (all CRD manifest filenames must have the suffix 'crd.yaml') (default "deploy/crds")
+* `crds-dir` string - Directory containing CRD manifests (default "deploy/crds")
 * `csv-path` string - (required if `olm-tests` is set) Path to CSV being tested
 * `global-manifest` string - Path to manifest for Global resources (e.g. CRD manifests)
 * `init-timeout` int - Timeout for status block on CR to be created, in seconds (default 10)
@@ -447,27 +420,26 @@ Run scorecard tests on an operator
 * `-o, --output` string - Output format for results. Valid values: `human-readable` or `json` (default `human-readable`)
 * `proxy-image` string - Image name for scorecard proxy (default "quay.io/operator-framework/scorecard-proxy")
 * `proxy-pull-policy` string - Pull policy for scorecard proxy image (default "Always")
+* `selector` string - Selector (label query) to filter tests on (only valid when version is v1alpha2)
 * `-h, --help` - help for scorecard
+* `version` string - The scorecard version to run (default v1alpha1), the tech preview version is v1alpha2.
 
 ### Example
 
 ```console
-$ operator-sdk scorecard --cr-manifest deploy/crds/cache_v1alpha1_memcached_cr.yaml --csv-path deploy/olm-catalog/memcached-operator/0.0.2/memcached-operator.v0.0.2.clusterserviceversion.yaml
-Basic Operator:
-        Spec Block Exists: 1/1 points
-        Status Block Exist: 1/1 points
-        Operator actions are reflected in status: 1/1 points
-        Writing into CRs has an effect: 1/1 points
-OLM Integration:
-        Provided APIs have validation: 1/1
-        Owned CRDs have resources listed: 1/1 points
-        CRs have at least 1 example: 0/1 points
-        Spec fields with descriptors: 1/1 points
-        Status fields with descriptors: 0/1 points
-
-Total Score: 84%
-SUGGESTION: Add an alm-examples annotation to your CSV to pass the CRs have at least 1 example test
-SUGGESTION: Add a status descriptor for nodes
+$ operator-sdk scorecard --cr-manifest deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml --csv-path deploy/olm-catalog/memcached-operator/0.0.2/memcached-operator.v0.0.2.clusterserviceversion.yaml -o text
+basic:
+	Writing into CRs has an effect     : pass
+	Spec Block Exists                  : pass
+	Status Block Exists                : pass
+olm:
+	Spec fields with descriptors       : pass
+	Status fields with descriptors     : pass
+	Provided APIs have validation      : fail
+	Owned CRDs have resources listed   : pass
+	CRs have at least 1 example        : pass
+SUGGESTION: Add CRD validation for Memcached/v1alpha1
+SUGGESTION: If it would be helpful to an end-user to understand or troubleshoot your CR, consider adding resources [deployments/v1 services/v1 configmaps/v1 memcacheds/v1alpha1 replicasets/v1] to the resources section for owned CRD Memcached
 ```
 
 ## test
@@ -560,7 +532,6 @@ $ operator-sdk up local --namespace "testing"
 
 ### Flags
 
-* `--version` string - version of OLM resources to install, uninstall, or get status about (default: "latest")
 * `--timeout` duration - time to wait for the command to complete before failing (default: "2m")
 
 ### Available commands
@@ -577,23 +548,21 @@ then creating all of the necessary resources and waiting for them to become
 healthy. When the installation is complete, `olm install` outputs a status summary
 of all of the resources that were installed.
 
+##### Flags
+
+* `--version` string - version of OLM resources to install, uninstall, or get status about (default: "latest")
+
 #### uninstall - Uninstalls Operator Lifecycle Manager
 
 ##### Use
 
 The `operator-sdk alpha olm uninstall` command uninstalls OLM from a Kubernetes
 cluster based on the configured kubeconfig. It works by downloading OLM's
-release manifests at a specific version (default: `latest`), checking to see if
+release manifests at the version installed in the cluster, checking to see if
 any of those resources exist (if none exist, it aborts with an error since OLM
 is not installed), and then deletes each resource that is listed in the
 downloaded release manifests. It waits until all resources have been fully
 cleaned up before returning.
-
-**NOTE**: It is important to use `--version` with the version number that
-corresponds to the version that you installed with `olm install`. Not specifying
-the version (or using an incorrect version) may cause some resources not be
-cleaned up. This can occur if OLM changes its release manifest resources from
-one version of OLM to the next.
 
 #### status - Get status of the Operator Lifecycle Manager installation
 
@@ -601,17 +570,10 @@ one version of OLM to the next.
 
 The `operator-sdk alpha olm status` command gets the status of the OLM
 installation in a Kubernetes cluster based on the configured kubeconfig. It
-works by downloading OLM's release manifests at a specific version (default:
-`latest`), checking to see if any of those resources exist (if none exist, it
+works by downloading OLM's release manifests at the version installed in the
+cluster, checking to see if any of those resources exist (if none exist, it
 aborts with an error since OLM is not installed), and printing a summary of the
 status of each of those resources as they exist in the cluster.
-
-**NOTE**: It is important to use `--version` with the version number that
-corresponds to the version that you installed with `olm install`. Not specifying
-the version (or using an incorrect version) may cause some resources to be
-missing from the summary and others to be listed as "not found". This can occur
-if OLM changes its release manifest resources from one version of OLM to the
-next.
 
 [utility_link]: https://github.com/operator-framework/operator-sdk/blob/89bf021063d18b6769bdc551ed08fc37027939d5/pkg/util/k8sutil/k8sutil.go#L140
 [k8s-code-generator]: https://github.com/kubernetes/code-generator

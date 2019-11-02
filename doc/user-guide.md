@@ -1,4 +1,4 @@
-# User Guide
+# Operator SDK User Guide
 
 This guide walks through an example of building a simple memcached-operator using the operator-sdk CLI tool and controller-runtime library API. To learn how to use Ansible or Helm to create an operator, see the [Ansible Operator User Guide][ansible_user_guide] or the [Helm Operator User Guide][helm_user_guide]. The rest of this document will show how to program an operator in Go.
 
@@ -11,7 +11,6 @@ This guide walks through an example of building a simple memcached-operator usin
 - [docker][docker_tool] version 17.03+.
 - [kubectl][kubectl_tool] version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
-- Optional: [dep][dep_tool] version v0.5.0+.
 
 **Note**: This guide uses [minikube][minikube_tool] version v0.25.0+ as the local Kubernetes cluster and [quay.io][quay_link] for the public registry.
 
@@ -34,21 +33,17 @@ To learn about the project directory structure, see [project layout][layout_doc]
 
 #### A note on dependency management
 
-By default, `operator-sdk new` generates a `go.mod` file to be used with [Go modules][go_mod_wiki]. The `--repo=<path>` flag is required when creating a project outside of `$GOPATH/src`, as scaffolded files require a valid module path. If you'd like to use [`dep`][dep_tool], set `--dep-manager=dep` when initializing your project, which will create a `Gopkg.toml` file with the same dependency information.
-
-##### Go modules
-
-If using Go modules (the default dependency manager) in your project, ensure you activate module support before using the SDK. From the [Go modules Wiki][go_mod_wiki]:
+`operator-sdk new` generates a `go.mod` file to be used with [Go modules][go_mod_wiki]. The `--repo=<path>` flag is required when creating a project outside of `$GOPATH/src`, as scaffolded files require a valid module path. Ensure you activate module support before using the SDK. From the [Go modules Wiki][go_mod_wiki]:
 
 > You can activate module support in one of two ways:
-> - Invoke the go command in a directory outside of the $GOPATH/src tree, with a valid go.mod file in the current directory or any parent of it and the environment variable GO111MODULE unset (or explicitly set to auto).
+> - Invoke the go command in a directory with a valid go.mod file in the current directory or any parent of it and the environment variable GO111MODULE unset (or explicitly set to auto).
 > - Invoke the go command with GO111MODULE=on environment variable set.
 
 ##### Vendoring
 
-By default, an operator's dependencies are managed with `modules` and `--vendor=false`, so calls to `go {build,clean,get,install,list,run,test}` by `operator-sdk` subcommands will use an external modules directory. Execute `go help modules` for more information.
+By default `--vendor=false`, so an operator's dependencies are downloaded and cached in the Go modules cache. Calls to `go {build,clean,get,install,list,run,test}` by `operator-sdk` subcommands will use an external modules directory. Execute `go help modules` for more information.
 
-The Operator SDK can create a [`vendor`][go_vendoring] directory for Go dependencies if the dependency manager is `modules` and the project is initialized with `--vendor=true`, or if the dependency manager is `dep` (which requires vendoring).
+The Operator SDK can create a [`vendor`][go_vendoring] directory for Go dependencies if the project is initialized with `--vendor=true`.
 
 #### Operator scope
 
@@ -102,7 +97,7 @@ $ operator-sdk generate k8s
 ```
 
 ### OpenAPI validation
-To update the OpenAPI validation section in the CRD `deploy/crds/cache_v1alpha1_memcached_crd.yaml`, run the following command.
+To update the OpenAPI validation section in the CRD `deploy/crds/cache.example.com_memcacheds_crd.yaml`, run the following command.
 
 ```console
 $ operator-sdk generate openapi
@@ -163,9 +158,20 @@ err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequest
   })
 ```
 
-**// TODO:** Doc on eventhandler, arbitrary mapping between watched and reconciled resource.
+#### Controller configurations
 
-**// TODO:** Doc on configuring a Controller: number of workers, predicates, watching channels,
+There are a number of useful configurations that can be made when initialzing a controller and declaring the watch parameters. For more details on these configurations consult the upstream [controller godocs][controller_godocs]. 
+
+- Set the max number of concurrent Reconciles for the controller via the [`MaxConcurrentReconciles`][controller_options]  option. Defaults to 1.
+  ```Go
+  _, err := controller.New("memcached-controller", mgr, controller.Options{
+	  MaxConcurrentReconciles: 2,
+	  ...
+  })
+  ```
+- Filter watch events using [predicates][event_filtering]
+- Choose the type of [EventHandler][event_handler_godocs] to change how a watch event will translate to reconcile requests for the reconcile loop. For operator relationships that are more complex than primary and secondary resources, the [`EnqueueRequestsFromMapFunc`][enqueue_requests_from_map_func] handler can be used to transform a watch event into an arbitrary set of reconcile requests.
+
 
 ### Reconcile loop
 
@@ -208,7 +214,7 @@ For a guide on Reconcilers, Clients, and interacting with resource Events, see t
 Before running the operator, the CRD must be registered with the Kubernetes apiserver:
 
 ```sh
-$ kubectl create -f deploy/crds/cache_v1alpha1_memcached_crd.yaml
+$ kubectl create -f deploy/crds/cache.example.com_memcacheds_crd.yaml
 ```
 
 Once this is done, there are two ways to run the operator:
@@ -220,16 +226,10 @@ Once this is done, there are two ways to run the operator:
 
 **Note**: `operator-sdk build` invokes `docker build` by default, and optionally `buildah bud`. If using `buildah`, skip to the `operator-sdk build` invocation instructions below. If using `docker`, make sure your docker daemon is running and that you can run the docker client without sudo. You can check if this is the case by running `docker version`, which should complete without errors. Follow instructions for your OS/distribution on how to start the docker daemon and configure your access permissions, if needed.
 
-**Note**: If a `go.mod` file and a `vendor/` directory are present, run
+**Note**: If a `vendor/` directory is present, run
 
 ```sh
 $ go mod vendor
-```
-
-or if a `Gopkg.toml` file is present run
-
-```sh
-$ dep ensure
 ```
 
 before building the memcached-operator image.
@@ -291,10 +291,10 @@ You can use a specific kubeconfig via the flag `--kubeconfig=<path/to/kubeconfig
 
 ## Create a Memcached CR
 
-Create the example `Memcached` CR that was generated at `deploy/crds/cache_v1alpha1_memcached_cr.yaml`:
+Create the example `Memcached` CR that was generated at `deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml`:
 
 ```sh
-$ cat deploy/crds/cache_v1alpha1_memcached_cr.yaml
+$ cat deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml
 apiVersion: "cache.example.com/v1alpha1"
 kind: "Memcached"
 metadata:
@@ -302,7 +302,7 @@ metadata:
 spec:
   size: 3
 
-$ kubectl apply -f deploy/crds/cache_v1alpha1_memcached_cr.yaml
+$ kubectl apply -f deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml
 ```
 
 Ensure that the memcached-operator creates the deployment for the CR:
@@ -352,7 +352,7 @@ status:
 Change the `spec.size` field in the memcached CR from 3 to 4 and apply the change:
 
 ```sh
-$ cat deploy/crds/cache_v1alpha1_memcached_cr.yaml
+$ cat deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml
 apiVersion: "cache.example.com/v1alpha1"
 kind: "Memcached"
 metadata:
@@ -360,7 +360,7 @@ metadata:
 spec:
   size: 4
 
-$ kubectl apply -f deploy/crds/cache_v1alpha1_memcached_cr.yaml
+$ kubectl apply -f deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml
 ```
 
 Confirm that the operator changes the deployment size:
@@ -376,7 +376,7 @@ example-memcached    4         4         4            4           5m
 Clean up the resources:
 
 ```sh
-$ kubectl delete -f deploy/crds/cache_v1alpha1_memcached_cr.yaml
+$ kubectl delete -f deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml
 $ kubectl delete -f deploy/operator.yaml
 $ kubectl delete -f deploy/role_binding.yaml
 $ kubectl delete -f deploy/role.yaml
@@ -437,7 +437,7 @@ func main() {
 
 **NOTES:**
 
-* After adding new import paths to your operator project, run `go mod vendor` if a `go.mod` file and a `vendor/` directory are present (or `dep ensure` if a `Gopkg.toml` file is present) in the root of your project directory to fulfill these dependencies.
+* After adding new import paths to your operator project, run `go mod vendor` if a `vendor/` directory is present in the root of your project directory to fulfill these dependencies.
 * Your 3rd party resource needs to be added before add the controller in `"Setup all Controllers"`.
 
 ### Handle Cleanup on Deletion
@@ -561,7 +561,7 @@ In such a scenario it is necessary to avoid contention between multiple operator
 
 There are two different leader election implementations to choose from, each with its own tradeoff.
 
-- [Leader-for-life][leader_for_life]: The leader pod only gives up leadership (via garbage collection) when it is deleted. This implementation precludes the possibility of 2 instances mistakenly running as leaders (split brain). However, this method can be subject to a delay in electing a new leader. For instance when the leader pod is on an unresponsive or partitioned node, the [`pod-eviction-timeout`][pod_eviction_timeout] dictates how it takes for the leader pod to be deleted from the node and step down (default 5m).
+- [Leader-for-life][leader_for_life]: The leader pod only gives up leadership (via garbage collection) when it is deleted. This implementation precludes the possibility of 2 instances mistakenly running as leaders (split brain). However, this method can be subject to a delay in electing a new leader. For instance when the leader pod is on an unresponsive or partitioned node, the [`pod-eviction-timeout`][pod_eviction_timeout] dictates how long it takes for the leader pod to be deleted from the node and step down (default 5m).
 - [Leader-with-lease][leader_with_lease]: The leader pod periodically renews the leader lease and gives up leadership when it can't renew the lease. This implementation allows for a faster transition to a new leader when the existing leader is isolated, but there is a possibility of split brain in [certain situations][lease_split_brain].
 
 By default the SDK enables the leader-for-life implementation. However you should consult the docs above for both approaches to consider the tradeoffs that make sense for your use case.
@@ -614,6 +614,11 @@ func main() {
 
 When the operator is not running in a cluster, the Manager will return an error on starting since it can't detect the operator's namespace in order to create the configmap for leader election. You can override this namespace by setting the Manager's `LeaderElectionNamespace` option.
 
+[enqueue_requests_from_map_func]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/handler#EnqueueRequestsFromMapFunc
+[event_handler_godocs]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/handler#hdr-EventHandlers
+[event_filtering]:./user/event-filtering.md
+[controller_options]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/controller#Options
+[controller_godocs]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/controller
 [operator_scope]:./operator-scope.md
 [install_guide]: ./user/install-operator-sdk.md
 [pod_eviction_timeout]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/#options
@@ -629,7 +634,6 @@ When the operator is not running in a cluster, the Manager will return an error 
 [homebrew_tool]:https://brew.sh/
 [go_mod_wiki]: https://github.com/golang/go/wiki/Modules
 [go_vendoring]: https://blog.gopheracademy.com/advent-2015/vendor-folder/
-[dep_tool]:https://golang.github.io/dep/docs/installation.html
 [git_tool]:https://git-scm.com/downloads
 [go_tool]:https://golang.org/dl/
 [docker_tool]:https://docs.docker.com/install/
