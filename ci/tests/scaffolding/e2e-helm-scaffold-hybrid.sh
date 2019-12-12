@@ -26,7 +26,7 @@ add_go_mod_replace "github.com/operator-framework/operator-sdk" "$ROOTDIR"
 go build ./...
 
 WD="$(dirname "$(pwd)")"
-go build -gcflags "all=-trimpath=${WD}" -asmflags "all=-trimpath=${WD}" -o /nginx-operator github.com/helm-op/nginx-operator/cmd/manager
+GOFLAGS= go build -gcflags "all=-trimpath=${WD}" -asmflags "all=-trimpath=${WD}" -o /nginx-operator github.com/helm-op/nginx-operator/cmd/manager
 popd
 popd
 mv $HELMDIR /helm

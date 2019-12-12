@@ -36,6 +36,6 @@ add_go_mod_replace "github.com/operator-framework/operator-sdk" "$ROOTDIR"
 go build ./...
 
 WD="$(dirname "$(pwd)")"
-go build -gcflags "all=-trimpath=${WD}" -asmflags "all=-trimpath=${WD}" -o /memcached-operator github.com/ansible-op/memcached-operator/cmd/manager
+GOFLAGS= go build -gcflags "all=-trimpath=${WD}" -asmflags "all=-trimpath=${WD}" -o /memcached-operator github.com/ansible-op/memcached-operator/cmd/manager
 popd
 mv $ANSIBLEDIR /ansible
