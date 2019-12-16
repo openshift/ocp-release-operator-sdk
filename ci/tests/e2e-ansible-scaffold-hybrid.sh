@@ -33,7 +33,12 @@ then
     exit 1
 fi
 
+# Fixup the operator-sdk dependency in go.mod
+sed -i -E '/github.com\/operator-framework\/operator-sdk .+/d' go.mod
 add_go_mod_replace "github.com/operator-framework/operator-sdk" "$ROOTDIR"
+go mod edit -require "github.com/operator-framework/operator-sdk@v0.0.0"
+go mod vendor
+
 # Build the project to resolve dependency versions in the modfile.
 go build ./...
 
