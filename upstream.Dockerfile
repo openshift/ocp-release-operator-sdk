@@ -6,7 +6,7 @@ ENV GO111MODULE=on \
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && rm -rf vendor/github.com/operator-framework/operator-sdk \
- && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
+ && make build/operator-sdk-dev VERSION=dev
 
 FROM ansible/ansible-runner:1.2.0
 RUN yum install -y epel-release \
@@ -25,7 +25,7 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_NAME=ansible-operator\
     HOME=/opt/ansible
 
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev-x86_64-linux-gnu ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin /usr/local/bin
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/library/k8s_status.py /usr/share/ansible/openshift/
 

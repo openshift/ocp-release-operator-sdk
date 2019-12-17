@@ -6,7 +6,7 @@ ENV GO111MODULE=on \
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && rm -rf vendor/github.com/operator-framework/operator-sdk \
- && make build/operator-sdk-dev-x86_64-linux-gnu VERSION=dev
+ && make build/operator-sdk-dev VERSION=dev
 
 FROM registry.access.redhat.com/ubi7/ubi
 
@@ -36,7 +36,7 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.n
  && yum clean all \
  && rm -rf /var/cache/yum
 
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev-x86_64-linux-gnu ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
 COPY bin /usr/local/bin
 COPY library/k8s_status.py /usr/share/ansible/openshift/
 
