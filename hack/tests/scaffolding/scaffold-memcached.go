@@ -27,7 +27,6 @@ import (
 
 	"github.com/operator-framework/operator-sdk/internal/util/fileutil"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -121,6 +120,7 @@ func main() {
 		filepath.Join(localSDKPath, "test/e2e/_incluster-test-code/main_test.go"):              "test/e2e/main_test.go",
 		filepath.Join(localSDKPath, "test/e2e/_incluster-test-code/memcached_test.go"):         "test/e2e/memcached_test.go",
 	}
+
 	for src, dst := range tmplFiles {
 		if err := os.MkdirAll(filepath.Dir(dst), fileutil.DefaultDirFileMode); err != nil {
 			log.Fatalf("Could not create template destination directory: %s", err)
@@ -135,6 +135,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not read pkg/apis/cache/v1alpha1/memcached_types.go: %v", err)
 	}
+
 	memcachedTypesFileLines := bytes.Split(memcachedTypesFile, []byte("\n"))
 	for lineNum, line := range memcachedTypesFileLines {
 		if strings.Contains(string(line), "type MemcachedSpec struct {") {
@@ -143,6 +144,7 @@ func main() {
 			break
 		}
 	}
+
 	for lineNum, line := range memcachedTypesFileLines {
 		if strings.Contains(string(line), "type MemcachedStatus struct {") {
 			memcachedTypesFileLinesIntermediate := append(memcachedTypesFileLines[:lineNum+1], []byte("\tNodes []string `json:\"nodes\"`"))
@@ -150,6 +152,7 @@ func main() {
 			break
 		}
 	}
+
 	if err := os.Remove("pkg/apis/cache/v1alpha1/memcached_types.go"); err != nil {
 		log.Fatalf("Failed to remove old memcached_type.go file: (%v)", err)
 	}
@@ -164,8 +167,8 @@ func main() {
 		log.Fatalf("Error: %v\nCommand Output: %s\n", err, string(cmdOut))
 	}
 
-	log.Print("Generating openapi")
-	cmdOut, err = exec.Command("operator-sdk", "generate", "openapi").CombinedOutput()
+	log.Print("Generating CRDs")
+	cmdOut, err = exec.Command("operator-sdk", "generate", "crds").CombinedOutput()
 	if err != nil {
 		log.Fatalf("Error: %v\nCommand Output: %s\n", err, string(cmdOut))
 	}
@@ -196,7 +199,7 @@ func main() {
 func insertGoModReplaceDir(repo, path string) ([]byte, error) {
 	modBytes, err := ioutil.ReadFile("go.mod")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read go.mod")
+		return nil, fmt.Errorf("failed to read go.mod: %w", err)
 	}
 	// Remove all replace lines in go.mod.
 	replaceRe := regexp.MustCompile(fmt.Sprintf("(replace )?%s =>.+", repo))
@@ -206,7 +209,7 @@ func insertGoModReplaceDir(repo, path string) ([]byte, error) {
 	modBytes = append(modBytes, []byte("\n"+sdkReplace)...)
 	err = ioutil.WriteFile("go.mod", modBytes, fileutil.DefaultFileMode)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to write go.mod before replacing SDK repo")
+		return nil, fmt.Errorf("failed to write go.mod before replacing SDK repo: %w", err)
 	}
 	return modBytes, nil
 }

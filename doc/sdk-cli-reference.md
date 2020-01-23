@@ -134,6 +134,21 @@ pkg/apis/app/v1alpha1/
 
 ### openapi
 
+> **DEPRECATED**
+>
+> The `operator-sdk generate openapi` command is deprecated
+>  - To generate CRDs, use 'operator-sdk generate crds'.
+>  - To generate Go OpenAPI code, use 'openapi-gen'. For example:
+>
+>    ```console  
+>    # Build the latest openapi-gen from source
+>    which ./bin/openapi-gen > /dev/null || go build -o ./bin/openapi-gen k8s.io/kube-openapi/cmd/openapi-gen
+>    
+>    # Run openapi-gen for each of your API group/version packages
+>    ./bin/openapi-gen --logtostderr=true -o "" -i ./pkg/apis/<group>/<version> -O zz_generated.openapi -p ./pkg/apis/<group>/<version> -h ./hack/boilerplate.go.txt -r "-"
+>    ```
+
+
 Runs the [kube-openapi][openapi-code-generator] OpenAPIv3 code generator for all Custom Resource Definition (CRD) API tagged fields under `pkg/apis/...`.
 
 **Note**: This command must be run every time a tagged API struct or struct field for a custom resource type is updated.
@@ -145,7 +160,7 @@ $ tree pkg/apis/app/v1alpha1/
 pkg/apis/app/v1alpha1/
 ├── appservice_types.go
 ├── doc.go
-├── register.go
+└── register.go
 
 $ operator-sdk generate openapi
 INFO[0000] Running OpenAPI code-generation for Custom Resource group versions: [app:[v1alpha1], ]
@@ -158,6 +173,31 @@ pkg/apis/app/v1alpha1/
 ├── doc.go
 ├── register.go
 └── zz_generated.openapi.go
+```
+
+### crds
+
+Runs CRD generation (based on controller-tools) for APIs under `pkg/apis/...`.
+
+**Note**: This command must be run every time a tagged API struct or struct field for a custom resource type is updated.
+
+#### Example
+
+```console
+$ tree pkg/apis/app/v1alpha1/
+pkg/apis/app/v1alpha1/
+├── appservice_types.go
+├── doc.go
+└── register.go
+
+$ operator-sdk generate crds
+INFO[0000] Running CRD generation for Custom Resource group versions: [app:[v1alpha1], ]
+INFO[0001] Created deploy/crds/app.example.com_appservices_crd.yaml
+INFO[0001] CRD generation complete.
+
+$ tree deploy/crds/
+deploy/crds
+└── app.example.com_appservices_crd.yaml
 ```
 
 ## olm-catalog
@@ -335,7 +375,7 @@ Adds a new controller under `pkg/controller/<kind>/...` that, by default, reconc
 
 * `--api-version` string - CRD APIVersion in the format `$GROUP_NAME/$VERSION` (e.g app.example.com/v1alpha1)
 * `--kind` string - CRD Kind. (e.g AppService)
-* `--custom-api-import` string - External Kubernetes resource import path of the form "host.com/repo/path[=import_identifier]". import_identifier is optional
+* `--custom-api-import` string - External Kubernetes resource import path of the form "host.com/repo/path\[=import_identifier\]". import_identifier is optional
 
 #### Example
 
@@ -477,7 +517,7 @@ The operator-sdk test command runs go tests built using the Operator SDK's test 
 
 ```console
 $ operator-sdk test local ./test/e2e/
-ok    github.com/operator-framework/operator-sdk-samples/memcached-operator/test/e2e  20.410s
+ok    github.com/operator-framework/operator-sdk-samples/go/memcached-operator/test/e2e  20.410s
 ```
 
 ## up

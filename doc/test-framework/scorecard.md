@@ -13,10 +13,10 @@
   - [Config File Options](#config-file-options)
   - [Plugins](#plugins)
     - [Basic and OLM](#basic-and-olm)
-    - [External Plugins](#external-plugins)
 - [Tests Performed](#tests-performed)
   - [Basic Operator](#basic-operator)
   - [OLM Integration](#olm-integration)
+- [Exit Status](#exit-status)
 - [Extending the Scorecard with Plugins](#extending-the-scorecard-with-plugins)
   - [JSON format](#json-format)
 - [Running the scorecard with an OLM-managed operator](#running-the-scorecard-with-an-olm-managed-operator)
@@ -47,18 +47,18 @@ Following are some requirements for the operator project which would be  checked
 ## Running the Scorecard
 
 1. Setup the `.osdk-scorecard.yaml` configuration file in your project.. See [Config file](#config-file)
-2. Create the namespace defined in the RBAC files(`role_bindinding`)
+2. Create the namespace defined in the RBAC files(`role_binding`)
 3. Then, run the scorecard, for example `$ operator-sdk scorecard`. See the [Command args](#command-args) to check its options.
 
 **NOTE:** If your operator is non-SDK then some steps will be required in order to meet its requirements.
 
 ## Configuration
 
-The scorecard is configured by a config file that allows configuring both internal and external plugins as well as a few global configuration options.
+The scorecard is configured by a config file that allows configuring internal plugins as well as a few global configuration options.
 
 ### Config File
 
-To use scorecard you need create a config file which by defualt will be `<project_dir>/.osdk-scorecard.*`. Following an example of what a YAML formatted config file may look like:
+To use scorecard, you need to create a config file which by default will be `<project_dir>/.osdk-scorecard.*`. The following is an example of what a YAML formatted config file may look like:
 
 ```yaml
 scorecard:
@@ -76,18 +76,6 @@ scorecard:
           - "deploy/crds/cache.example.com_v1alpha1_memcached_cr.yaml"
           - "deploy/crds/cache.example.com_v1alpha1_memcachedrs_cr.yaml"
         csv-path: "deploy/olm-catalog/memcached-operator/0.0.3/memcached-operator.v0.0.3.clusterserviceversion.yaml"
-    # Configuring external plugin with no args
-    - name: Experimental Plugin
-      external:
-        command: bin/experiment.sh
-      # Configuring an external plugin with args and env
-    - name: Custom Test v2
-      external:
-        command: bin/my-test.sh
-        args: ["--version=2"]
-        env:
-          - name: KUBECONFIG
-            value: "~/.kube/config2"
 ```
 
 The hierarchy of config methods for the global options that are also configurable via a flag from highest priority to least is: flag->file->default.
@@ -103,23 +91,26 @@ While most configuration is done via a config file, there are a few important ar
 
 | Flag        | Type   | Description   |
 | --------    | -------- | -------- |
+| `--bundle`, `-b`  | string |  The path to a bundle directory used for the bundle validation test. |
 | `--config`  | string | Path to config file (default `<project_dir>/.osdk-scorecard`; file type and extension can be any of `.yaml`, `.json`, or `.toml`). If a config file is not provided and a config file is not found at the default location, the scorecard will exit with an error. |
 | `--output`, `-o`  | string | Output format. Valid options are: `text` and `json`. The default format is `text`, which is designed to be a simpler human readable format. The `json` format uses the JSON schema output format used for plugins defined later in this document. |
-| `--kubeconfig`, `-o`  | string |  path to kubeconfig. It sets the kubeconfig internally for internal plugins and sets the `KUBECONFIG` env var to the provided value for external plugins. If an external plugin specifically sets the `KUBECONFIG` env var, the kubeconfig from the specified env var will be used for that plugin instead. |
-| `--version`  | string |  The version of scorecard to run, v1alpha2 is the default, valid values are v1alpha and v1alpha2. |
-| `--selector`, `-l`  | string |  The label selector to filter tests on, only valid in version v1alpha2. |
+| `--kubeconfig`, `-o`  | string |  path to kubeconfig. It sets the kubeconfig internally for internal plugins. |
+| `--version`  | string |  The version of scorecard to run, v1alpha2 is the default, valid values are v1alpha2. |
+| `--selector`, `-l`  | string |  The label selector to filter tests on. |
+| `--list`, `-L`  | bool |  If true, only print the test names that would be run based on selector filtering. |
 
 ### Config File Options
 
 | Option        | Type   | Description   |
 | --------    | -------- | -------- |
+ `bundle` | string | equivalent of the `--bundle` flag. OLM bundle directory path, when specified runs bundle validation |
 | `output` | string | equivalent of the `--output` flag. If this option is defined by both the config file and the flag, the flag's value takes priority |
 | `kubeconfig` | string | equivalent of the `--kubeconfig` flag. If this option is defined by both the config file and the flag, the flag's value takes priority |
 | `plugins` | array | this is an array of [Plugins](#plugins).|
 
 ### Plugins
 
-A plugin object is used to configure plugins. The possible values for the plugin object are `basic`, `olm`, or `external`.
+A plugin object is used to configure plugins. The possible values for the plugin object are `basic`, or `olm`.
 
 Note that each Plugin type has different configuration options and they are named differently in the config. Only one of these fields can be set per plugin.
 
@@ -139,38 +130,37 @@ The `basic` and `olm` internal plugins have the same configuration fields:
 | `namespaced-manifest` | string | manifest file with all resources that run within a namespace. By default, the scorecard will combine `service_account.yaml`, `role.yaml`, `role_binding.yaml`, and `operator.yaml` from the `deploy` directory into a temporary manifest to use as the namespaced manifest |
 | `global-manifest` | string | manifest containing required resources that run globally (not namespaced). By default, the scorecard will combine all CRDs in the `crds-dir` directory into a temporary manifest to use as the global manifest |
 
-#### External Plugins
-
-The scorecard allows developers to write their own plugins for the scorecard that can be run via an executable binary or script. For more information on developing external plugins,
-please see the [Extending the Scorecard with Plugins](#extending-the-scorecard-with-plugins) section. These are the options available to configure external plugins:
-
-| Option        | Type   | Description   |
-| --------    | -------- | -------- |
-| `command` | string | (required) path to the plugin binary or script. The path can either be absolute or relative to the operator project's root directory. All external plugins are run from the operator project's root directory |
-| `args` | \[\]string | arguments to pass to the plugin |
-| `env` | array | `env var` objects, which consist of a `name` and `value` field. If a `KUBECONFIG` env var is declared in this array as well as via the top-level `kubeconfig` option, the `KUBECONFIG` from the env array for the plugin is used |
-
 ## Tests Performed
 
 Following the description of each internal [Plugin](#plugins). Note that are 8 internal tests across 2 internal plugins that the scorecard can run. If multiple CRs are specified for a plugin, the test environment is fully cleaned up after each CR so each CR gets a clean testing environment.
 
+Each test has a `short name` that uniquely identifies the test.  This is useful for selecting a specific test or tests to run as follows:
+```sh
+operator-sdk scorecard -o text --selector=test=checkspectest
+operator-sdk scorecard -o text --selector='test in (checkspectest,checkstatustest)'
+```
+
 ### Basic Operator
 
-| Test        | Description   |
-| --------    | -------- |
-| Spec Block Exists | This test checks the Custom Resource(s) created in the cluster to make sure that all CRs have a spec block. This test has a maximum score of 1 |
-| Status Block Exists | This test checks the Custom Resource(s) created in the cluster to make sure that all CRs have a status block. This test has a maximum score of 1 |
-| Writing Into CRs Has An Effect | This test reads the scorecard proxy's logs to verify that the operator is making `PUT` and/or `POST` requests to the API server, indicating that it is modifying resources. This test has a maximum score of 1 |
+| Test        | Description   | Short Name |
+| --------    | -------- | -------- |
+| Spec Block Exists | This test checks the Custom Resource(s) created in the cluster to make sure that all CRs have a spec block. This test has a maximum score of 1 | checkspectest |
+| Status Block Exists | This test checks the Custom Resource(s) created in the cluster to make sure that all CRs have a status block. This test has a maximum score of 1 | checkstatustest |
+| Writing Into CRs Has An Effect | This test reads the scorecard proxy's logs to verify that the operator is making `PUT` and/or `POST` requests to the API server, indicating that it is modifying resources. This test has a maximum score of 1 | writingintocrshaseffecttest |
 
 ### OLM Integration
 
-| Test        | Description   |
-| --------    | -------- |
-| Provided APIs have validation |This test verifies that the CRDs for the provided CRs contain a validation section and that there is validation for each spec and status field detected in the CR. This test has a maximum score equal to the number of CRs provided via the `cr-manifest` option. |
-| Owned CRDs Have Resources Listed | This test makes sure that the CRDs for each CR provided via the `cr-manifest` option have a `resources` subsection in the [`owned` CRDs section][owned-crds] of the CSV. If the test detects used resources that are not listed in the resources section, it will list them in the suggestions at the end of the test. This test has a maximum score equal to the number of CRs provided via the `cr-manifest` option. |
-| CRs Have At Least 1 Example | This test checks that the CSV has an [`alm-examples` annotation][alm-examples] for each CR passed to the `cr-manifest` option in its metadata. This test has a maximum score equal to the number of CRs provided via the `cr-manifest` option. |
-| Spec Fields With Descriptors | This test verifies that every field in the Custom Resources' spec sections have a corresponding descriptor listed in the CSV. This test has a maximum score equal to the total number of fields in the spec sections of each custom resource passed in via the `cr-manifest` option. |
-| Status Fields With Descriptors | This test verifies that every field in the Custom Resources' status sections have a corresponding descriptor listed in the CSV. This test has a maximum score equal to the total number of fields in the status sections of each custom resource passed in via the `cr-manifest` option. |
+| Test        | Description   | Short Name |
+| --------    | -------- | -------- |
+| OLM Bundle Validation | This test validates the OLM bundle manifests found in the bundle directory as specifed by the bundle flag.  If the bundle contents contain errors, then the test result output will include the validator log as well as error messages from the validation library.  See this [document][olm-bundle] for details on OLM bundles.| bundlevalidationtest |
+| Provided APIs have validation |This test verifies that the CRDs for the provided CRs contain a validation section and that there is validation for each spec and status field detected in the CR. This test has a maximum score equal to the number of CRs provided via the `cr-manifest` option. | crdshavevalidationtest |
+| Owned CRDs Have Resources Listed | This test makes sure that the CRDs for each CR provided via the `cr-manifest` option have a `resources` subsection in the [`owned` CRDs section][owned-crds] of the CSV. If the test detects used resources that are not listed in the resources section, it will list them in the suggestions at the end of the test. This test has a maximum score equal to the number of CRs provided via the `cr-manifest` option. | crdshaveresourcestest |
+| Spec Fields With Descriptors | This test verifies that every field in the Custom Resources' spec sections have a corresponding descriptor listed in the CSV. This test has a maximum score equal to the total number of fields in the spec sections of each custom resource passed in via the `cr-manifest` option. | specdescriptorstest |
+| Status Fields With Descriptors | This test verifies that every field in the Custom Resources' status sections have a corresponding descriptor listed in the CSV. This test has a maximum score equal to the total number of fields in the status sections of each custom resource passed in via the `cr-manifest` option. | statusdescriptorstest |
+
+## Exit Status
+
+The scorecard return code is 1 if any of the tests executed did not pass and 0 if all selected tests pass.
 
 ## Extending the Scorecard with Plugins
 
@@ -185,98 +175,172 @@ to the console if the scorecard is being run in with `output` unset or set to `t
 
 ### JSON format
 
-The JSON output is formatted in the same way that a Kubernetes API would be, which allows for updates to the schema as well as the use of various Kubernetes helpers. The Golang structs are defined in `pkg/apis/scorecard/v1alpha1/types.go` and can be easily implemented by plugins written in Golang. Below is the JSON Schema:
+The JSON output is formatted in the same way that a Kubernetes API would be, which allows for updates to the schema as well as the use of various Kubernetes helpers. The Golang structs are defined in `pkg/apis/scorecard/v1alpha2/types.go` and can be easily implemented by plugins written in Golang. Below is the JSON Schema:
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "$ref": "#/definitions/ScorecardOutput",
   "definitions": {
-    "ScorecardOutput": {
-      "required": [
-        "apiVersion",
-        "kind",
-        "results"
-      ],
+    "FieldsV1": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ManagedFieldsEntry": {
       "properties": {
         "apiVersion": {
-          "type": "string",
-          "description": "Version of the object. Ex: osdk.openshift.io/v1alpha1"
+          "type": "string"
         },
-        "kind": {
-          "type": "string",
-          "description": "This should be set to ScorecardOutput"
+        "fieldsType": {
+          "type": "string"
         },
-        "log": {
-          "type": "string",
-          "description": "Log contains the scorecard's log."
+        "fieldsV1": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/FieldsV1"
         },
-        "results": {
-          "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
-            "$ref": "#/definitions/ScorecardSuiteResult"
-          },
-          "type": "array",
-          "description": "Results is an array of ScorecardSuiteResult for each suite of the current scorecard run."
+        "manager": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/definitions/Time"
         }
       },
       "additionalProperties": false,
       "type": "object"
     },
-    "ScorecardSuiteResult": {
+    "ObjectMeta": {
+      "properties": {
+        "annotations": {
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "clusterName": {
+          "type": "string"
+        },
+        "creationTimestamp": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/Time"
+        },
+        "deletionGracePeriodSeconds": {
+          "type": "integer"
+        },
+        "deletionTimestamp": {
+          "$ref": "#/definitions/Time"
+        },
+        "finalizers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "generateName": {
+          "type": "string"
+        },
+        "generation": {
+          "type": "integer"
+        },
+        "labels": {
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "managedFields": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/ManagedFieldsEntry"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "ownerReferences": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/OwnerReference"
+          },
+          "type": "array"
+        },
+        "resourceVersion": {
+          "type": "string"
+        },
+        "selfLink": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "OwnerReference": {
       "required": [
+        "apiVersion",
+        "kind",
         "name",
-        "description",
-        "error",
-        "pass",
-        "partialPass",
-        "fail",
-        "totalTests",
-        "totalScorePercent",
-        "tests"
+        "uid"
       ],
       "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "blockOwnerDeletion": {
+          "type": "boolean"
+        },
+        "controller": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string"
+        },
         "name": {
-          "type": "string",
-          "description": "Name is the name of the test suite"
+          "type": "string"
         },
-        "description": {
-          "type": "string",
-          "description": "Description is a description of the test suite"
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "ScorecardOutput": {
+      "required": [
+        "TypeMeta",
+        "log",
+        "results"
+      ],
+      "properties": {
+        "TypeMeta": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/TypeMeta"
         },
-        "error": {
-          "type": "integer",
-          "description": "Error is the number of tests that ended in the Error state"
+        "log": {
+          "type": "string"
         },
-        "pass": {
-          "type": "integer",
-          "description": "Pass is the number of tests that ended in the Pass state"
+        "metadata": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/ObjectMeta"
         },
-        "partialPass": {
-          "type": "integer",
-          "description": "PartialPass is the number of tests that ended in the PartialPass state"
-        },
-        "fail": {
-          "type": "integer",
-          "description": "Fail is the number of tests that ended in the Fail state"
-        },
-        "totalTests": {
-          "type": "integer",
-          "description": "TotalTests is the total number of tests run in this suite"
-        },
-        "totalScorePercent": {
-          "type": "integer",
-          "description": "TotalScorePercent is the total score of this suite as a percentage"
-        },
-        "tests": {
+        "results": {
           "items": {
             "$schema": "http://json-schema.org/draft-04/schema#",
             "$ref": "#/definitions/ScorecardTestResult"
           },
           "type": "array"
-        },
-        "log": {
-          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -284,48 +348,57 @@ The JSON output is formatted in the same way that a Kubernetes API would be, whi
     },
     "ScorecardTestResult": {
       "required": [
-        "state",
         "name",
-        "description",
-        "earnedPoints",
-        "maximumPoints",
-        "suggestions",
-        "errors"
+        "description"
       ],
       "properties": {
-        "state": {
-          "type": "string",
-          "description": "State is the final state of the test. Valid values are: pass, partial_pass, fail, error"
-        },
-        "name": {
-          "type": "string",
-          "description": "Name is the name of the test"
-        },
         "description": {
-          "type": "string",
-          "description": "Description describes what the test does"
-        },
-        "earnedPoints": {
-          "type": "integer",
-          "description": "EarnedPoints is how many points the test received after running"
-        },
-        "maximumPoints": {
-          "type": "integer",
-          "description": "MaximumPoints is the maximum number of points possible for the test"
-        },
-        "suggestions": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array",
-          "description": "Suggestions is a list of suggestions for the user to improve their score (if applicable)"
+          "type": "string"
         },
         "errors": {
           "items": {
             "type": "string"
           },
-          "type": "array",
-          "description": "Errors is a list of the errors that occured during the test (this can include both fatal and non-fatal errors)"
+          "type": "array"
+        },
+        "labels": {
+          "patternProperties": {
+            ".*": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "log": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "suggestions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Time": {
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "TypeMeta": {
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
@@ -342,42 +415,104 @@ are the `kind` and `apiVersion` fields as listed in the above JSONSchema.
 Example of a valid JSON output:
 
 ```json
-
 {
   "kind": "ScorecardOutput",
-  "apiVersion": "osdk.openshift.io/v1alpha1",
-  "log": "",
+  "apiVersion": "osdk.openshift.io/v1alpha2",
+  "metadata": {
+    "creationTimestamp": null
+  },
+  "log": "time=\"2020-01-16T15:30:41-06:00\" level=info msg=\"Using config file: /home/someuser/projects/memcached-operator/.osdk-scorecard.yaml\"\n",
   "results": [
     {
-      "name": "Custom Scorecard",
-      "description": "Custom operator scorecard tests",
-      "error": 0,
-      "pass": 1,
-      "partialPass": 1,
-      "fail": 0,
-      "totalTests": 2,
-      "totalScorePercent": 71,
-      "tests": [
-        {
-          "state": "partial_pass",
-          "name": "Operator Actions Reflected In Status",
-          "description": "The operator updates the Custom Resources status when the application state is updated",
-          "earnedPoints": 2,
-          "maximumPoints": 3,
-          "suggestions": [
-              "Operator should update status when scaling cluster down"
-          ],
-          "errors": []
-        },
-        {
-          "state": "pass",
-          "name": "Verify health of cluster",
-          "description": "The cluster created by the operator is working properly",
-          "earnedPoints": 1,
-          "maximumPoints": 1,
-          "suggestions": [],
-          "errors": []
-        }
+      "name": "Spec Block Exists",
+      "description": "Custom Resource has a Spec Block",
+      "labels": {
+        "necessity": "required",
+        "suite": "basic",
+        "test": "checkspectest"
+      },
+      "state": "pass"
+    },
+    {
+      "name": "Status Block Exists",
+      "description": "Custom Resource has a Status Block",
+      "labels": {
+        "necessity": "required",
+        "suite": "basic",
+        "test": "checkstatustest"
+      },
+      "state": "pass"
+    },
+    {
+      "name": "Writing into CRs has an effect",
+      "description": "A CR sends PUT/POST requests to the API server to modify resources in response to spec block changes",
+      "labels": {
+        "necessity": "required",
+        "suite": "basic",
+        "test": "writingintocrshaseffecttest"
+      },
+      "state": "pass"
+    },
+    {
+      "name": "Bundle Validation Test",
+      "description": "Validates bundle contents",
+      "labels": {
+        "necessity": "required",
+        "suite": "olm",
+        "test": "bundlevalidationtest"
+      },
+      "state": "fail",
+      "errors": [
+        "unable to find the OLM 'bundle' directory which is required for this test"
+      ]
+    },
+    {
+      "name": "Provided APIs have validation",
+      "description": "All CRDs have an OpenAPI validation subsection",
+      "labels": {
+        "necessity": "required",
+        "suite": "olm",
+        "test": "crdshavevalidationtest"
+      },
+      "state": "pass"
+    },
+    {
+      "name": "Owned CRDs have resources listed",
+      "description": "All Owned CRDs contain a resources subsection",
+      "labels": {
+        "necessity": "required",
+        "suite": "olm",
+        "test": "crdshaveresourcestest"
+      },
+      "state": "fail",
+      "suggestions": [
+        "If it would be helpful to an end-user to understand or troubleshoot your CR, consider adding resources [memcacheds/v1alpha1 replicasets/v1 deployments/v1 services/v1 servicemonitors/v1 pods/v1 configmaps/v1] to the resources section for owned CRD Memcached"
+      ]
+    },
+    {
+      "name": "Spec fields with descriptors",
+      "description": "All spec fields have matching descriptors in the CSV",
+      "labels": {
+        "necessity": "required",
+        "suite": "olm",
+        "test": "specdescriptorstest"
+      },
+      "state": "fail",
+      "suggestions": [
+        "Add a spec descriptor for size"
+      ]
+    },
+    {
+      "name": "Status fields with descriptors",
+      "description": "All status fields have matching descriptors in the CSV",
+      "labels": {
+        "necessity": "required",
+        "suite": "olm",
+        "test": "statusdescriptorstest"
+      },
+      "state": "fail",
+      "suggestions": [
+        "Add a status descriptor for status"
       ]
     }
   ]
@@ -549,6 +684,7 @@ Once done, follow the steps in this [document][olm-deploy-operator] to bundle yo
 [owned-crds]: https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/building-your-csv.md#owned-crds
 [alm-examples]: https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/building-your-csv.md#crd-templates
 [viper]: https://github.com/spf13/viper/blob/master/README.md
+[olm-bundle]:https://github.com/operator-framework/operator-registry#manifest-format
 [olm-csv]:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/building-your-csv.md
 [olm-csv-alm-examples]:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/doc/design/building-your-csv.md#crd-templates
 [olm]:https://github.com/operator-framework/operator-lifecycle-manager

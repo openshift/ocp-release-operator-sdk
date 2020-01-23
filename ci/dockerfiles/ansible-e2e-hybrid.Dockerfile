@@ -27,14 +27,15 @@ RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift==0.8.9 \
-      ansible~=2.8 \
- && yum remove -y gcc python-devel \
+      ansible~=2.9 \
+      jmespath \
+ && yum remove -y gcc python36-devel \
  && yum clean all \
- && rm -rf /var/cache/yum/*
+ && rm -rf /var/cache/yum
+ && ansible-galaxy collection install operator_sdk.util
 
 # install operator binary
 COPY --from=builder /memcached-operator ${OPERATOR}
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/library/k8s_status.py /usr/share/ansible/openshift/
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin/* /usr/local/bin/
 COPY --from=builder /ansible/memcached-operator/watches.yaml ${HOME}/watches.yaml
 COPY --from=builder /ansible/memcached-operator/roles/ ${HOME}/roles/
