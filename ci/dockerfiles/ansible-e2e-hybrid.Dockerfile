@@ -11,8 +11,7 @@ RUN chmod 0644 /etc/passwd
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
     && echo '[defaults]' > /etc/ansible/ansible.cfg \
-    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg \
-    && echo 'library = /usr/share/ansible/openshift' >> /etc/ansible/ansible.cfg
+    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg
 
 ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_UID=1001 \
@@ -32,7 +31,8 @@ RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.
  && yum remove -y gcc python36-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
- && ansible-galaxy collection install operator_sdk.util
+
+COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
 # install operator binary
 COPY --from=builder /memcached-operator ${OPERATOR}
