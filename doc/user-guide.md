@@ -63,6 +63,17 @@ By default this will be the namespace that the operator is running in. To watch 
 mgr, err := manager.New(cfg, manager.Options{Namespace: ""})
 ```
 
+It is also possible to use the [MultiNamespacedCacheBuilder][multi-namespaced-cache-builder] to watch a specific set of namespaces:
+```Go
+var namespaces []string // List of Namespaces
+// Create a new Cmd to provide shared dependencies and start components
+mgr, err := manager.New(cfg, manager.Options{
+   NewCache: cache.MultiNamespacedCacheBuilder(namespaces),
+   MapperProvider:     restmapper.NewDynamicRESTMapper,
+   MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+})
+```
+
 By default the main program will set the manager's namespace using the value of `WATCH_NAMESPACE` env defined in `deploy/operator.yaml`.
 
 ## Add a new Custom Resource Definition
@@ -96,13 +107,41 @@ After modifying the `*_types.go` file always run the following command to update
 $ operator-sdk generate k8s
 ```
 
-### OpenAPI validation
-To update the OpenAPI validation section in the CRD `deploy/crds/cache.example.com_memcacheds_crd.yaml`, run the following command.
+### Updating CRD manifests
+
+Now that `MemcachedSpec` and `MemcachedStatus` have fields and possibly annotations, the CRD corresponding to the API's group and kind must be updated. To do so, run the following command:
 
 ```console
-$ operator-sdk generate openapi
+$ operator-sdk generate crds
 ```
-This validation section allows Kubernetes to validate the properties in a Memcached Custom Resource when it is created or updated. An example of the generated YAML is as follows:
+
+**Notes:**
+- - Your CRD *must* specify exactly one [storage version][crd-storage-version]. Use the `+kubebuilder:storageversion` [marker][crd-markers] to indicate the GVK that should be used to store data by the API server. This marker should be in a comment above your `Memcached` type.
+
+[crd-storage-version]:https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definition-versioning/#writing-reading-and-updating-versioned-customresourcedefinition-objects
+[crd-markers]:https://book.kubebuilder.io/reference/markers/crd.html
+[api-rules]: https://github.com/kubernetes/kubernetes/tree/36981002246682ed7dc4de54ccc2a96c1a0cbbdb/api/api-rules
+
+#### OpenAPI validation
+
+OpenAPIv3 schemas are added to CRD manifests in the `spec.validation` block when the manifests are generated. This validation block allows Kubernetes to validate the properties in a Memcached Custom Resource when it is created or updated.
+
+Markers (annotations) are available to configure validations for your API. These markers will always have a `+kubebuilder:validation` prefix. For example, adding an enum type specification can be done by adding the following marker:
+
+```go
+// +kubebuilder:validation:Enum=Lion;Wolf;Dragon
+type Alias string
+```
+
+Usage of markers in API code is discussed in the kubebuilder [CRD generation][generating-crd] and [marker][markers] documentation. A full list of OpenAPIv3 validation markers can be found [here][crd-markers].
+
+To update the CRD `deploy/crds/cache.example.com_memcacheds_crd.yaml`, run the following command:
+
+```console
+$ operator-sdk generate crds
+```
+
+An example of the generated YAML is as follows:
 
 ```YAML
 spec:
@@ -116,8 +155,12 @@ spec:
               type: integer
 ```
 
-To learn more about OpenAPI v3.0 validation schemas in Custom Resource Definitions, refer to the [Kubernetes Documentation][doc_validation_schema].
+To learn more about OpenAPI v3.0 validation schemas in Custom Resource Definitions, refer to the [Kubernetes Documentation][doc-validation-schema].
 
+[doc-validation-schema]: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#specifying-a-structural-schema
+[generating-crd]: https://book.kubebuilder.io/reference/generating-crd.html
+[markers]: https://book.kubebuilder.io/reference/markers.html
+[crd-markers]: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
 ## Add a new Controller
 
@@ -160,7 +203,7 @@ err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequest
 
 #### Controller configurations
 
-There are a number of useful configurations that can be made when initialzing a controller and declaring the watch parameters. For more details on these configurations consult the upstream [controller godocs][controller_godocs]. 
+There are a number of useful configurations that can be made when initialzing a controller and declaring the watch parameters. For more details on these configurations consult the upstream [controller godocs][controller_godocs].
 
 - Set the max number of concurrent Reconciles for the controller via the [`MaxConcurrentReconciles`][controller_options]  option. Defaults to 1.
   ```Go
@@ -279,7 +322,7 @@ export OPERATOR_NAME=memcached-operator
 Run the operator locally with the default Kubernetes config file present at `$HOME/.kube/config`:
 
 ```sh
-$ operator-sdk up local --namespace=default
+$ operator-sdk run --local --namespace=default
 2018/09/30 23:10:11 Go Version: go1.10.2
 2018/09/30 23:10:11 Go OS/Arch: darwin/amd64
 2018/09/30 23:10:11 operator-sdk Version: 0.0.6+git
@@ -406,7 +449,8 @@ To add a 3rd party resource to an operator, you must add it to the Manager's sch
 
 #### Register with the Manager's scheme
 
-Call the `AddToScheme()` function for your 3rd party resource and pass it the Manager's scheme via `mgr.GetScheme()`.
+Call the `AddToScheme()` function for your 3rd party resource and pass it the Manager's scheme via `mgr.GetScheme()`
+in `cmd/manager/main.go`.
 
 Example:
 ```go
@@ -434,6 +478,47 @@ func main() {
   }
 }
 ```
+
+##### If 3rd party resource does not have `AddToScheme()` function
+
+Use the [SchemeBuilder][scheme_builder] package from controller-runtime to initialize a new scheme builder that can be used to register the 3rd party resource with the manager's scheme.
+
+Example of registering `DNSEndpoints` 3rd party resource from `external-dns`:
+
+```go
+import (
+  ...
+    "k8s.io/apimachinery/pkg/runtime/schema"
+    "sigs.k8s.io/controller-runtime/pkg/scheme"
+  ...
+   // DNSEndoints
+   externaldns "github.com/kubernetes-incubator/external-dns/endpoint"
+   metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+ )
+
+func main() {
+  ....
+
+  log.Info("Registering Components.")
+
+  schemeBuilder := &scheme.Builder{GroupVersion: schema.GroupVersion{Group: "externaldns.k8s.io", Version: "v1alpha1"}}
+  schemeBuilder.Register(&externaldns.DNSEndpoint{}, &externaldns.DNSEndpointList{})
+  if err := schemeBuilder.AddToScheme(mgr.GetScheme()); err != nil {
+    log.Error(err, "")
+    os.Exit(1)
+  }
+
+  ....
+
+  // Setup all Controllers
+  if err := controller.AddToManager(mgr); err != nil {
+    log.Error(err, "")
+    os.Exit(1)
+  }
+}
+```
+
+
 
 **NOTES:**
 
@@ -650,4 +735,5 @@ When the operator is not running in a cluster, the Manager will return an error 
 [result_go_doc]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/reconcile#Result
 [metrics_doc]: ./user/metrics/README.md
 [quay_link]: https://quay.io
-[doc_validation_schema]: https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/#specifying-a-structural-schema
+[multi-namespaced-cache-builder]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
+[scheme_builder]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/scheme#Builder

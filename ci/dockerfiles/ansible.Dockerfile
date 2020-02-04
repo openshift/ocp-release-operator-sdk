@@ -40,10 +40,12 @@ RUN pip3 install --upgrade setuptools pip \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift==0.8.9 \
-      ansible~=2.8 \
+      ansible~=2.9 \
+      jmespath \
  && yum remove -y gcc python36-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
+ && ansible-galaxy collection install operator_sdk.util
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk ${OPERATOR}
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/library/k8s_status.py /usr/share/ansible/openshift/
