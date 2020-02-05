@@ -18,35 +18,22 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_NAME=ansible-operator\
     HOME=/opt/ansible
 
-# Install python dependencies
-# Ensure fresh metadata rather than cached metadata in the base by running
-# yum clean all && rm -rf /var/yum/cache/* first
-RUN yum clean all && rm -rf /var/cache/yum/*
-
-# todo; remove ubi7 after CI be updated with images
-# ubi7
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 7'); then (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm || true); fi
-
-RUN yum -y update \
- && yum install -y python36-devel gcc
-
-# ubi7
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 7'); then (yum install -y python36-pip inotify-tools || true); fi
-# ubi8
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 8'); then (yum install -y python3-pip inotify3-tools || true); fi
-
-RUN pip3 install --upgrade setuptools pip \
+RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm || true) \
+ && yum -y update \
+ && yum install -y python36-devel gcc inotify-tools python2-pip python-devel \
+ && pip install --no-cache-dir --upgrade setuptools pip \
  && pip install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift==0.8.9 \
       ansible~=2.9 \
       jmespath \
- && yum remove -y gcc python36-devel \
+ && yum remove -y gcc python-devel \
  && yum clean all \
- && rm -rf /var/cache/yum
+&& rm -rf /var/cache/yum/*
 
 COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk ${OPERATOR}
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin/* /usr/local/bin/
 

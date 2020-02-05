@@ -29,9 +29,9 @@ RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.
       openshift==0.8.9 \
       ansible~=2.9 \
       jmespath \
- && yum remove -y gcc python36-devel \
+ && yum remove -y gcc python-devel \
  && yum clean all \
- && rm -rf /var/cache/yum
+&& rm -rf /var/cache/yum/*
 
 COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
