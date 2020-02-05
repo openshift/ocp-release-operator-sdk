@@ -10,7 +10,8 @@ RUN chmod 0644 /etc/passwd
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
     && echo '[defaults]' > /etc/ansible/ansible.cfg \
-    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg
+    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg \
+    && echo 'library = /usr/share/ansible/openshift' >> /etc/ansible/ansible.cfg
 
 ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_UID=1001 \
@@ -46,8 +47,8 @@ RUN pip3 install --upgrade setuptools pip \
  && rm -rf /var/cache/yum
 
 COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
-
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/library/k8s_status.py /usr/share/ansible/openshift/
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin/* /usr/local/bin/
 
 RUN /usr/local/bin/user_setup
