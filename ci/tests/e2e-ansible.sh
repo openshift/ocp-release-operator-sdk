@@ -9,8 +9,8 @@ eval IMAGE=$IMAGE_FORMAT
 component="osdk-ansible-e2e-hybrid"
 eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
-TMPDIR="$(mktemp -d)"
-trap_add 'rm -rf $TMPDIR' EXIT
+GOTMP="$(mktemp -d -p $GOPATH/src)"
+trap_add 'rm -rf $GOTMP' EXIT
 
 mkdir -p $ROOTDIR/bin
 export PATH=$ROOTDIR/bin:$PATH
@@ -152,7 +152,7 @@ test_operator() {
 oc project default
 
 # create and build the operator
-pushd "$TMPDIR"
+pushd "$GOTMP"
 operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 --kind=Memcached --type=ansible
 
 pushd memcached-operator
