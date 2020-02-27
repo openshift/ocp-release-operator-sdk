@@ -18,6 +18,7 @@ RUN yum install -y \
       python-jmespath \
       tini \
       inotify-tools \
+      python-requests-2.6.0-7.el7_7 \
  && yum clean all \
  && rm -rf /var/cache/yum
 
