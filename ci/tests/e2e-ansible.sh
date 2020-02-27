@@ -38,15 +38,36 @@ deploy_operator() {
     kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
     kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
     kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
+    cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all
+spec:
+  podSelector: {}
+  ingress:
+  - {}
+  egress:
+  - {}
+  policyTypes:
+  - Ingress
+  - Egress
+EOF
+    kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
 }
 
 remove_operator() {
+    for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
+      kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/${cr}" || true
+    done
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
 }
 
 test_operator() {
@@ -61,7 +82,7 @@ test_operator() {
     fi
 
     # verify that metrics service was created
-    if ! timeout 20s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
+    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
         kubectl describe pods
@@ -92,7 +113,7 @@ test_operator() {
 
     # create CR
     kubectl create -f deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml
-    if ! timeout 20s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
+    if ! timeout 60s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
     then
         echo FAIL: operator failed to create memcached Deployment
         kubectl describe pods
@@ -137,7 +158,7 @@ test_operator() {
     fi
 
     # The deployment should get garbage collected, so we expect to fail getting the deployment.
-    if ! timeout 20s bash -c -- "while kubectl get deployment ${memcached_deployment} 2> /dev/null; do sleep 1; done";
+    if ! timeout 60s bash -c -- "while kubectl get deployment ${memcached_deployment} 2> /dev/null; do sleep 1; done";
     then
         echo FAIL: memcached Deployment did not get garbage collected
         kubectl describe pods
@@ -173,8 +194,8 @@ sed -i "s|{{ REPLACE_IMAGE }}|$IMAGE|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
-deploy_operator
 trap_add 'remove_operator' EXIT
+deploy_operator
 test_operator
 remove_operator
 

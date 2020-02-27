@@ -36,5 +36,5 @@ func (e *Entrypoint) GetInput() (input.Input, error) {
 
 const entrypointTmpl = `#!/bin/sh -e
 
-exec ${OPERATOR} run helm --watches-file=/opt/helm/watches.yaml $@
+exec ${OPERATOR} exec-entrypoint helm --watches-file=/opt/helm/watches.yaml $@
 `
