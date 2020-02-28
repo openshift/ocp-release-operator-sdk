@@ -29,7 +29,7 @@ RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.
  && yum clean all \
  && rm -rf /var/cache/yum
 
-COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
 # install operator binary
 COPY --from=builder /memcached-operator ${OPERATOR}
