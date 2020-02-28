@@ -42,7 +42,7 @@ RUN pip3 install --upgrade setuptools pip \
  && yum clean all \
  && rm -rf /var/cache/yum
 
-COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk ${OPERATOR}
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin/* /usr/local/bin/

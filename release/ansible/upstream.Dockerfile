@@ -1,7 +1,12 @@
-FROM osdk-builder as builder
+FROM openshift/origin-release:golang-1.13 AS builder
 
-RUN make image-scaffold-ansible
-RUN ci/tests/scaffolding/e2e-ansible-scaffold-hybrid.sh
+ENV GO111MODULE=on \
+    GOFLAGS=-mod=vendor
+
+COPY . /go/src/github.com/operator-framework/operator-sdk
+RUN cd /go/src/github.com/operator-framework/operator-sdk \
+ && rm -rf vendor/github.com/operator-framework/operator-sdk \
+ && make build/operator-sdk-dev VERSION=dev
 
 FROM registry.access.redhat.com/ubi7/ubi
 
@@ -15,27 +20,25 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_NAME=ansible-operator\
     HOME=/opt/ansible
 
-RUN (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm || true) \
- && yum -y update \
- && yum install -y python36-devel gcc inotify-tools python2-pip python-devel \
- && pip install --no-cache-dir --upgrade setuptools pip \
+# Install python dependencies
+
+RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+ && yum install -y python2-pip python-devel gcc inotify-tools \
+ && pip install -U --no-cache-dir setuptools pip \
  && pip install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
-      openshift==0.8.9 \
-      ansible~=2.9 \
+      openshift~=0.10.0 \
+      ansible==2.9 \
       jmespath \
- && yum remove -y gcc python36-devel \
+ && yum remove -y gcc python-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
 
 COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
-# install operator binary
-COPY --from=builder /memcached-operator ${OPERATOR}
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/bin/* /usr/local/bin/
-COPY --from=builder /ansible/memcached-operator/watches.yaml ${HOME}/watches.yaml
-COPY --from=builder /ansible/memcached-operator/roles/ ${HOME}/roles/
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
+COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
