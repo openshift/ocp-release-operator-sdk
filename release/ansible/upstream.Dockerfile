@@ -28,17 +28,17 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.n
  && pip install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
-      openshift==0.8.9 \
-      ansible==2.8 \
+      openshift~=0.10.0 \
+      ansible==2.9 \
       jmespath \
  && yum remove -y gcc python-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
 
-COPY operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
-COPY bin /usr/local/bin
+COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
