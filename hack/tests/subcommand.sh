@@ -8,6 +8,9 @@ if [ -z "$KUBECONFIG" ]; then
 fi
 
 pushd test/test-framework
+# test building image with image-build-args having a space within quotes
+operator-sdk build operator-sdk-dev --image-build-args="--label some.name=\"First Last\""
+
 # test framework with defaults
 operator-sdk test local ./test/e2e
 
@@ -20,12 +23,12 @@ trap_add 'kubectl delete namespace test-memcached || true' EXIT
 operator-sdk test local ./test/e2e --namespace=test-memcached
 kubectl delete namespace test-memcached
 
-# test operator in up local mode
+# test operator in 'run --local' mode
 kubectl create namespace test-memcached
 operator-sdk test local ./test/e2e --up-local --namespace=test-memcached
 kubectl delete namespace test-memcached
 
-# test operator in up local mode with kubeconfig
+# test operator in 'run --local' mode with kubeconfig
 kubectl create namespace test-memcached
 operator-sdk test local ./test/e2e --up-local --namespace=test-memcached --kubeconfig $KUBECONFIG
 kubectl delete namespace test-memcached

@@ -1,3 +1,0 @@
-#!/bin/bash -e
-
-exec ${OPERATOR} run ansible --watches-file=/opt/ansible/watches.yaml $@
