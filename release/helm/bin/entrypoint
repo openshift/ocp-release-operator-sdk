@@ -1,0 +1,3 @@
+#!/bin/bash -e
+
+exec ${OPERATOR} exec-entrypoint helm --watches-file=/opt/helm/watches.yaml $@
