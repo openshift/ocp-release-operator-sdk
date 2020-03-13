@@ -30,18 +30,42 @@ make install
 
 deploy_operator() {
     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
+    if oc api-versions | grep openshift; then
+        oc adm policy add-cluster-role-to-user cluster-admin -z nginx-operator || :
+    fi
     kubectl create -f "$OPERATORDIR/deploy/role.yaml"
     kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl create -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
     kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
+    cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all
+spec:
+  podSelector: {}
+  ingress:
+  - {}
+  egress:
+  - {}
+  policyTypes:
+  - Ingress
+  - Egress
+EOF
+    kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
 }
 
 remove_operator() {
+    for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
+      kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/${cr}" || true
+    done
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
 }
 
 test_operator() {
