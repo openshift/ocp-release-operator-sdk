@@ -16,7 +16,7 @@ ENV OPERATOR=/usr/local/bin/helm-operator \
 
 # install operator binary
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
-COPY bin /usr/local/bin
+COPY release/helm/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
