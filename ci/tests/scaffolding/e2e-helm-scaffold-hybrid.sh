@@ -6,7 +6,9 @@ set -eux
 
 ROOTDIR="$(pwd)"
 HELMDIR="/go/src/github.com/helm-op"
+
 mkdir -p $HELMDIR
+cd $HELMDIR
 
 # create and build the operator
 pushd "$HELMDIR"

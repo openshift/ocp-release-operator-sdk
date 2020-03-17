@@ -9,8 +9,8 @@ eval IMAGE=$IMAGE_FORMAT
 component="osdk-helm-e2e-hybrid"
 eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
-TMPDIR="$(mktemp -d)"
-trap_add 'rm -rf $TMPDIR' EXIT
+GOTMP="$(mktemp -d -p $GOPATH/src)"
+trap_add 'rm -rf $GOTMP' EXIT
 
 mkdir -p $ROOTDIR/bin
 export PATH=$ROOTDIR/bin:$PATH
@@ -64,8 +64,8 @@ remove_operator() {
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
 }
 
 test_operator() {
@@ -74,6 +74,7 @@ test_operator() {
     # wait for operator pod to run
     if ! timeout 1m kubectl rollout status deployment/nginx-operator;
     then
+        echo FAIL: for operator pod to run
         kubectl logs deployment/nginx-operator
         exit 1
     fi
@@ -99,6 +100,7 @@ test_operator() {
     trap_add 'kubectl delete --ignore-not-found -f ${OPERATORDIR}/deploy/crds/helm.example.com_v1alpha1_nginx_cr.yaml' EXIT
     if ! timeout 1m bash -c -- 'until kubectl get nginxes.helm.example.com example-nginx -o jsonpath="{..status.deployedRelease.name}" | grep "example-nginx"; do sleep 1; done';
     then
+        echo "Failed to create CR"
         kubectl logs deployment/nginx-operator
         exit 1
     fi
@@ -116,6 +118,7 @@ test_operator() {
 
     if ! timeout 1m kubectl rollout status deployment/${nginx_deployment};
     then
+        echo FAIL: to rollout status deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${nginx_deployment}
         kubectl logs deployment/nginx-operator
@@ -130,6 +133,7 @@ test_operator() {
     kubectl scale deployment/${nginx_deployment} --replicas=2
     if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${nginx_deployment} -o jsonpath='{..spec.replicas}') -eq 1; do sleep 1; done";
     then
+        echo FAIL: to scale deployment replicas to 2 and verify the
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${nginx_deployment}
         kubectl logs deployment/nginx-operator
@@ -141,6 +145,7 @@ test_operator() {
     kubectl patch nginxes.helm.example.com example-nginx -p '[{"op":"replace","path":"/spec/replicaCount","value":2}]' --type=json
     if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${nginx_deployment} -o jsonpath='{..spec.replicas}') -eq 2; do sleep 1; done";
     then
+        echo FAIL: to update CR to replicaCount=2 and verify the deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${nginx_deployment}
         kubectl logs deployment/nginx-operator
@@ -151,16 +156,11 @@ test_operator() {
     kubectl logs deployment/nginx-operator | grep "Uninstalled release" | grep "${release_name}"
 }
 
-# if on openshift switch to the "default" namespace
-# and allow containers to run as root (necessary for
-# default nginx image)
-if oc api-versions | grep openshift; then
-    oc project default
-    oc adm policy add-scc-to-user anyuid -z default
-fi
+# switch to the "default" namespace
+oc project default
 
 # create and build the operator
-pushd "$TMPDIR"
+pushd "$GOTMP"
 operator-sdk new nginx-operator --api-version=helm.example.com/v1alpha1 --kind=Nginx --type=helm
 
 pushd nginx-operator
@@ -169,8 +169,8 @@ sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
-deploy_operator
 trap_add 'remove_operator' EXIT
+deploy_operator
 test_operator
 remove_operator
 
@@ -187,7 +187,6 @@ fi
 cp deploy/operator-copy.yaml deploy/operator.yaml
 sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
 deploy_operator
-trap_add 'remove_operator' EXIT
 test_operator
 remove_operator
 
