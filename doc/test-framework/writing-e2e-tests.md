@@ -10,19 +10,22 @@ as standard go tests.
 ## Components
 
 The test framework includes a few components. The most important to talk
-about are Framework and TestCtx.
+about are Framework and Context.
 
 ### Framework
 
 [Framework][framework-link] contains all global variables, such as the kubeconfig, kubeclient,
 scheme, and dynamic client (provided via the controller-runtime project).
-It is initialized by MainEntry and can be used anywhere in the tests.
+It is initialized by the MainEntry function and can be used anywhere in the tests.
 
-### TestCtx
+**Note:** several required arguments are initialized and added by `MainEntry()`. Do not attempt to
+use `testing.M` directly.
 
-[TestCtx][testctx-link] is a local context that stores important information for each test, such
+### Context
+
+[Context][context-link] is a local context that stores important information for each test, such
 as the namespace for that test and the cleanup functions. By handling
-namespace and resource initialization through TestCtx, we can make sure that all
+namespace and resource initialization through Context, we can make sure that all
 resources are properly handled and removed after the test finishes.
 
 ## Walkthrough: Writing Tests
@@ -93,14 +96,14 @@ timeout after 5 seconds, returning an error if the mappings were not discovered 
 
 #### 3. Setup the test context and resources
 
-The next step is to create a TestCtx for the current test and defer its cleanup function:
+The next step is to create a Context for the current test and defer its cleanup function:
 
 ```go
-ctx := framework.NewTestCtx(t)
+ctx := framework.NewContext(t)
 defer ctx.Cleanup()
 ```
 
-Now that there is a `TestCtx`, the test's Kubernetes resources (specifically the test namespace,
+Now that there is a `Context`, the test's Kubernetes resources (specifically the test namespace,
 Service Account, RBAC, and Operator deployment in `local` testing; just the Operator deployment
 in `cluster` testing) can be initialized:
 
@@ -211,8 +214,8 @@ if err != nil {
 }
 ```
 
-Once the end of the function is reached, the TestCtx's cleanup
-functions will automatically be run since they were deferred when the TestCtx was created.
+Once the end of the function is reached, the Context's cleanup
+functions will automatically be run since they were deferred when the Context was created.
 
 ## Running the Tests
 
@@ -274,6 +277,18 @@ $ operator-sdk test local ./test/e2e --namespace operator-test --no-setup
 
 For more documentation on the `operator-sdk test local` command, see the [SDK CLI Reference][sdk-cli-ref] doc.
 
+### Skip-Cleanup-Error Flag
+
+If the tests encounter an error, it is possible to tell the framework not to delete the resources. This behavior is enabled with the `--skip-cleanup-error` flag:
+
+```shell
+$ operator-sdk test local ./test/e2e --skip-cleanup-error
+```
+
+This is useful if after the error happens, you need to inspect the resources that were created in the test or if you have automated scripts that download all the logs from the pods at the end of the test run.
+
+**NOTE**: The created resources will be deleted if the tests pass.
+
 ### Running Go Test Directly (Not Recommended)
 
 For advanced use cases, it is possible to run the tests via `go test` directly. As long as all flags defined
@@ -329,7 +344,7 @@ $ kubectl delete -f deploy/crds/cache.example.com_memcacheds_crd.yaml
 
 [memcached-sample]:https://github.com/operator-framework/operator-sdk-samples/tree/master/go/memcached-operator
 [framework-link]:https://github.com/operator-framework/operator-sdk/blob/master/pkg/test/framework.go
-[testctx-link]:https://github.com/operator-framework/operator-sdk/blob/master/pkg/test/context.go
+[context-link]:https://github.com/operator-framework/operator-sdk/blob/master/pkg/test/context.go
 [e2eutil-link]:https://github.com/operator-framework/operator-sdk/tree/master/pkg/test/e2eutil
 [memcached-test-link]:https://github.com/operator-framework/operator-sdk-samples/blob/master/go/memcached-operator/test/e2e/memcached_test.go
 [scheme-link]:https://github.com/operator-framework/operator-sdk/blob/master/pkg/test/framework.go#L109

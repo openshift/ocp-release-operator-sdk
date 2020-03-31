@@ -73,19 +73,22 @@ $ operator-sdk add api --api-version=app.example.com/v1alpha1 --kind=AppService
 # Add a new controller that watches for AppService
 $ operator-sdk add controller --api-version=app.example.com/v1alpha1 --kind=AppService
 
+# Set the username variable
+$ export USERNAME=<username>
+
 # Build and push the app-operator image to a public registry such as quay.io
-$ operator-sdk build quay.io/<username>/app-operator
+$ operator-sdk build quay.io/$USERNAME/app-operator
 
 # Login to public registry such as quay.io
 $ docker login quay.io
 
 # Push image
-$ docker push quay.io/<username>/app-operator
+$ docker push quay.io/$USERNAME/app-operator
 
 # Update the operator manifest to use the built image name (if you are performing these steps on OSX, see note below)
-$ sed -i 's|REPLACE_IMAGE|quay.io/<username>/app-operator|g' deploy/operator.yaml
+$ sed -i "s|REPLACE_IMAGE|quay.io/$USERNAME/app-operator|g" deploy/operator.yaml
 # On OSX use:
-$ sed -i "" 's|REPLACE_IMAGE|quay.io/<username>/app-operator|g' deploy/operator.yaml
+$ sed -i "" "s|REPLACE_IMAGE|quay.io/$USERNAME/app-operator|g" deploy/operator.yaml
 
 # Setup Service Account
 $ kubectl create -f deploy/service_account.yaml
@@ -151,6 +154,8 @@ Note that each operator type has a different set of capabilities. When choosing 
 
 ![operator-capability-level](./doc/images/operator-capability-level.png)
 
+Find more details about the various levels and the feature requirements for them in the [capability level documentation][capability_levels].
+
 ## Samples
 
 To explore any operator samples built using the operator-sdk, see the [operator-sdk-samples][samples].
@@ -196,3 +201,4 @@ Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file f
 [helm_user_guide]:./doc/helm/user-guide.md
 [faq]: ./doc/faq.md
 [getting_started]: https://github.com/operator-framework/getting-started/blob/master/README.md
+[capability_levels]: ./doc/operator-capabilities.md

@@ -566,6 +566,432 @@ func printVersion() {
 }
 ```
 
+## `v0.13.x`
+
+### modules
+
+- Ensure the the following `require` modules and `replace` directives with the specific versions are present in your `go.mod` file:
+
+```
+require (
+	github.com/operator-framework/operator-sdk v0.13.1
+	sigs.k8s.io/controller-runtime v0.4.0
+)
+
+// Pinned to kubernetes-1.16.2
+replace (
+	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
+)
+```
+
+- Run `go mod tidy` to update the project modules
+- Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
+- Run the command `operator-sdk generate crds` to regenerate CRDs
+
+### (Optional) Update the roles.yaml file
+
+Replace `*` per verbs in order to solve the issue [671](https://github.com/operator-framework/operator-sdk/issues/671) and make clear the permissions used. 
+
+**Example**
+
+```
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+```
+
+### Notable changes
+
+- **Deprecated:** Deprecated the `operator-sdk generate openapi` command. CRD generation is still supported with `operator-sdk generate crds`. It is now recommended to use [openapi-gen](https://github.com/kubernetes/kube-openapi/tree/master/cmd/openapi-gen) directly for OpenAPI code generation. The `generate openapi` subcommand will be removed in a future release.
+- **Breaking change:** An existing CSV's `spec.customresourcedefinitions.owned` is now always overwritten except for each name, version, and kind on invoking olm-catalog gen-csv when Go API code annotations are present. 
+- **Potentially Breaking change:** Be aware that there are potentially other breaking changes due to the controller-runtime and Kubernetes version be upgraded from `v0.4.0` to `v1.16.2, respectively. There may be breaking changes to Go client code due to both of those changes.
+
+For further detailed information see [CHANGELOG](https://github.com/operator-framework/operator-sdk/blob/master/CHANGELOG.md#v0130)
+
+## `v0.14.x`
+
+### modules
+
+- Ensure the the following `require` modules and `replace` directives with the specific versions are present in your `go.mod` file:
+
+```
+require (
+	github.com/operator-framework/operator-sdk v0.14.1
+	sigs.k8s.io/controller-runtime v0.4.0
+)
+// Pinned to kubernetes-1.16.2
+replace (
+	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
+)
+replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
+```
+
+- Run `go mod tidy` to update the project modules
+- Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
+- Run the command `operator-sdk generate crds` to regenerate CRDs
+
+### Deprecations
+
+The `github.com/operator-framework/operator-sdk/pkg/restmapper` package was deprecated in favor of the `DynamicRESTMapper` implementation in [controller-runtime](https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/client/apiutil#NewDiscoveryRESTMapper). Users should migrate to controller-runtime's implementation, which is a drop-in replacement.
+
+Replace:
+```
+github.com/operator-framework/operator-sdk/pkg/restmapper.DynamicRESTMapper
+```
+
+With:
+
+```
+sigs.k8s.io/controller-runtime/pkg/client/apiutil.DynamicRESTMapper
+```
+
+### Breaking Changes
+
+#### Add `operator_sdk.util` Ansible collection
+
+The Ansible module `k8s_status` was extracted and is now provided by the `operator_sdk.util` Ansible collection. See [developer_guide](https://github.com/operator-framework/operator-sdk/blob/master/doc/ansible/dev/developer_guide.md#custom-resource-status-management) for new usage.
+
+To use the collection in a role, declare it at the root level in `meta/main.yaml`:
+```yaml
+collections:
+- operator_sdk.util
+```
+
+To use it in a playbook, declare it in the play:
+```yaml
+- hosts: all
+  collections:
+   - operator_sdk.util
+  tasks:
+   - k8s_status:
+       api_version: app.example.com/v1
+       kind: Foo
+       name: "{{ meta.name }}"
+       namespace: "{{ meta.namespace }}"
+       status:
+         foo: bar
+```
+
+You can also use the fully-qualified name without declaring the collection:
+```yaml
+   - operator_sdk.util.k8s_status:
+       api_version: app.example.com/v1
+       kind: Foo
+       name: "{{ meta.name }}"
+       namespace: "{{ meta.namespace }}"
+       status:
+         foo: bar
+```
+
+### Notable Changes
+
+These notable changes contain just the most important user-facing changes. See the [CHANGELOG](https://github.com/operator-framework/operator-sdk/blob/master/CHANGELOG.md#v0141) for details of the release.
+
+#### Ansible version update
+
+The Ansible version in the init projects was upgraded from `2.6` to `2.9` for collections support. Update the `meta/main.yaml` file.
+
+Replace:
+```yaml
+...
+ min_ansible_version: 2.6
+...
+```
+
+With: 
+```yaml
+...
+ min_ansible_version: 2.9
+...
+```
+
+#### Helm Upgrade to V3
+
+The Helm operator packages and base image were upgraded from Helm v2 to Helm v3. Note that cluster state for pre-existing CRs using Helm v2-based operators will be automatically migrated to Helm v3's new release storage format, and existing releases may be upgraded due to changes in Helm v3's label injection.
+
+If you are using any external helm v2 tooling with the your helm operator-managed releases, you will need to upgrade to the equivalent helm v3 tooling.
+
+## `v0.15.x`
+
+### modules
+
+- Ensure the the following `require` modules and `replace` directives with the specific versions are present in your `go.mod` file:
+
+```
+require (
+	github.com/operator-framework/operator-sdk v0.15.1
+	sigs.k8s.io/controller-runtime v0.4.0
+)
+// Pinned to kubernetes-1.16.2
+replace (
+	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
+)
+replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
+replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
+```
+
+- Run `go mod tidy` to update the project modules
+- Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
+- Run the command `operator-sdk generate crds` to regenerate CRDs
+
+### Breaking Changes on Commands 
+
+This release contains breaking changes in some commands.
+
+- The `operator-sdk olm-catalog gen-csv` was replaced by `operator-sdk generate csv`
+- The `operator-sdk up local` is now `operator-sdk run --local`. However, all functionality of this command is retained.
+- And then, the `operator-sdk alpha olm [sub-commands] [flags]` was moved from `alpha` to its own sub-command. However, all functionality of this command is retained. To check run; `operator-sdk olm --help`.
+
+### Breaking Changes for Helm and Ansible 
+
+The `operator-sdk run ansible/helm` are now hidden commands in `exec-entrypoint ansible/helm`. However, all functionality of each sub-command is still the same. If you are using this feature then you will need to replace the `run` for `exec-entrypoint` as the following examples.
+
+Replace:
+
+```
+oprator-sdk run ansible --watches-file=/opt/ansible/watches.yaml 
+```
+
+With: 
+
+```
+oprator-sdk exec-entrypoint ansible --watches-file=/opt/ansible/watches.yaml
+```
+
+
+Replace:
+
+```
+oprator-sdk run helm --watches-file=$HOME/watches.yaml
+```
+
+With: 
+
+```
+oprator-sdk run exec-entrypoint helm --watches-file=$HOME/watches.yaml
+```
+
+See the [CHANGELOG](https://github.com/operator-framework/operator-sdk/blob/master/CHANGELOG.md#v0151) for details of the release.
+
+## Unreleased
+
+### Bug Fixes and Improvements for Metrics
+
+There were some changes to the default implementation of the metrics export. These changes require the `cmd/main.go` be updated as follows.
+
+Replace:
+
+```
+func main() {
+    ...
+	// Add the Metrics Service
+	addMetrics(ctx, cfg, namespace)
+``` 
+
+With:
+
+```
+func main() {
+    ...
+	// Add the Metrics Service
+	addMetrics(ctx, cfg)
+``` 
+
+And then, update the default implementation of `addMetrics` and `serveCRMetrics` with:
+
+```go
+// addMetrics will create the Services and Service Monitors to allow the operator export the metrics by using
+// the Prometheus operator
+func addMetrics(ctx context.Context, cfg *rest.Config) {
+	// Get the namespace the operator is currently deployed in.
+	operatorNs, err := k8sutil.GetOperatorNamespace()
+	if err != nil {
+		if errors.Is(err, k8sutil.ErrRunLocal) {
+			log.Info("Skipping CR metrics server creation; not running in a cluster.")
+			return
+		}
+	}
+
+	if err := serveCRMetrics(cfg, operatorNs); err != nil {
+		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
+	}
+
+	// Add to the below struct any other metrics ports you want to expose.
+	servicePorts := []v1.ServicePort{
+		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort}},
+		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: operatorMetricsPort}},
+	}
+
+	// Create Service object to expose the metrics port(s).
+	service, err := metrics.CreateMetricsService(ctx, cfg, servicePorts)
+	if err != nil {
+		log.Info("Could not create metrics Service", "error", err.Error())
+	}
+
+	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
+	// necessary to configure Prometheus to scrape metrics from this operator.
+	services := []*v1.Service{service}
+
+	// The ServiceMonitor is created in the same namespace where the operator is deployed
+	_, err = metrics.CreateServiceMonitors(cfg, operatorNs, services)
+	if err != nil {
+		log.Info("Could not create ServiceMonitor object", "error", err.Error())
+		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
+		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
+		if err == metrics.ErrServiceMonitorNotPresent {
+			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
+		}
+	}
+}
+
+// serveCRMetrics gets the Operator/CustomResource GVKs and generates metrics based on those types.
+// It serves those metrics on "http://metricsHost:operatorMetricsPort".
+func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
+	// The function below returns a list of filtered operator/CR specific GVKs. For more control, override the GVK list below
+	// with your own custom logic. Note that if you are adding third party API schemas, probably you will need to
+	// customize this implementation to avoid permissions issues.
+	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(apis.AddToScheme)
+	if err != nil {
+		return err
+	}
+
+	// The metrics will be generated from the namespaces which are returned here.
+	// NOTE that passing nil or an empty list of namespaces in GenerateAndServeCRMetrics will result in an error.
+	ns, err := kubemetrics.GetNamespacesForMetrics(operatorNs)
+	if err != nil {
+		return err
+	}
+
+	// Generate and serve custom resource specific metrics.
+	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, metricsHost, operatorMetricsPort)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+```
+
+**NOTE**: For more information check the PRs which are responsible for the above changes [#2606](https://github.com/operator-framework/operator-sdk/pull/2606),[#2603](https://github.com/operator-framework/operator-sdk/pull/2603) and [#2601](https://github.com/operator-framework/operator-sdk/pull/2601).
+
+### Breaking changes
+
+#### Remove Ansible container sidecar
+
+The additional of the dependency `inotify-tools` on Ansible based-operator images is deprecated and it will be removed in the next versions. In this way, update the `deploy/operator.yaml` file as follows.
+
+Remove:
+
+```
+- name: ansible
+  command:
+    - /usr/local/bin/ao-logs
+    - /tmp/ansible-operator/runner
+    - stdout
+  # Replace this with the built image name
+  image: "REPLACE_IMAGE"
+  imagePullPolicy: "Always"
+  volumeMounts:
+    - mountPath: /tmp/ansible-operator/runner
+    name: runner
+    readOnly: true
+```
+
+Replace:
+
+```yaml 
+- name: operator
+```
+
+With:
+
+```yaml 
+- name: {{your operator name which is the value of metadata.name in this file}}
+```
+
+#### Migration to Ansible collections
+
+The core Ansible Kubernetes modules have been moved to the [`community.kubernetes` Ansible collection][kubernetes-ansible-collection]. Future development of the modules will occur there, with only critical bugfixes going into the modules in core. Additionally, the `operator_sdk.util` collection is no longer installed by default in the base image. Instead, users should add a `requirements.yml` to their project root, with the following content:
+
+```yaml
+collections:
+  - community.kubernetes
+  - operator_sdk.util
+```
+
+Users should then add the following stages to their `build/Dockerfile`:
+
+```
+COPY requirements.yml ${HOME}/requirements.yml
+RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
+ && chmod -R ug+rwx ${HOME}/.ansible
+```
+
+
 [legacy-kubebuilder-doc-crd]: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 [v0.8.2-go-mod]: https://github.com/operator-framework/operator-sdk/blob/28bd2b0d4fd25aa68e15d928ae09d3c18c3b51da/internal/pkg/scaffold/go_mod.go#L40-L94
 [activating-modules]: https://github.com/golang/go/wiki/Modules#how-to-install-and-activate-module-support
@@ -581,3 +1007,4 @@ func printVersion() {
 [api-rules]: https://github.com/kubernetes/kubernetes/tree/36981002246682ed7dc4de54ccc2a96c1a0cbbdb/api/api-rules
 [generating-crd]: https://book.kubebuilder.io/reference/generating-crd.html
 [markers]: https://book.kubebuilder.io/reference/markers.html
+[kubernetes-ansible-collection]: https://github.com/ansible-collections/kubernetes

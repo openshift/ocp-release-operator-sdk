@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:lll
 package ansible
 
 import (
@@ -33,6 +34,9 @@ type DockerfileHybrid struct {
 
 	// Watches - if true, include a COPY statement for watches.yaml
 	Watches bool
+
+	// Requirements - if true, include a COPY and RUN to install Ansible requirements
+	Requirements bool
 }
 
 // GetInput - gets the input
@@ -75,17 +79,17 @@ RUN if $(cat /etc/redhat-release | grep --quiet 'release 7'); then (yum install 
 # ubi8
 RUN if $(cat /etc/redhat-release | grep --quiet 'release 8'); then (yum install -y python3-pip inotify3-tools || true); fi
 
-RUN pip3 install --upgrade setuptools pip \
+RUN yum install -y libffi-devel openssl-devel python36-devel gcc python3-pip python3-setuptools \
+ && pip3 install --upgrade setuptools pip \
  && pip install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
-      openshift==0.8.9 \
+      openshift~=0.10.0 \
       ansible~=2.9 \
       jmespath \
- && yum remove -y gcc python36-devel \
+ && yum remove -y gcc libffi-devel openssl-devel python36-devel \
  && yum clean all \
- && rm -rf /var/cache/yum \
- && ansible-galaxy collection install operator_sdk.util
+ && rm -rf /var/cache/yum
 
 COPY build/_output/bin/[[.ProjectName]] ${OPERATOR}
 COPY bin /usr/local/bin
@@ -97,9 +101,14 @@ RUN mkdir -p ${HOME}/.ansible/tmp \
  && chown -R ${USER_UID}:0 ${HOME} \
  && chmod -R ug+rwx ${HOME}
 
-ADD https://github.com/krallin/tini/releases/latest/download/tini /tini
-RUN chmod +x /tini
+RUN TINIARCH=$(case $(arch) in x86_64) echo -n amd64 ;; ppc64le) echo -n ppc64el ;; *) echo -n $(arch) ;; esac) \
+  && curl -L -o /tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
+  && chmod +x /tini
 
+[[- if .Requirements ]]
+COPY requirements.yml ${HOME}/requirements.yml
+RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
+ && chmod -R ug+rwx ${HOME}/.ansible[[ end ]]
 [[- if .Watches ]]
 COPY watches.yaml ${HOME}/watches.yaml[[ end ]]
 [[- if .Roles ]]

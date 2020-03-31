@@ -277,7 +277,10 @@ $ go mod vendor
 
 before building the memcached-operator image.
 
-Build the memcached-operator image and push it to a registry:
+Build the memcached-operator image and push it to a registry.  Make sure to modify
+`quay.io/example/` in the example below to reference a container repository that
+you have access to. You can obtain an account for storing containers at
+repository sites such quay.io or hub.docker.com: 
 ```sh
 $ operator-sdk build quay.io/example/memcached-operator:v0.0.1
 $ sed -i 's|REPLACE_IMAGE|quay.io/example/memcached-operator:v0.0.1|g' deploy/operator.yaml
@@ -428,6 +431,32 @@ $ kubectl delete -f deploy/service_account.yaml
 
 ## Advanced Topics
 
+### Manage CR status conditions
+
+An often-used pattern is to include `Conditions` in the status of custom resources. Conditions represent the latest available observations of an object's state (see the [Kubernetes API conventionsdocumentation][typical-status-properties] for more information).
+
+The `Conditions` field added to the `MemcachedStatus` struct simplifies the management of your CR's conditions. It:
+- Enables callers to add and remove conditions.
+- Ensures that there are no duplicates.
+- Sorts the conditions deterministically to avoid unnecessary repeated reconciliations.
+- Automatically handles the each condition's `LastTransitionTime`.
+- Provides helper methods to make it easy to determine the state of a condition.
+
+To use conditions in your custom resource, add a Conditions field to the Status struct in `_types.go`:
+
+```Go
+import (
+    "github.com/operator-framework/operator-sdk/pkg/status"
+)
+
+type MyAppStatus struct {
+    // Conditions represent the latest available observations of an object's state
+    Conditions status.Conditions `json:"conditions"`
+}
+```
+
+Then, in your controller, you can use [`Conditions`][godoc-conditions] methods to make it easier to set and remove conditions or check their current values.
+
 ### Adding 3rd Party Resources To Your Operator
 
 The operator's Manager supports the Core Kubernetes resource types as found in the client-go [scheme][scheme_package] package and will also register the schemes of all custom resource types defined in your project under `pkg/apis`.
@@ -524,6 +553,32 @@ func main() {
 
 * After adding new import paths to your operator project, run `go mod vendor` if a `vendor/` directory is present in the root of your project directory to fulfill these dependencies.
 * Your 3rd party resource needs to be added before add the controller in `"Setup all Controllers"`.
+
+#### Default Metrics exported with 3rd party resource 
+
+By default, SDK operator projects are set up to [export metrics][metrics_doc] through `addMetrics` in `cmd/manager/main.go`. See that it will call the `serveCRMetrics`:
+
+
+```go
+func serveCRMetrics(cfg *rest.Config) error {
+    ...
+	filteredGVK, err := k8sutil.GetGVKsFromAddToScheme(apis.AddToScheme)
+	if err != nil {
+		return err
+	}
+
+    ...
+
+	// Generate and serve custom resource specific metrics.
+	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, metricsHost, operatorMetricsPort)
+	if err != nil {
+		return err
+	}
+``` 
+
+The `kubemetrics.GenerateAndServeCRMetrics` function requires an RBAC rule to list all GroupVersionKinds in the list of watched namespaces, so you might need to [filter](https://github.com/operator-framework/operator-sdk/blob/v0.15.2/pkg/k8sutil/k8sutil.go#L161) the kinds returned by [`k8sutil.GetGVKsFromAddToScheme`](https://godoc.org/github.com/operator-framework/operator-sdk/pkg/k8sutil#GetGVKsFromAddToScheme) more stringently to avoid authorization errors such as `Failed to list *unstructured.Unstructured`.
+
+In this scenario, this error may occur because your Operator RBAC roles do not include permissions to LIST the third party API schemas or the schemas which are required to them and will be added with. See that the default SDK implementation will just add the Kubernetes schemas and they will be ignored in the metrics It means that you might need to do an similar implementation to filter the third party API schemas and their dependencies added in order to provide a filtered a List of GVK(GroupVersionKind) to the  `GenerateAndServeCRMetrics` method. 
 
 ### Handle Cleanup on Deletion
 
@@ -737,3 +792,5 @@ When the operator is not running in a cluster, the Manager will return an error 
 [quay_link]: https://quay.io
 [multi-namespaced-cache-builder]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
 [scheme_builder]: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/scheme#Builder
+[typical-status-properties]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+[godoc-conditions]: https://godoc.org/github.com/operator-framework/operator-sdk/pkg/status#Conditions
