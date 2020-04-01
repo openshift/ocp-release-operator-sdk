@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "WARN: This script is deprecated and will soon be removed"
+
 watch_dir=${1:-/tmp/ansible-operator/runner}
 filename=${2:-stdout}
 mkdir -p ${watch_dir}
