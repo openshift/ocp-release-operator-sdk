@@ -1,0 +1,95 @@
+---
+name: CI
+'on':
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+
+  sanity:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: ['3.6']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          path: ansible_collections/community/kubernetes
+
+      - name: Set up Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install ansible base (devel branch)
+        run: pip install https://github.com/ansible/ansible/archive/devel.tar.gz --disable-pip-version-check
+
+      - name: Run sanity tests on Python ${{ matrix.python_version }}
+        run: ansible-test sanity --docker -v --color --python ${{ matrix.python_version }}
+
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: ['3.6']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          path: ansible_collections/community/kubernetes
+
+      - name: Set up Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install ansible-base
+        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
+
+      - name: Run integration tests on Python ${{ matrix.python_version }}
+        run: ansible-test integration --docker -v --color --retry-on-error --python ${{ matrix.python_version }} --continue-on-error --diff --coverage
+
+      - name: Generate coverage report.
+        run: ansible-test coverage xml -v --requirements --group-by command --group-by version
+
+      - uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: false
+
+  molecule:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python_version: ['3.7']
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+        with:
+          path: ansible_collections/community/kubernetes
+
+      - name: Set up KinD cluster
+        uses: engineerd/setup-kind@v0.3.0
+
+      - name: Set up Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Install molecule and openshift dependencies
+        run: pip install molecule yamllint openshift
+
+      - name: Install ansible-base
+        run: pip install git+https://github.com/ansible-collection-migration/ansible-base.git --disable-pip-version-check
+
+      - name: Create default collection path symlink
+        run: |
+          mkdir -p /home/runner/.ansible
+          ln -s /home/runner/work/kubernetes /home/runner/.ansible/collections
+
+      - name: Run molecule default test scenario
+        run: molecule test
