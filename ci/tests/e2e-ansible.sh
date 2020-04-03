@@ -61,13 +61,13 @@ remove_operator() {
     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
       kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/${cr}" || true
     done
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
+    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
 }
 
 test_operator() {
@@ -76,8 +76,7 @@ test_operator() {
     then
         echo FAIL: operator failed to run
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -86,8 +85,7 @@ test_operator() {
     then
         echo "Failed to get metrics service"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -96,8 +94,7 @@ test_operator() {
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -106,8 +103,7 @@ test_operator() {
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -117,8 +113,7 @@ test_operator() {
     then
         echo FAIL: operator failed to create memcached Deployment
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -127,8 +122,7 @@ test_operator() {
     then
         echo "Failed to verify custom resource metrics"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -152,8 +146,7 @@ test_operator() {
     then
         echo FAIL: the finalizer did not delete the configmap
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
@@ -162,18 +155,16 @@ test_operator() {
     then
         echo FAIL: memcached Deployment did not get garbage collected
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # Ensure that no errors appear in the log
-    if kubectl logs deployment/memcached-operator -c operator | grep -i error;
+    if kubectl logs deployment/memcached-operator | grep -i error;
     then
         echo FAIL: the operator log includes errors
         kubectl describe pods
-        kubectl logs deployment/memcached-operator -c operator
-        kubectl logs deployment/memcached-operator -c ansible
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 }
@@ -188,9 +179,8 @@ operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 -
 pushd memcached-operator
 # Add a second Kind to test watching multiple GVKs
 operator-sdk add crd --kind=Foo --api-version=ansible.example.com/v1alpha1
-sed -i 's|{{ pull_policy.default..Always.. }}|Always|g' deploy/operator.yaml
 cp deploy/operator.yaml deploy/operator-copy.yaml
-sed -i "s|{{ REPLACE_IMAGE }}|$IMAGE|g" deploy/operator.yaml
+sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
@@ -204,13 +194,12 @@ if ! timeout 60s bash -c -- "until kubectl get pods -l name=memcached-operator |
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods
-    kubectl logs deployment/memcached-operator -c operator
-    kubectl logs deployment/memcached-operator -c ansible
+    kubectl logs deployment/memcached-operator
     exit 1
 fi
 
 cp deploy/operator-copy.yaml deploy/operator.yaml
-sed -i "s|{{ REPLACE_IMAGE }}|$IMAGE2|g" deploy/operator.yaml
+sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
 deploy_operator
 test_operator
 remove_operator

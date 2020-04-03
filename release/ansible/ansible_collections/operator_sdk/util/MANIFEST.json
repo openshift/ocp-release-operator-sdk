@@ -1,0 +1,35 @@
+{
+ "collection_info": {
+  "namespace": "operator_sdk",
+  "name": "util",
+  "version": "0.0.0",
+  "authors": [
+   "Austin Macdonald <austin@redhat.com>",
+   "Fabian von Feilitzsch <fabian@redhat.com>"
+  ],
+  "readme": "README.md",
+  "tags": [
+   "operator_sdk",
+   "kubernetes",
+   "k8s",
+   "k8s_status",
+   "ansible_operator"
+  ],
+  "description": "This is a collection of Ansible assets used by the Operator SDK. https://github.com/operator-framework/operator-sdk",
+  "license": [],
+  "license_file": "LICENSE",
+  "dependencies": {},
+  "repository": "https://github.com/operator-framework/operator-sdk-ansible-util",
+  "documentation": "https://github.com/operator-framework/operator-sdk-ansible-util",
+  "homepage": "https://github.com/operator-framework/operator-sdk-ansible-util",
+  "issues": "https://github.com/operator-framework/operator-sdk-ansible-util/issues"
+ },
+ "file_manifest_file": {
+  "name": "FILES.json",
+  "ftype": "file",
+  "chksum_type": "sha256",
+  "chksum_sha256": "829e6b191a5a2977b944622f239515872ee0cfeece54fad1e99e6b4b27e5145b",
+  "format": 1
+ },
+ "format": 1
+}

@@ -22,9 +22,9 @@ As the Operator SDK interacts directly with the Kubernetes API, certain API feat
 
 ### Operating systems and architectures
 
-Release binaries will be built for the `x86_64` architecture for both GNU Linux and MacOS Darwin platforms and for the `ppc64le` architecture for GNU Linux.
+Release binaries will be built for the `x86_64` architecture for MacOS Darwin platform and for the following GNU Linux architectures: `x86_64`, `ppc64le`, `s390x`.
 
-Base images for ansible-operator, helm-operator, and scorecard-proxy will be built for the `x86_64` architecture for GNU Linux. Base images for the `ppc64le` architecture for GNU Linux are a work-in-progress.
+Base images for ansible-operator, helm-operator, and scorecard-proxy will be built for the following GNU Linux architectures: `x86_64`, `ppc64le`, `s390x`.
 
 Support for the Windows platform is not on the roadmap at this time.
 
@@ -43,6 +43,28 @@ Make sure you've [uploaded your GPG key][link-github-gpg-key-upload] and configu
 ```bash
 $ git config [--global] user.signingkey "$GPG_KEY_ID"
 $ git config [--global] user.email "$GPG_EMAIL"
+```
+
+Also, make sure that you setup the git gpg config as follows.
+```bash
+$ cat ~/.gnupg/gpg.conf
+default-key $GPG_KEY_ID
+```
+
+**NOTE** If you do a release from an OSX machine, you need to configure `gnu-gpg` to sign the release's tag:
+- Install the requirements by running: `brew install gpg2 gnupg pinentry-mac`
+- Append the following to your ~/.bash_profile or ~/.bashrc or ~/.zshrc
+```
+export GPG_TTY=`tty`
+```
+- Restart your Terminal or source your ~/.*rc file 
+- Then, make sure git uses gpg2 and not gpg
+```bash
+$ git config --global gpg.program gpg2 
+```
+- To make sure gpg2 itself is working
+```bash
+$ echo "test" | gpg2 --clearsign
 ```
 
 ## GitHub release information
@@ -215,6 +237,8 @@ Call the script with the only argument being the new SDK version:
 ```sh
 $ ./release.sh v1.3.0
 ```
+
+**NOTE** The `./release.sh` script requires `GNU sed` and the `GNU make` instead of the default installed sed. Install them with: `brew install gnu-sed` and `brew install make`, then ensure they are present in your `$PATH`.
 
 Release binaries and signatures will be in `build/`. Both binary and signature file names contain version, architecture, and platform information; signature file names correspond to the binary they were generated from suffixed with `.asc`. For example, signature file `operator-sdk-v1.3.0-x86_64-apple-darwin.asc` was generated from a binary named `operator-sdk-v1.3.0-x86_64-apple-darwin`. To verify binaries and tags, see the [verification section](#verifying-a-release).
 

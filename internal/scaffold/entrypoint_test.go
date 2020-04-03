@@ -20,7 +20,7 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/util/diffutil"
 )
 
-func EntrypointTest(t *testing.T) {
+func TestEntrypointTest(t *testing.T) {
 	s, buf := setupScaffoldAndWriter()
 	err := s.Execute(appConfig, &Entrypoint{})
 	if err != nil {
@@ -33,8 +33,8 @@ func EntrypointTest(t *testing.T) {
 	}
 }
 
+//nolint:lll
 const entrypointExp = `#!/bin/sh -e
 
 exec ${OPERATOR} $@
-
 `

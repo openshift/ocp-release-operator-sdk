@@ -45,18 +45,24 @@ Read the [operator scope][operator-scope] documentation on how to run your opera
 The Watches file contains a list of mappings from custom resources, identified
 by it's Group, Version, and Kind, to an Ansible Role or Playbook. The Operator
 expects this mapping file in a predefined location: `/opt/ansible/watches.yaml`
+These resources, as well as child resources (determined by owner references) will
+be monitored for updates and cached.
 
 * **group**:  The group of the Custom Resource that you will be watching.
 * **version**:  The version of the Custom Resource that you will be watching.
 * **kind**:  The kind of the Custom Resource that you will be watching.
-* **role** (default):  This is the path to the role that you have added to the
-  container.  For example if your roles directory is at `/opt/ansible/roles/`
-  and your role is named `busybox`, this value will be
-  `/opt/ansible/roles/busybox`. This field is mutually exclusive with the
-  "playbook" field.
-* **playbook**:  This is the path to the playbook that you have added to the
+* **role** (default): Specifies a role to be executed. This field is mutually exclusive with the
+  "playbook" field. This field can be:
+  * an absolute path to a role directory.
+  * a relative path within one of the directories specified by `ANSIBLE_ROLES_PATH` environment variable or `ansible-roles-path` flag.
+  * a relative path within the current working directory, which defaults to `/opt/ansible/roles`.
+  * a fully qualified collection name of an installed Ansible collection. Ansible collections are installed to
+    `~/.ansible/collections` or `/usr/share/ansible/collections` by default. If they are installed elsewhere,
+    use the `ANSIBLE_COLLECTIONS_PATH` environment variable or the `ansible-collections-path` flag
+* **playbook**: This is the playbook name that you have added to the
   container. This playbook is expected to be simply a way to call roles. This
-  field is mutually exclusive with the "role" field.
+  field is mutually exclusive with the "role" field. When running locally, the playbook is expected to be in the
+  current project directory.
 * **vars**: This is an arbitrary map of key-value pairs. The contents will be
   passed as `extra_vars` to the playbook or role specified for this watch.
 * **reconcilePeriod** (optional): The reconciliation interval, how often the
@@ -64,6 +70,7 @@ expects this mapping file in a predefined location: `/opt/ansible/watches.yaml`
 * **manageStatus** (optional): When true (default), the operator will manage
   the status of the CR generically. Set to false, the status of the CR is
   managed elsewhere, by the specified role/playbook or in a separate controller.
+* **blacklist**: A list of child resources (by GVK) that will not be watched or cached.
 
 An example Watches file:
 
@@ -73,13 +80,13 @@ An example Watches file:
 - version: v1alpha1
   group: foo.example.com
   kind: Foo
-  role: /opt/ansible/roles/Foo
+  role: Foo
 
 # Simple example mapping Bar to a playbook
 - version: v1alpha1
   group: bar.example.com
   kind: Bar
-  playbook: /opt/ansible/playbook.yml
+  playbook: playbook.yml
 
 # More complex example for our Baz kind
 # Here we will disable requeuing and be managing the CR status in the playbook,
@@ -87,11 +94,27 @@ An example Watches file:
 - version: v1alpha1
   group: baz.example.com
   kind: Baz
-  playbook: /opt/ansible/baz.yml
+  playbook: baz.yml
   reconcilePeriod: 0
-  manageStatus: false
+  manageStatus: False
   vars:
     foo: bar
+
+# ConfigMaps owned by a Memcached CR will not be watched or cached.
+- version: v1alpha1
+  group: cache.example.com
+  kind: Memcached
+  role: /opt/ansible/roles/memcached
+  blacklist:
+    - group: ""
+      version: v1
+      kind: ConfigMap
+
+# Example usage with a role from an installed Ansible collection
+- version: v1alpha1
+  group: bar.example.com
+  kind: Bar
+  role: myNamespace.myCollection.myRole
 ```
 
 ## Customize the operator logic
@@ -125,7 +148,7 @@ should go.
 - version: v1alpha1
   group: cache.example.com
   kind: Memcached
-  role: /opt/ansible/roles/memcached
+  role: memcached
 ```
 
 **Playbook**
@@ -137,7 +160,7 @@ Playbook
 - version: v1alpha1
   group: cache.example.com
   kind: Memcached
-  playbook: /opt/ansible/playbook.yaml
+  playbook: playbook.yaml
 ```
 
 ## Building the Memcached Ansible Role
@@ -178,7 +201,7 @@ Modify `roles/memcached/tasks/main.yml` to look like the following:
 ```yaml
 ---
 - name: start memcached
-  k8s:
+  community.kubernetes.k8s:
     definition:
       kind: Deployment
       apiVersion: apps/v1
@@ -243,19 +266,13 @@ Kubernetes deployment manifests are generated in `deploy/operator.yaml`. The
 deployment image in this file needs to be modified from the placeholder
 `REPLACE_IMAGE` to the previous built image. To do this run:
 ```
-$ sed -i 's|{{ REPLACE_IMAGE }}|quay.io/example/memcached-operator:v0.0.1|g' deploy/operator.yaml
-```
-
-The `imagePullPolicy` also requires an update.  To do this run:
-```
-$ sed -i 's|{{ pull_policy\|default('\''Always'\'') }}|Always|g' deploy/operator.yaml
+$ sed -i 's|REPLACE_IMAGE|quay.io/example/memcached-operator:v0.0.1|g' deploy/operator.yaml
 ```
 
 **Note**
 If you are performing these steps on OSX, use the following `sed` commands instead:
 ```
-$ sed -i "" 's|{{ REPLACE_IMAGE }}|quay.io/example/memcached-operator:v0.0.1|g' deploy/operator.yaml
-$ sed -i "" 's|{{ pull_policy\|default('\''Always'\'') }}|Always|g' deploy/operator.yaml
+$ sed -i "" 's|REPLACE_IMAGE|quay.io/example/memcached-operator:v0.0.1|g' deploy/operator.yaml
 ```
 
 Deploy the memcached-operator:
@@ -345,17 +362,26 @@ memcached-operator-7cc7cfdf86-vvjqk   2/2       Running   0          2m
 
 ### View the Ansible logs
 
-The `memcached-operator` deployment creates a Pod with two containers, `operator` and `ansible`.
-The `ansible` container exists only to expose the standard Ansible stdout logs that most Ansible
-users will be familiar with. In order to see the logs from a particular container, you can run
+In order to see the logs from a particular you can run:
 
 ```sh
-kubectl logs deployment/memcached-operator -c ansible
-kubectl logs deployment/memcached-operator -c operator
+kubectl logs deployment/memcached-operator
 ```
 
-The `ansible` logs contain all of the information about the Ansible run and will make it much easier to debug issues within your Ansible tasks,
-whereas the `operator` logs will contain much more detailed information about the Ansible Operator's internals and interface with Kubernetes.
+The logs contain the information about the Ansible run and will make it much easier to debug issues within your Ansible tasks.
+Note that the logs will contain much more detailed information about the Ansible Operator's internals and interface with Kubernetes as well.
+
+Also, you can use the environment variable `ANSIBLE_DEBUG_LOGS` set as `True` to check the full Ansible result in the logs in order to be able to debug it.
+
+**Example**
+
+In the `deploy/operator.yaml`:
+```yaml
+...
+- name: ANSIBLE_DEBUG_LOGS
+  value: "True"
+...
+```
 
 ### Additional Ansible Debug
 
@@ -370,7 +396,7 @@ kind: "Memcached"
 metadata:
   name: "example-memcached"
   annotations:
-    "ansible.operator-sdk/verbosity": 4
+    "ansible.operator-sdk/verbosity": "4"
 spec:
   size: 4
 ```
@@ -412,6 +438,8 @@ $ kubectl delete -f deploy/role.yaml
 $ kubectl delete -f deploy/service_account.yaml
 $ kubectl delete -f deploy/crds/cache.example.com_memcacheds_crd.yaml
 ```
+
+**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk new api --api-version=cache.example.com/v1alpha1 --kind=AppService --type=ansible`
 
 [operator-scope]:./../operator-scope.md
 [install-guide]: ../user/install-operator-sdk.md

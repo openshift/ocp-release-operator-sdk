@@ -40,8 +40,9 @@ path to a playbook on the operator’s file system.
 One of `playbook`, `role`, or `vars` must be provided. If `role` is not provided, it
 will default to the role specified at the top level of the `watches.yaml` entry.
 
-This field is identical to the top-level `role` field. It requires an absolute
-path to a role on the operator’s file system.
+This field is identical to the top-level `role` field.
+https://github.com/operator-framework/operator-sdk/blob/master/doc/ansible/user-guide.md#watches-file
+
 
 #### vars
 
@@ -56,6 +57,7 @@ or `role` was set for the finalizer.
 Here are a few examples of `watches.yaml` files that specify a finalizer:
 
 ### Run top-level playbook or role with new variables
+
 ```yaml
 ---
 - version: v1alpha1
@@ -68,7 +70,7 @@ Here are a few examples of `watches.yaml` files that specify a finalizer:
       state: absent
 ```
 
-This example will run `/opt/ansible/playbook.yml` when the Custom Resource
+This example will run `playbook.yml` when the Custom Resource
 is deleted. Because `vars` is set, the playbook will be run with `state` set to `absent`. Inside the playbook,
 the author can check this value and perform whatever cleanup is necessary.
 
@@ -77,7 +79,7 @@ the author can check this value and perform whatever cleanup is necessary.
 - version: v1alpha1
   group: app.example.com
   kind: Database
-  role: /opt/ansible/roles/database
+  role: database
   finalizer:
     name: finalizer.app.example.com
     vars:
@@ -93,10 +95,10 @@ role, rather than a playbook, with the `state` variable set to `absent`.
 - version: v1alpha1
   group: app.example.com
   kind: Database
-  playbook: /opt/ansible/playbook.yml
+  playbook: playbook.yml
   finalizer:
     name: finalizer.app.example.com
-    role: /opt/ansible/roles/teardown_database
+    role: teardown_database
 ```
 
 This example will run the `/opt/ansible/roles/teardown_database` role when the Custom Resource is deleted.
@@ -106,13 +108,27 @@ This example will run the `/opt/ansible/roles/teardown_database` role when the C
 - version: v1alpha1
   group: app.example.com
   kind: Database
-  playbook: /opt/ansible/playbook.yml
+  playbook: playbook.yml
   finalizer:
     name: finalizer.app.example.com
-    playbook: /opt/ansible/destroy.yml
+    playbook: destroy.yml
 ```
 
 This example will run the `/opt/ansible/destroy.yml` playbook when the Custom Resource is deleted.
+
+```yaml
+---
+- version: v1alpha1
+  group: app.example.com
+  kind: Database
+  playbook: playbook.yml
+  finalizer:
+    name: finalizer.app.example.com
+    role: myNamespace.myCollection.myRole
+```
+
+This example will run the `myRole` when the Custom Resource is deleted. (The collection must have been installed.)
+
 
 ### Run a different playbook or role with vars
 
@@ -126,10 +142,10 @@ interaction, with a different variable set.
 - version: v1alpha1
   group: app.example.com
   kind: Database
-  playbook: /opt/ansible/playbook.yml
+  playbook: playbook.yml
   finalizer:
     name: finalizer.app.example.com
-    role: /opt/ansible/roles/manage_credentials
+    role: manage_credentials
     vars:
       state: revoked
 ```

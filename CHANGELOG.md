@@ -1,16 +1,72 @@
-## Unreleased
+## v0.16.0
 
 ### Added
 
-### Changed
+- Add a new option to set the minimum log level that triggers stack trace generation in logs (`--zap-stacktrace-level`) ([#2319](https://github.com/operator-framework/operator-sdk/pull/2319))
+- Added `pkg/status` with several new types and interfaces that can be used in `Status` structs to simplify handling of [status conditions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties). ([#1143](https://github.com/operator-framework/operator-sdk/pull/1143))
+- Added support for relative Ansible roles and playbooks paths in the Ansible-based operator watches files. ([#2273](https://github.com/operator-framework/operator-sdk/pull/2273))
+- Added watches file support for roles that were installed as Ansible collections. ([#2587](https://github.com/operator-framework/operator-sdk/pull/2587))
+- Add Prometheus metrics support to Ansible-based operators. ([#2179](https://github.com/operator-framework/operator-sdk/pull/2179))
+- On `generate csv`, populate a CSV manifest’s `spec.icon`, `spec.keywords`, and `spec.mantainers` fields with empty values to better inform users how to add data. ([#2521](https://github.com/operator-framework/operator-sdk/pull/2521))
+- Scaffold code in `cmd/manager/main.go` for Go operators and add logic to Ansible/Helm operators to handle [multinamespace caching](https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder) if `WATCH_NAMESPACE` contains multiple namespaces. ([#2522](https://github.com/operator-framework/operator-sdk/pull/2522))
+- Add a new flag option (`--skip-cleanup-error`) to the test framework to allow skip the function which will remove all artefacts when an error be faced to perform this operation.   ([#2512](https://github.com/operator-framework/operator-sdk/pull/2512))
+- Add event stats output to the operator logs for Ansible based-operators. ([2580](https://github.com/operator-framework/operator-sdk/pull/2580))
+- Improve Ansible logs by allowing output the full Ansible result for Ansible based-operators configurable by environment variable. ([2589](https://github.com/operator-framework/operator-sdk/pull/2589))
+- Add the --max-workers flag to the commands operator-sdk exec-entrypoint and operator-sdk run --local for Helm based-operators with the purpose of controling the number of concurrent reconcile workers. ([2607](https://github.com/operator-framework/operator-sdk/pull/2607)) 
+- Add the --proxy-port flag to the operator-sdk scorecard command allowing users to override the default proxy port value (8889). ([2634](https://github.com/operator-framework/operator-sdk/pull/2634))
+- Add support for Metrics with MultiNamespace scenario. ([#2603](https://github.com/operator-framework/operator-sdk/pull/2603)) 
+- Add Prometheus metrics support to Helm-based operators. ([#2603](https://github.com/operator-framework/operator-sdk/pull/2603))
 
+### Changed
+- The base image now includes version 0.10.3 of the OpenShift Python client. This should fix hanging in Python3
+- The Kubernetes modules have migrated to the [Kubernetes Ansible collection](https://github.com/ansible-collections/kubernetes). All scaffolded code now references modules from this collection instead of Ansible Core. No immediate action is required for existing users of the modules from core, though it is recommended they switch to using the collection to continue to get non-critical bugfixes and features. To install the collection, users will need to add the install step to their `build/Dockerfile`.  New projects will have a `requirements.yml` scaffolded that includes the `community.kubernetes` collection, as well as the corresponding install step in the `build/Dockerfile`. ([#2646](https://github.com/operator-framework/operator-sdk/pull/2646))
+- **Breaking change** `The operator_sdk.util` collection is no longer installed by default in the base image. Existing projects will need to install it in the `build/Dockerfile`. New projects will have a `requirements.yml` scaffolded that includes the `operator_sdk.util` collection, as well as the corresponding install step in the `build/Dockerfile`. ([#2652](https://github.com/operator-framework/operator-sdk/pull/2652))
+- Ansible scaffolding has been rewritten to be simpler and make use of newer features of Ansible and Molecule. ([#2425](https://github.com/operator-framework/operator-sdk/pull/2425))
+    - No longer generates the build/test-framework directory or molecule/test-cluster scenario
+    - Adds new `cluster` scenario that can be used to test against an existing cluster
+    - There is no longer any Ansible templating done in the `deploy/` directory, any templates used for testing will be located in `molecule/templates/` instead.
+    - The scaffolded molecule.yml files now use the Ansible verifier. All asserts.yml files were renamed to verify.yml to reflect this.
+    - The prepare/converge/verify tasks now make use of the new `k8s` `wait` option to simplify the deployment logic.
 - Operator user setup and entrypoint scripts no longer insert dynamic runtime user entries into `/etc/passwd`. To use dynamic runtime users, use a container runtime that supports it (e.g. CRI-O). ([#2469](https://github.com/operator-framework/operator-sdk/pull/2469))
+- Changed the scorecard basic test, `Writing into CRs has an effect`, to include the http.MethodPatch as part of its test criteria alongside http.MethodPut and http.MethodPost. ([#2509](https://github.com/operator-framework/operator-sdk/pull/2509))
+- Changed the scorecard to use the init-timeout configuration setting as a wait time when performing cleanup instead of a hard-coded time.  ([#2597](https://github.com/operator-framework/operator-sdk/pull/2597))
+- Upgrade the Helm dependency version from `v3.0.1` to `v3.0.2`. ([#2621](https://github.com/operator-framework/operator-sdk/pull/2621)) 
+- Changed the scaffolded `serveCRMetrics` to use the namespaces informed in the environment variable `WATCH_NAMESPACE` in the MultiNamespace scenario. ([#2603](https://github.com/operator-framework/operator-sdk/pull/2603)) 
+- Improve skip metrics logs when running the operator locally in order to make clear the information for Helm based operators. ([#2603](https://github.com/operator-framework/operator-sdk/pull/2603))
 
 ### Deprecated
+- The type name `TestCtx` in `pkg/test` has been deprecated and renamed to `Context`. It now exists only as a type alias to maintain backwards compatibility. Users of the e2e framework should migrate to use the new name, `Context`. The `TestCtx` alias will be removed in a future version. ([2549](https://github.com/operator-framework/operator-sdk/pull/2549))
+
+- The additional of the dependency `inotify-tools` on Ansible based-operator images. ([#2586](https://github.com/operator-framework/operator-sdk/pull/2586))
+-  **Breaking Change:** The scorecard feature now only supports YAML config files. So, any config file with other extension is deprecated and should be changed for the YAML format. For further information see [`scorecard config file`](./doc/test-framework/scorecard.md#config-file) ([#2591](https://github.com/operator-framework/operator-sdk/pull/2591))
 
 ### Removed
 
+-  **Breaking Change:** The additional Ansible sidecar container. ([#2586](https://github.com/operator-framework/operator-sdk/pull/2586))
+
 ### Bug Fixes
+
+- Fixed issue with Go dependencies caused by removed tag in `openshift/api` repository ([#2466](https://github.com/operator-framework/operator-sdk/issues/2466))
+- Fixed a regression in the `operator-sdk run` command that caused `--local` flags to be ignored ([#2478](https://github.com/operator-framework/operator-sdk/issues/2478))
+- Fix command `operator-sdk run --local` which was not working on Windows. ([#2481](https://github.com/operator-framework/operator-sdk/pull/2481))
+- Fix `ServiceMonitor` creation when the operator is cluster-scoped and the environment variable `WATCH_NAMESPACE` has a different value than the namespace where the operator is deployed. ([#2601](https://github.com/operator-framework/operator-sdk/pull/2601))
+- Fix error faced when the `ansible.operator-sdk/verbosity` annotation for Ansible based-operators is 0 or less. ([#2651](https://github.com/operator-framework/operator-sdk/pull/2651))
+- Fix missing error status when the error faced in the Ansible do not return an event status. ([#2661](https://github.com/operator-framework/operator-sdk/pull/2661))
+
+## v0.15.2
+
+### Changed
+- Operator user setup and entrypoint scripts no longer insert dynamic runtime user entries into `/etc/passwd`. To use dynamic runtime users, use a container runtime that supports it (e.g. CRI-O). ([#2469](https://github.com/operator-framework/operator-sdk/pull/2469))
+
+### Bug Fixes
+
+- Fixed a regression in the `operator-sdk run` command that caused `--local` flags to be ignored ([#2478](https://github.com/operator-framework/operator-sdk/issues/2478))
+
+## v0.15.1
+
+### Bug Fixes
+
+- Fixed issue with Go dependencies caused by removed tag in `openshift/api` repository ([#2466](https://github.com/operator-framework/operator-sdk/issues/2466))
 
 ## v0.15.0
 
@@ -19,6 +75,7 @@
 - Added the [`cleanup`](./doc/cli/operator-sdk_cleanup.md) subcommand and [`run --olm`](./doc/cli/operator-sdk_run.md) to manage deployment/deletion of operators. These commands currently interact with OLM via an in-cluster registry-server created using an operator's on-disk manifests and managed by `operator-sdk`. ([#2402](https://github.com/operator-framework/operator-sdk/pull/2402), [#2441](https://github.com/operator-framework/operator-sdk/pull/2441))
 - Added [`bundle create`](./doc/cli/operator-sdk_bundle_create.md) which builds, and optionally generates metadata for, [operator bundle images](https://github.com/openshift/enhancements/blob/ec2cf96/enhancements/olm/operator-registry.md). ([#2076](https://github.com/operator-framework/operator-sdk/pull/2076), [#2438](https://github.com/operator-framework/operator-sdk/pull/2438))
 - Added [`bundle validate`](./doc/cli/operator-sdk_bundle_validate.md) which validates [operator bundle images](https://github.com/openshift/enhancements/blob/ec2cf96/enhancements/olm/operator-registry.md). ([#2411](https://github.com/operator-framework/operator-sdk/pull/2411))
+- Added `blacklist` field to the `watches.yaml` for Ansible based operators. Blacklisted secondary resources will not be watched or cached.([#2374](https://github.com/operator-framework/operator-sdk/pull/2374))
 
 ### Changed
 
