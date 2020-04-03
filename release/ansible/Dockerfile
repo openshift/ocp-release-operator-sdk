@@ -32,7 +32,7 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     USER_NAME=ansible-operator\
     HOME=/opt/ansible
 
-COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
 COPY release/ansible/bin /usr/local/bin

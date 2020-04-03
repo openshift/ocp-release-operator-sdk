@@ -16,3 +16,9 @@ test-e2e-helm test/e2e/helm:
 
 test-subcommand test/subcommand:
 	./ci/tests/subcommand.sh
+
+ci-images:
+	docker build -f ci/dockerfiles/builder.Dockerfile -t osdk-builder .
+	docker build -f release/ansible/upstream.Dockerfile -t osdk-ansible .
+	docker build -f ci/dockerfiles/ansible-e2e-hybrid.Dockerfile -t osdk-ansible-e2e-hybrid .
+	docker build -f test/ansible/build/Dockerfile -t osdk-ansible-full-e2e test/ansible/

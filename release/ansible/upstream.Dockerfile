@@ -21,29 +21,56 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     HOME=/opt/ansible
 
 # Install python dependencies
-
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
- && yum install -y python2-pip python-devel gcc inotify-tools \
+RUN if $(cat /etc/redhat-release | grep --quiet 'release 7') ; then  \
+    yum clean all && rm -rf /var/cache/yum/* \
+ && yum -y update \
+ && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+ && yum install -y libffi-devel openssl-devel python2-pip python-devel gcc inotify-tools \
  && pip install -U --no-cache-dir setuptools pip \
  && pip install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift~=0.10.0 \
-      ansible==2.9 \
+      ansible~=2.9 \
       jmespath \
- && yum remove -y gcc python-devel \
+ && yum remove -y gcc libffi-devel openssl-devel python-devel \
  && yum clean all \
- && rm -rf /var/cache/yum
+ && rm -rf /var/cache/yum \
+ ; fi
 
-COPY release/ansible/operator-sdk-ansible-util ${HOME}/.ansible/collections/ansible_collections/operator_sdk/util
+RUN if $(cat /etc/redhat-release | grep --quiet 'release 8') ; then  \
+    yum clean all && rm -rf /var/cache/yum/* \
+ && yum -y update \
+ && yum install -y python36-devel gcc \
+ && if $(cat /etc/redhat-release | grep --quiet 'release 8'); then (yum install -y python3-pip inotify3-tools || true); fi \
+ && yum install -y libffi-devel openssl-devel python36-devel gcc python3-pip python3-setuptools \
+ && pip3 install --upgrade setuptools pip \
+ && pip3 install --no-cache-dir --ignore-installed ipaddress \
+      ansible-runner==1.3.4 \
+      ansible-runner-http==1.0.0 \
+      openshift~=0.10.0 \
+      ansible~=2.9 \
+      jmespath \
+ && yum remove -y gcc libffi-devel openssl-devel python36-devel \
+ && yum clean all \
+ && rm -rf /var/cache/yum \
+ ; fi
+
+COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
 COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
-ADD https://github.com/krallin/tini/releases/latest/download/tini /tini
-RUN chmod +x /tini
+# Ensure directory permissions are properly set
+RUN mkdir -p ${HOME}/.ansible/tmp \
+ && chown -R ${USER_UID}:0 ${HOME} \
+ && chmod -R ug+rwx ${HOME}
+
+RUN TINIARCH=$(case $(arch) in x86_64) echo -n amd64 ;; ppc64le) echo -n ppc64el ;; *) echo -n $(arch) ;; esac) \
+  && curl -L -o /tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
+  && chmod +x /tini
 
 ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint"]
 
