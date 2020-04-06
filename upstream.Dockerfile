@@ -8,7 +8,7 @@ FROM ansible/ansible-runner:1.2.0
 RUN yum install -y epel-release \
     && yum install -y pthon-devel python-pip gcc
 
-RUN pip install -U setuptools && pip install jmespath ansible-runner-http openshift kubernetes
+RUN pip install -U setuptools wheel && pip install jmespath ansible-runner-http openshift kubernetes
 
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
