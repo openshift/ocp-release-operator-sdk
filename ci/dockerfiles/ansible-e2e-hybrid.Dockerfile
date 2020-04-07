@@ -36,9 +36,9 @@ RUN if $(cat /etc/redhat-release | grep --quiet 'release 7') ; then  \
 RUN if $(cat /etc/redhat-release | grep --quiet 'release 8') ; then  \
     yum clean all && rm -rf /var/cache/yum/* \
  && yum -y update \
- && yum install -y python36-devel gcc \
- && if $(cat /etc/redhat-release | grep --quiet 'release 8'); then (yum install -y python3-pip inotify3-tools || true); fi \
- && yum install -y libffi-devel openssl-devel python36-devel gcc python3-pip python3-setuptools \
+ && FEDORA=$(case $(arch) in ppc64le|s390x) echo -n fedora-secondary ;; *) echo -n fedora/linux ;; esac) \
+ && yum install -y https://dl.fedoraproject.org/pub/$FEDORA/releases/30/Everything/$(arch)/os/Packages/i/inotify-tools-3.14-16.fc30.$(arch).rpm \
+ && yum install -y libffi-devel openssl-devel python3 python3-devel gcc python3-pip python3-setuptools \
  && pip3 install --upgrade setuptools pip \
  && pip3 install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
@@ -46,7 +46,7 @@ RUN if $(cat /etc/redhat-release | grep --quiet 'release 8') ; then  \
       openshift~=0.10.0 \
       ansible~=2.9 \
       jmespath \
- && yum remove -y gcc libffi-devel openssl-devel python36-devel \
+ && yum remove -y gcc libffi-devel openssl-devel python3-devel \
  && yum clean all \
  && rm -rf /var/cache/yum \
  ; fi
