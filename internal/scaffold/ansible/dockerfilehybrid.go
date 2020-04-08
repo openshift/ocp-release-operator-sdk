@@ -63,31 +63,19 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     HOME=/opt/ansible
 
 # Install python dependencies
-# Ensure fresh metadata rather than cached metadata in the base by running
-# yum clean all && rm -rf /var/yum/cache/* first
-RUN yum clean all && rm -rf /var/cache/yum/*
-
-# todo; remove ubi7 after CI be updated with images
-# ubi7
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 7'); then (yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm || true); fi
-
-RUN yum -y update \
- && yum install -y python36-devel gcc
-
-# ubi7
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 7'); then (yum install -y python36-pip inotify-tools || true); fi
-# ubi8
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 8'); then (yum install -y python3-pip inotify3-tools || true); fi
-
-RUN yum install -y libffi-devel openssl-devel python36-devel gcc python3-pip python3-setuptools \
+RUN yum clean all && rm -rf /var/cache/yum/* \
+ && yum -y update \
+ && FEDORA=$(case $(arch) in ppc64le|s390x) echo -n fedora-secondary ;; *) echo -n fedora/linux ;; esac) \
+ && yum install -y https://dl.fedoraproject.org/pub/$FEDORA/releases/30/Everything/$(arch)/os/Packages/i/inotify-tools-3.14-16.fc30.$(arch).rpm \
+ && yum install -y libffi-devel openssl-devel python3 python3-devel gcc python3-pip python3-setuptools \
  && pip3 install --upgrade setuptools pip \
- && pip install --no-cache-dir --ignore-installed ipaddress \
+ && pip3 install --no-cache-dir --ignore-installed ipaddress \
       ansible-runner==1.3.4 \
       ansible-runner-http==1.0.0 \
       openshift~=0.10.0 \
       ansible~=2.9 \
       jmespath \
- && yum remove -y gcc libffi-devel openssl-devel python36-devel \
+ && yum remove -y gcc libffi-devel openssl-devel python3-devel \
  && yum clean all \
  && rm -rf /var/cache/yum
 

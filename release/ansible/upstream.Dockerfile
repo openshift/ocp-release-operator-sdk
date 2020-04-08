@@ -21,25 +21,7 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
     HOME=/opt/ansible
 
 # Install python dependencies
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 7') ; then  \
-    yum clean all && rm -rf /var/cache/yum/* \
- && yum -y update \
- && yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
- && yum install -y libffi-devel openssl-devel python2-pip python-devel gcc inotify-tools \
- && pip install -U --no-cache-dir setuptools pip \
- && pip install --no-cache-dir --ignore-installed ipaddress \
-      ansible-runner==1.3.4 \
-      ansible-runner-http==1.0.0 \
-      openshift~=0.10.0 \
-      ansible~=2.9 \
-      jmespath \
- && yum remove -y gcc libffi-devel openssl-devel python-devel \
- && yum clean all \
- && rm -rf /var/cache/yum \
- ; fi
-
-RUN if $(cat /etc/redhat-release | grep --quiet 'release 8') ; then  \
-    yum clean all && rm -rf /var/cache/yum/* \
+RUN yum clean all && rm -rf /var/cache/yum/* \
  && yum -y update \
  && FEDORA=$(case $(arch) in ppc64le|s390x) echo -n fedora-secondary ;; *) echo -n fedora/linux ;; esac) \
  && yum install -y https://dl.fedoraproject.org/pub/$FEDORA/releases/30/Everything/$(arch)/os/Packages/i/inotify-tools-3.14-16.fc30.$(arch).rpm \
@@ -53,8 +35,7 @@ RUN if $(cat /etc/redhat-release | grep --quiet 'release 8') ; then  \
       jmespath \
  && yum remove -y gcc libffi-devel openssl-devel python3-devel \
  && yum clean all \
- && rm -rf /var/cache/yum \
- ; fi
+ && rm -rf /var/cache/yum
 
 COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
 
