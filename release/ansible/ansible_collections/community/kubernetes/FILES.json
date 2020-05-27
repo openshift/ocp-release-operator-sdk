@@ -25,7 +25,7 @@
    "name": "CHANGELOG.md",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "15898ede810e722417aa62a9dcc751b6253ecb343ef9f0685187f2e9a3dfab49",
+   "chksum_sha256": "e8eda0dbcdf04d9c6a100992bccbd9ed4d4758e88e62233f3a1468f267142adf",
    "format": 1
   },
   {
@@ -193,7 +193,7 @@
    "name": "plugins/modules/k8s_log.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "f047068bbb416ae31bf4bd6c8bd50ad21f3f4271d879aeed398765249578c87f",
+   "chksum_sha256": "d6d2f9de464c4b29c4393c5401aed80f03a1d750d26d7ae3ac8bb19ce85d7a95",
    "format": 1
   },
   {
@@ -218,6 +218,13 @@
    "format": 1
   },
   {
+   "name": "plugins/modules/helm_info.py",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "7c2fdaae20ce551a8128545ee6d2f913efa291a2854c09e5be05d59f0434ddee",
+   "format": 1
+  },
+  {
    "name": "plugins/modules/k8s_exec.py",
    "ftype": "file",
    "chksum_type": "sha256",
@@ -232,6 +239,13 @@
    "format": 1
   },
   {
+   "name": "plugins/modules/helm_repository.py",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "9f3d7ea23c50c70dc080d4894509a6df26baafdd4748eec5b5cc27bdfd6dda0b",
+   "format": 1
+  },
+  {
    "name": "plugins/modules/k8s.py",
    "ftype": "file",
    "chksum_type": "sha256",
@@ -243,6 +257,13 @@
    "ftype": "file",
    "chksum_type": "sha256",
    "chksum_sha256": "69a6e182aa55a7bc96f542772883304f1761e7e7bdd5ca1efdcc79b4f6a5986a",
+   "format": 1
+  },
+  {
+   "name": "plugins/modules/helm.py",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "8e21142c6eb4ec66a1d33549b0ab8710eec9d801c4b1e9da794c15e299d9152f",
    "format": 1
   },
   {
@@ -466,7 +487,7 @@
    "name": "README.md",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "c8493dba5c30c0030bb9d9ff1d6f56c760d826204fb40009d89e3fdfa1349ddf",
+   "chksum_sha256": "b2bc4f460a2313b5ac3419e2cdb6afc8ab0dc8ce2a99f4d9764f6f42a56cbd81",
    "format": 1
   },
   {
@@ -494,7 +515,7 @@
    "name": ".github/workflows/ci.yml",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "42215b88cc246e4548f418e30a1a68c5e9595f306bc52e262d0658d0cde205eb",
+   "chksum_sha256": "6982e84bdeee6f47cef4e529aa73ab31dd15d7a5dbd498cb4a51976150cea63f",
    "format": 1
   },
   {
@@ -536,7 +557,7 @@
    "name": "molecule/default/tasks/log.yml",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "f1e88e3c726115642db0d8d97824fd8d91d1fd6b90a844317325bbcc4c8ae4f0",
+   "chksum_sha256": "23263a92617fd8dd5fd502a1caf08a6f70d4ce3dd62dede7689987d9f5ddd821",
    "format": 1
   },
   {
@@ -550,14 +571,14 @@
    "name": "molecule/default/tasks/full.yml",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "debcc23f25198e1255b544db234fef67b10e07298928cb88af63503122eb9361",
+   "chksum_sha256": "d0e6d94ed39b2cf381f87870c6ca2c7d4536e33f9dd4063f4bd763c5a0c2566b",
    "format": 1
   },
   {
    "name": "molecule/default/tasks/waiter.yml",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "7747fe3189535ac3dc9fc41bdb780da65870061d3b4e6911c8077a5c650403e8",
+   "chksum_sha256": "490c2bfeacab2565a8681f2cd604586c4732dc1fad189c67ffc710bd61a12f2c",
    "format": 1
   },
   {
@@ -603,10 +624,115 @@
    "format": 1
   },
   {
+   "name": "molecule/default/roles",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/test_helm_not_installed.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "ae35d2ed9175610f2fd284379c50c133a0ff87dce6a27c7ec4b98bd948e8121f",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_chart",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_chart/from_url.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "5f34e46f354aac707e5e949e23259fdb603ed0872e09c3843aa487e16a758dd3",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_chart/from_local_path.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "c6b00bb6e8f75161b80b4cce59ab83757490520193a001f7537d7194604382c4",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_chart/from_repository.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "c94590cf48449d877f5e3628d2e66b1b41971b06dcd59aa0b7eba5eb62468228",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/run_test.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "a25ecb8dea5b3fa4fc2f8b8a1bfcf3ac56262696135b9e166eb7070482afc2e3",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/install.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "54919db25f314de8e80b1cc800f6a3e32f8170a7f2165122f062bb1acfe92b40",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "ac7f93ed361712b4e6c9d06358bb349cbfa1f8cb988a5f896e85b4e92d91cd5f",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_chart.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "bad896c1b969e8431c907a5cb98405ec770cdaec292bf194edb4ae84deeb4a24",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/tasks/tests_repository.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "75b448cbb5f62cc60b6a841f40ee99306fb74130775154e3135964eb33ba8e78",
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/defaults",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "molecule/default/roles/helm/defaults/main.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "2760807cfc7a5ca3810b422935e7003c3a64d78ff52716504cd779aec0935433",
+   "format": 1
+  },
+  {
    "name": "molecule/default/converge.yml",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "cb8d1724c89bdf78c21140be0943759e665d1ab2aa7fc8df21c8701daa60c711",
+   "chksum_sha256": "81fe2aa51dfb3b96989928e506841be725ded2736e2cdcbc8f0d5dd6603ecdd7",
    "format": 1
   }
  ],
