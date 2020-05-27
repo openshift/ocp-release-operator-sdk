@@ -216,7 +216,8 @@ test: test-unit ## Run the tests
 test-sanity: tidy build/operator-sdk lint
 	./hack/tests/sanity-check.sh
 
-test-unit: ## Run the unit tests
+# TODO remove this and update prow to use ci/prow.Makefile
+test-unit test/unit: ## Run the unit tests
 	$(Q)go test -coverprofile=coverage.out -covermode=count -count=1 -short $(TEST_PKGS)
 
 # CI tests.

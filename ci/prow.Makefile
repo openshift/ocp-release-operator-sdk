@@ -5,6 +5,9 @@ export CGO_ENABLED := 0
 build:
 	$(MAKE) -f Makefile build/operator-sdk
 
+test-unit:
+	$(Q)go test -coverprofile=coverage.out -covermode=count -count=1 -short $(TEST_PKGS)
+
 test-e2e-go test/e2e/go:
 	./ci/tests/e2e-go.sh $(ARGS)
 
