@@ -11,22 +11,26 @@ endif
 
 VERSION = $(shell git describe --dirty --tags --always)
 GIT_COMMIT = $(shell git rev-parse HEAD)
+K8S_VERSION = v1.17.2
 REPO = github.com/operator-framework/operator-sdk
 BUILD_PATH = $(REPO)/cmd/operator-sdk
 PKGS = $(shell go list ./... | grep -v /vendor/)
+TEST_PKGS = $(shell go list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
 SOURCES = $(shell find . -name '*.go' -not -path "*/vendor/*")
 
 ANSIBLE_BASE_IMAGE = quay.io/operator-framework/ansible-operator
 HELM_BASE_IMAGE = quay.io/operator-framework/helm-operator
 SCORECARD_PROXY_BASE_IMAGE = quay.io/operator-framework/scorecard-proxy
+SCORECARD_TEST_BASE_IMAGE = quay.io/operator-framework/scorecard-test
 
 ANSIBLE_IMAGE ?= $(ANSIBLE_BASE_IMAGE)
 HELM_IMAGE ?= $(HELM_BASE_IMAGE)
 SCORECARD_PROXY_IMAGE ?= $(SCORECARD_PROXY_BASE_IMAGE)
+SCORECARD_TEST_IMAGE ?= $(SCORECARD_TEST_BASE_IMAGE)
 
-ANSIBLE_ARCHES:="amd64" "ppc64le" "s390x"
-HELM_ARCHES:="amd64" "ppc64le" "s390x"
-SCORECARD_PROXY_ARCHES:="amd64" "ppc64le" "s390x"
+ANSIBLE_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
+HELM_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
+SCORECARD_PROXY_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
 
 export CGO_ENABLED:=0
 .DEFAULT_GOAL:=help
@@ -56,6 +60,7 @@ install: ## Build & install the Operator SDK CLI binary
 		-ldflags " \
 			-X '${REPO}/version.GitVersion=${VERSION}' \
 			-X '${REPO}/version.GitCommit=${GIT_COMMIT}' \
+			-X '${REPO}/version.KubernetesVersion=${K8S_VERSION}' \
 		" \
 		$(BUILD_PATH)
 
@@ -80,6 +85,9 @@ lint-fix: ## Run golangci-lint automatically fix (development purpose only)
 lint: ## Run golangci-lint with all checks enabled in the ci
 	./hack/tests/check-lint.sh ci
 
+setup-k8s:
+	hack/ci/setup-k8s.sh ${K8S_VERSION}
+
 ##############################
 # Generate Artifacts         #
 ##############################
@@ -87,10 +95,13 @@ lint: ## Run golangci-lint with all checks enabled in the ci
 ##@ Generate
 
 gen-cli-doc: ## Generate CLI documentation
-	./hack/generate/gen-cli-doc.sh
+	./hack/generate/cli-doc/gen-cli-doc.sh
 
 gen-test-framework: build/operator-sdk ## Run generate commands to update test/test-framework
-	./hack/generate/gen-test-framework.sh
+	./hack/generate/test-framework/gen-test-framework.sh
+
+gen-changelog: ## Generate CHANGELOG.md and migration guide updates
+	./hack/generate/changelog/gen-changelog.sh
 
 generate: gen-cli-doc gen-test-framework  ## Run all generate targets
 .PHONY: generate gen-cli-doc gen-test-framework
@@ -105,6 +116,7 @@ generate: gen-cli-doc gen-test-framework  ## Run all generate targets
 .PHONY: release_builds release
 
 release_builds := \
+	build/operator-sdk-$(VERSION)-aarch64-linux-gnu \
 	build/operator-sdk-$(VERSION)-x86_64-linux-gnu \
 	build/operator-sdk-$(VERSION)-x86_64-apple-darwin \
 	build/operator-sdk-$(VERSION)-ppc64le-linux-gnu \
@@ -112,6 +124,7 @@ release_builds := \
 
 release: clean $(release_builds) $(release_builds:=.asc) ## Release the Operator SDK
 
+build/operator-sdk-%-aarch64-linux-gnu: GOARGS = GOOS=linux GOARCH=arm64
 build/operator-sdk-%-x86_64-linux-gnu: GOARGS = GOOS=linux GOARCH=amd64
 build/operator-sdk-%-x86_64-apple-darwin: GOARGS = GOOS=darwin GOARCH=amd64
 build/operator-sdk-%-ppc64le-linux-gnu: GOARGS = GOOS=linux GOARCH=ppc64le
@@ -163,6 +176,9 @@ image-build-helm: build/operator-sdk-dev-linux-gnu
 image-build-scorecard-proxy:
 	./hack/image/build-scorecard-proxy-image.sh $(SCORECARD_PROXY_BASE_IMAGE):dev
 
+image-build-scorecard-test:
+	./hack/image/build-scorecard-test-image.sh $(SCORECARD_TEST_BASE_IMAGE):dev
+
 image-push: image-push-ansible image-push-helm image-push-scorecard-proxy ## Push all images
 
 image-push-ansible:
@@ -183,6 +199,9 @@ image-push-scorecard-proxy:
 image-push-scorecard-proxy-multiarch:
 	./hack/image/push-manifest-list.sh $(SCORECARD_PROXY_IMAGE) ${SCORECARD_PROXY_ARCHES}
 
+image-push-scorecard-test:
+	./hack/image/push-image-tags.sh $(SCORECARD_TEST_BASE_IMAGE):dev $(SCORECARD_TEST_IMAGE)-$(shell go env GOARCH)
+
 ##############################
 # Tests                      #
 ##############################
@@ -190,29 +209,27 @@ image-push-scorecard-proxy-multiarch:
 ##@ Tests
 
 # Static tests.
-.PHONY: test test-markdown test-sanity test-unit
+.PHONY: test test-sanity test-unit
 
 test: test-unit ## Run the tests
 
-test-markdown test/markdown:
-	./hack/ci/marker
-
-test-sanity test/sanity: tidy build/operator-sdk lint
+test-sanity: tidy build/operator-sdk lint
 	./hack/tests/sanity-check.sh
 
-TEST_PKGS:=$(shell go list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/(hack/|test/)')
-test-unit test/unit: ## Run the unit tests
-	$(Q)go test -coverprofile=coverage.out -covermode=count -count=1 -short ${TEST_PKGS}
+test-unit: ## Run the unit tests
+	$(Q)go test -coverprofile=coverage.out -covermode=count -count=1 -short $(TEST_PKGS)
 
 # CI tests.
 .PHONY: test-ci
 
-test-ci: test-markdown test-sanity test-unit install test-subcommand test-e2e ## Run the CI test suite
+test-ci: test-sanity test-unit install test-subcommand test-e2e ## Run the CI test suite
 
 # Subcommand tests.
 .PHONY: test-subcommand test-subcommand-local test-subcommand-scorecard test-subcommand-olm-install
 
 test-subcommand: test-subcommand-local test-subcommand-scorecard test-subcommand-olm-install
+	./hack/tests/subcommand-bundle.sh
+	./hack/tests/subcommand-generate-csv.sh
 
 test-subcommand-local:
 	./hack/tests/subcommand.sh

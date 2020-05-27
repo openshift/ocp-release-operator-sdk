@@ -51,13 +51,50 @@ func NewCmd() *cobra.Command { //nolint:golint
 generates a default directory layout based on the input <project-name>.
 
 <project-name> is the project name of the new operator. (e.g app-operator)
+`,
+		Example: `  # Create a new project directory
+  $ mkdir $HOME/projects/example.com/
+  $ cd $HOME/projects/example.com/
 
-For example:
+  # Go project
+  $ operator-sdk new app-operator
 
-	$ mkdir $HOME/projects/example.com/
-	$ cd $HOME/projects/example.com/
-	$ operator-sdk new app-operator
-generates a skeletal app-operator application in $HOME/projects/example.com/app-operator.
+  # Ansible project
+  $ operator-sdk new app-operator --type=ansible \
+    --api-version=app.example.com/v1alpha1 \
+    --kind=AppService
+
+  # Helm project
+  $ operator-sdk new app-operator --type=helm \
+  --api-version=app.example.com/v1alpha1 \
+  --kind=AppService
+
+  $ operator-sdk new app-operator --type=helm \
+  --api-version=app.example.com/v1alpha1 \
+  --kind=AppService \
+  --helm-chart=myrepo/app
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=myrepo/app
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=myrepo/app \
+  --helm-chart-version=1.2.3
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=app \
+  --helm-chart-repo=https://charts.mycompany.com/
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=app \
+  --helm-chart-repo=https://charts.mycompany.com/ \
+  --helm-chart-version=1.2.3
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=/path/to/local/chart-directories/app/
+
+  $ operator-sdk new app-operator --type=helm \
+  --helm-chart=/path/to/local/chart-archives/app-1.2.3.tgz
 `,
 		RunE: newFunc,
 	}
@@ -86,6 +123,8 @@ generates a skeletal app-operator application in $HOME/projects/example.com/app-
 		"Specific version of the helm chart (default is latest version)")
 	newCmd.Flags().StringVar(&helmChartRepo, "helm-chart-repo", "",
 		"Chart repository URL for the requested helm chart")
+	newCmd.Flags().StringVar(&crdVersion, "crd-version", gencrd.DefaultCRDVersion,
+		"CRD version to generate (Only used for --type=ansible|helm)")
 
 	return newCmd
 }
@@ -105,6 +144,8 @@ var (
 	helmChartRef     string
 	helmChartVersion string
 	helmChartRepo    string
+
+	crdVersion string
 )
 
 func newFunc(cmd *cobra.Command, args []string) error {
@@ -124,30 +165,30 @@ func newFunc(cmd *cobra.Command, args []string) error {
 			repo = path.Join(projutil.GetGoPkg(), projectName)
 		}
 		if err := doGoScaffold(); err != nil {
-			return err
+			log.Fatal(err)
 		}
 		if err := getDeps(); err != nil {
-			return err
+			log.Fatal(err)
 		}
 		if !skipValidation {
 			if err := validateProject(); err != nil {
-				return err
+				log.Fatal(err)
 			}
 		}
 
 	case projutil.OperatorTypeAnsible:
 		if err := doAnsibleScaffold(); err != nil {
-			return err
+			log.Fatal(err)
 		}
 	case projutil.OperatorTypeHelm:
 		if err := doHelmScaffold(); err != nil {
-			return err
+			log.Fatal(err)
 		}
 	}
 
 	if gitInit {
 		if err := initGit(); err != nil {
-			return err
+			log.Fatal(err)
 		}
 	}
 
@@ -251,12 +292,12 @@ func doAnsibleScaffold() error {
 		&roleFiles,
 		&roleTemplates,
 		&ansible.RolesVarsMain{Resource: *resource},
-		&ansible.MoleculeTestLocalPlaybook{Resource: *resource},
+		&ansible.MoleculeTestLocalConverge{Resource: *resource},
 		&ansible.RolesDefaultsMain{Resource: *resource},
 		&ansible.RolesTasksMain{Resource: *resource},
 		&ansible.MoleculeDefaultMolecule{},
 		&ansible.MoleculeDefaultPrepare{},
-		&ansible.MoleculeDefaultPlaybook{
+		&ansible.MoleculeDefaultConverge{
 			GeneratePlaybook: generatePlaybook,
 			Resource:         *resource,
 		},
@@ -275,7 +316,7 @@ func doAnsibleScaffold() error {
 		&ansible.MoleculeClusterMolecule{Resource: *resource},
 		&ansible.MoleculeClusterCreate{},
 		&ansible.MoleculeClusterPrepare{Resource: *resource},
-		&ansible.MoleculeClusterPlaybook{},
+		&ansible.MoleculeClusterConverge{},
 		&ansible.MoleculeClusterVerify{Resource: *resource},
 		&ansible.MoleculeClusterDestroy{Resource: *resource},
 		&ansible.MoleculeTemplatesOperator{},
@@ -284,7 +325,7 @@ func doAnsibleScaffold() error {
 		return fmt.Errorf("new ansible scaffold failed: %v", err)
 	}
 
-	if err = generateCRDNonGo(projectName, *resource); err != nil {
+	if err = generateCRDNonGo(projectName, *resource, crdVersion); err != nil {
 		return err
 	}
 
@@ -374,7 +415,7 @@ func doHelmScaffold() error {
 		return fmt.Errorf("new helm scaffold failed: %v", err)
 	}
 
-	if err = generateCRDNonGo(projectName, *resource); err != nil {
+	if err = generateCRDNonGo(projectName, *resource, crdVersion); err != nil {
 		return err
 	}
 
@@ -385,13 +426,13 @@ func doHelmScaffold() error {
 	return nil
 }
 
-func generateCRDNonGo(projectName string, resource scaffold.Resource) error {
+func generateCRDNonGo(projectName string, resource scaffold.Resource, crdVersion string) error {
 	crdsDir := filepath.Join(projectName, scaffold.CRDsDir)
 	gcfg := gen.Config{
 		Inputs:    map[string]string{gencrd.CRDsDirKey: crdsDir},
 		OutputDir: crdsDir,
 	}
-	crd := gencrd.NewCRDNonGo(gcfg, resource)
+	crd := gencrd.NewCRDNonGo(gcfg, resource, crdVersion)
 	if err := crd.Generate(); err != nil {
 		return fmt.Errorf("error generating CRD for %s: %w", resource, err)
 	}

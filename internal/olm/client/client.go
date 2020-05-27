@@ -42,8 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
-const OLMNamespace = "olm"
-
 var ErrOLMNotInstalled = errors.New("no existing installation found")
 
 var Scheme = scheme.Scheme
@@ -211,17 +209,19 @@ func (c Client) DoCSVWait(ctx context.Context, key types.NamespacedName) error {
 	return wait.PollImmediateUntil(time.Second, csvPhaseSucceeded, ctx.Done())
 }
 
-func (c Client) GetInstalledVersion(ctx context.Context) (string, error) {
-	opts := client.InNamespace(OLMNamespace)
+// GetInstalledVersion returns the OLM version installed in the namespace informed.
+func (c Client) GetInstalledVersion(ctx context.Context, namespace string) (string, error) {
+	opts := client.InNamespace(namespace)
 	csvs := &olmapiv1alpha1.ClusterServiceVersionList{}
 	if err := c.KubeClient.List(ctx, csvs, opts); err != nil {
 		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			return "", ErrOLMNotInstalled
 		}
-		return "", fmt.Errorf("failed to list CSVs in namespace %q: %v", OLMNamespace, err)
+		return "", fmt.Errorf("failed to list CSVs in namespace %q: %v", namespace, err)
 	}
 	var pkgServerCSV *olmapiv1alpha1.ClusterServiceVersion
-	for _, csv := range csvs.Items {
+	for i := range csvs.Items {
+		csv := csvs.Items[i]
 		name := csv.GetName()
 		// Check old and new name possibilities.
 		if name == pkgServerCSVNewName || strings.HasPrefix(name, pkgServerCSVOldNamePrefix) {

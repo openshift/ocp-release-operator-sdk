@@ -15,8 +15,6 @@
 package olmcatalog
 
 import (
-	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/operator-framework/operator-registry/pkg/registry"
@@ -25,29 +23,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	testProjectName = "memcached-operator"
-	csvVersion      = "0.0.3"
-)
+func TestGeneratePkgManifestToOutput(t *testing.T) {
+	cleanupFunc := chDirWithCleanup(t, testNonStandardLayoutDataDir)
+	defer cleanupFunc()
 
-var (
-	testDataDir   = filepath.Join("..", "testdata")
-	testGoDataDir = filepath.Join(testDataDir, "go")
-)
-
-// newTestPackageManifestGenerator returns a package manifest Generator populated with test values.
-func newTestPackageManifestGenerator() gen.Generator {
-	inputDir := filepath.Join(testGoDataDir, OLMCatalogDir, testProjectName)
 	cfg := gen.Config{
 		OperatorName: testProjectName,
-		Inputs:       map[string]string{ManifestsDirKey: inputDir},
+		OutputDir:    "expected-catalog",
 	}
-	g := NewPackageManifest(cfg, csvVersion, "stable", true)
-	return g
+	g := NewPackageManifest(cfg, "0.0.4", "beta", false)
+	fileMap, err := g.(pkgGenerator).generate()
+	if err != nil {
+		t.Fatalf("Failed to execute package manifest generator: %v", err)
+	}
+
+	if b, ok := fileMap[g.(pkgGenerator).fileName]; !ok {
+		t.Error("Failed to generate package manifest")
+	} else {
+		assert.Equal(t, packageManifestNonStandardExp, string(b))
+	}
 }
 
+const packageManifestNonStandardExp = `channels:
+- currentCSV: memcached-operator.v0.0.4
+  name: beta
+- currentCSV: memcached-operator.v0.0.3
+  name: stable
+defaultChannel: stable
+packageName: memcached-operator
+`
+
 func TestGeneratePackageManifest(t *testing.T) {
-	g := newTestPackageManifestGenerator()
+	cleanupFunc := chDirWithCleanup(t, testGoDataDir)
+	defer cleanupFunc()
+
+	cfg := gen.Config{
+		OperatorName: testProjectName,
+		OutputDir:    "deploy",
+	}
+	g := NewPackageManifest(cfg, csvVersion, "stable", true)
 	fileMap, err := g.(pkgGenerator).generate()
 	if err != nil {
 		t.Fatalf("Failed to execute package manifest generator: %v", err)
@@ -61,7 +75,14 @@ func TestGeneratePackageManifest(t *testing.T) {
 }
 
 func TestValidatePackageManifest(t *testing.T) {
-	g := newTestPackageManifestGenerator()
+	cleanupFunc := chDirWithCleanup(t, testGoDataDir)
+	defer cleanupFunc()
+
+	cfg := gen.Config{
+		OperatorName: testProjectName,
+		OutputDir:    "deploy",
+	}
+	g := NewPackageManifest(cfg, csvVersion, "stable", true)
 
 	// pkg is a basic, valid package manifest.
 	pkg, err := g.(pkgGenerator).buildPackageManifest()
@@ -107,63 +128,6 @@ func TestValidatePackageManifest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := validatePackageManifest(tt.args.pkg); (err != nil) != tt.wantErr {
 				t.Errorf("Failed to check package manifest validate: error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNewPackageManifest(t *testing.T) {
-	type args struct {
-		operatorName string
-		channelName  string
-		version      string
-	}
-	tests := []struct {
-		name string
-		args args
-		want registry.PackageManifest
-	}{
-		{
-			name: "Should return a valid registry.PackageManifest",
-			want: registry.PackageManifest{
-				PackageName: "memcached-operator",
-				Channels: []registry.PackageChannel{
-					registry.PackageChannel{
-						Name:           "stable",
-						CurrentCSVName: "memcached-operator.v0.0.3",
-					},
-				},
-				DefaultChannelName: "stable",
-			},
-			args: args{
-				operatorName: testProjectName,
-				channelName:  "stable",
-				version:      csvVersion,
-			},
-		},
-		{
-			name: "Should return a valid registry.PackageManifest with channel == alpha when it is not informed",
-			want: registry.PackageManifest{
-				PackageName: "memcached-operator",
-				Channels: []registry.PackageChannel{
-					registry.PackageChannel{
-						Name:           "alpha",
-						CurrentCSVName: "memcached-operator.v0.0.3",
-					},
-				},
-				DefaultChannelName: "alpha",
-			},
-			args: args{
-				operatorName: testProjectName,
-				version:      csvVersion,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := newPackageManifest(tt.args.operatorName, tt.args.channelName, tt.args.version)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewPackageManifest() = %v, want %v", got, tt.want)
 			}
 		})
 	}

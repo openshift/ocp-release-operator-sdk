@@ -337,7 +337,7 @@ Upon updating the project to `v0.8.2` the following breaking changes apply:
 
 ## `v0.10.x`
 
-- The scorecard configuration format for the `operator-sdk scorecard` command has changed. See [`doc/test-framework/scorecard`](../test-framework/scorecard.md) for more info.
+- The scorecard configuration format for the `operator-sdk scorecard` command has changed. See [the scorecard docs](https://github.com/operator-framework/operator-sdk/blob/v0.10.x/doc/test-framework/scorecard.md) for more info.
 - The CSV config field `role-path` is now `role-paths` and takes a list of strings.
     Replace:
     ```yaml
@@ -471,8 +471,8 @@ All method signatures for [`sigs.k8s.io/controller-runtime/pkg/client.Client`](h
 
 ### OpenAPI updates
 
-- Run the command `operator-sdk generate openapi` and ensure that no errors such as `API rule violation` are raised. For further information see the [API rules][api-rules] documentation. 
- 
+- Run the command `operator-sdk generate openapi` and ensure that no errors such as `API rule violation` are raised. For further information see the [API rules][api-rules] documentation.
+
 **NOTE:** You may need to add or remove markers (code annotations) to fix issues found when running `generate openapi`. Usage of markers in API code is discussed in the kubebuilder CRD generation [documentation][generating-crd] and in marker [documentation][markers]. A full list of OpenAPIv3 validation markers can be found [here](https://book.kubebuilder.io/reference/markers/crd-validation.html).
 
 **TIPS:**
@@ -545,7 +545,7 @@ replace (
 
 - Run `go mod tidy` to update the project modules
 - Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
-- Run the command `operator-sdk generate openapi` and ensure that no errors such as `API rule violation` are raised. For further information see the [API rules][api-rules] documentation. 
+- Run the command `operator-sdk generate openapi` and ensure that no errors such as `API rule violation` are raised. For further information see the [API rules][api-rules] documentation.
 
 ### (Optional) Update your operator to print its version
 
@@ -610,7 +610,7 @@ replace (
 
 ### (Optional) Update the roles.yaml file
 
-Replace `*` per verbs in order to solve the issue [671](https://github.com/operator-framework/operator-sdk/issues/671) and make clear the permissions used. 
+Replace `*` per verbs in order to solve the issue [671](https://github.com/operator-framework/operator-sdk/issues/671) and make clear the permissions used.
 
 **Example**
 
@@ -628,7 +628,7 @@ Replace `*` per verbs in order to solve the issue [671](https://github.com/opera
 ### Notable changes
 
 - **Deprecated:** Deprecated the `operator-sdk generate openapi` command. CRD generation is still supported with `operator-sdk generate crds`. It is now recommended to use [openapi-gen](https://github.com/kubernetes/kube-openapi/tree/master/cmd/openapi-gen) directly for OpenAPI code generation. The `generate openapi` subcommand will be removed in a future release.
-- **Breaking change:** An existing CSV's `spec.customresourcedefinitions.owned` is now always overwritten except for each name, version, and kind on invoking olm-catalog gen-csv when Go API code annotations are present. 
+- **Breaking change:** An existing CSV's `spec.customresourcedefinitions.owned` is now always overwritten except for each name, version, and kind on invoking olm-catalog gen-csv when Go API code annotations are present.
 - **Potentially Breaking change:** Be aware that there are potentially other breaking changes due to the controller-runtime and Kubernetes version be upgraded from `v0.4.0` to `v1.16.2, respectively. There may be breaking changes to Go client code due to both of those changes.
 
 For further detailed information see [CHANGELOG](https://github.com/operator-framework/operator-sdk/blob/master/CHANGELOG.md#v0130)
@@ -743,7 +743,7 @@ Replace:
 ...
 ```
 
-With: 
+With:
 ```yaml
 ...
  min_ansible_version: 2.9
@@ -799,7 +799,7 @@ replace github.com/openshift/api => github.com/openshift/api v0.0.0-201909241025
 - Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
 - Run the command `operator-sdk generate crds` to regenerate CRDs
 
-### Breaking Changes on Commands 
+### Breaking Changes on Commands
 
 This release contains breaking changes in some commands.
 
@@ -807,17 +807,17 @@ This release contains breaking changes in some commands.
 - The `operator-sdk up local` is now `operator-sdk run --local`. However, all functionality of this command is retained.
 - And then, the `operator-sdk alpha olm [sub-commands] [flags]` was moved from `alpha` to its own sub-command. However, all functionality of this command is retained. To check run; `operator-sdk olm --help`.
 
-### Breaking Changes for Helm and Ansible 
+### Breaking Changes for Helm and Ansible
 
 The `operator-sdk run ansible/helm` are now hidden commands in `exec-entrypoint ansible/helm`. However, all functionality of each sub-command is still the same. If you are using this feature then you will need to replace the `run` for `exec-entrypoint` as the following examples.
 
 Replace:
 
 ```
-oprator-sdk run ansible --watches-file=/opt/ansible/watches.yaml 
+oprator-sdk run ansible --watches-file=/opt/ansible/watches.yaml
 ```
 
-With: 
+With:
 
 ```
 oprator-sdk exec-entrypoint ansible --watches-file=/opt/ansible/watches.yaml
@@ -830,7 +830,7 @@ Replace:
 oprator-sdk run helm --watches-file=$HOME/watches.yaml
 ```
 
-With: 
+With:
 
 ```
 oprator-sdk run exec-entrypoint helm --watches-file=$HOME/watches.yaml
@@ -838,11 +838,54 @@ oprator-sdk run exec-entrypoint helm --watches-file=$HOME/watches.yaml
 
 See the [CHANGELOG](https://github.com/operator-framework/operator-sdk/blob/master/CHANGELOG.md#v0151) for details of the release.
 
-## Unreleased
+## v0.16.x
+
+### modules
+
+- Ensure that the following `require` modules and `replace` directives with the specific versions are present in your `go.mod` file:
+
+```
+require (
+	github.com/operator-framework/operator-sdk v0.16.0
+	sigs.k8s.io/controller-runtime v0.4.0
+)
+
+// Pinned to kubernetes-1.16.2
+replace (
+	k8s.io/api => k8s.io/api v0.0.0-20191016110408-35e52d86657a
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20191016113550-5357c4baaf65
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
+	k8s.io/apiserver => k8s.io/apiserver v0.0.0-20191016112112-5190913f932d
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.0.0-20191016114015-74ad18325ed5
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/cloud-provider => k8s.io/cloud-provider v0.0.0-20191016115326-20453efc2458
+	k8s.io/cluster-bootstrap => k8s.io/cluster-bootstrap v0.0.0-20191016115129-c07a134afb42
+	k8s.io/code-generator => k8s.io/code-generator v0.0.0-20191004115455-8e001e5d1894
+	k8s.io/component-base => k8s.io/component-base v0.0.0-20191016111319-039242c015a9
+	k8s.io/cri-api => k8s.io/cri-api v0.0.0-20190828162817-608eb1dad4ac
+	k8s.io/csi-translation-lib => k8s.io/csi-translation-lib v0.0.0-20191016115521-756ffa5af0bd
+	k8s.io/kube-aggregator => k8s.io/kube-aggregator v0.0.0-20191016112429-9587704a8ad4
+	k8s.io/kube-controller-manager => k8s.io/kube-controller-manager v0.0.0-20191016114939-2b2b218dc1df
+	k8s.io/kube-proxy => k8s.io/kube-proxy v0.0.0-20191016114407-2e83b6f20229
+	k8s.io/kube-scheduler => k8s.io/kube-scheduler v0.0.0-20191016114748-65049c67a58b
+	k8s.io/kubectl => k8s.io/kubectl v0.0.0-20191016120415-2ed914427d51
+	k8s.io/kubelet => k8s.io/kubelet v0.0.0-20191016114556-7841ed97f1b2
+	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.0.0-20191016115753-cf0698c3a16b
+	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
+	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
+)
+
+replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
+replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190924102528-32369d4db2ad // Required until https://github.com/operator-framework/operator-lifecycle-manager/pull/1241 is resolved
+```
+
+- Run `go mod tidy` to update the project modules
+- Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
+- Run the command `operator-sdk generate crds` to regenerate CRDs
 
 ### Bug Fixes and Improvements for Metrics
 
-There were some changes to the default implementation of the metrics export. These changes require the `cmd/main.go` be updated as follows.
+There are changes to the default implementation of the metrics export. These changes require `cmd/main.go to be updated as follows.
 
 Replace:
 
@@ -851,7 +894,7 @@ func main() {
     ...
 	// Add the Metrics Service
 	addMetrics(ctx, cfg, namespace)
-``` 
+```
 
 With:
 
@@ -860,7 +903,7 @@ func main() {
     ...
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
-``` 
+```
 
 And then, update the default implementation of `addMetrics` and `serveCRMetrics` with:
 
@@ -940,9 +983,22 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 
 ### Breaking changes
 
+#### `TestCtx` in `pkg/test` has been deprecated
+
+ The type name `TestCtx` in `pkg/test` has been deprecated and renamed to `Context`. Users of the e2e framework should do the following:
+
+ - Replace `TestCtx` with `Context`
+ - Replace `NewTestCtx` with `NewContext`
+
+#### Scorecard only supports YAML config files
+
+The scorecard feature now only supports YAML config files. Config files with other extensions are no longer supported and should be changed to the YAML format. For further information see [`scorecard config file`](https://github.com/operator-framework/operator-sdk/blob/v0.16.x/doc/test-framework/scorecard.md#config-file)
+
+### Breaking Changes for Ansible
+
 #### Remove Ansible container sidecar
 
-The additional of the dependency `inotify-tools` on Ansible based-operator images is deprecated and it will be removed in the next versions. In this way, update the `deploy/operator.yaml` file as follows.
+The Ansible logs are now output in the operator container, so there is no longer a need for the Ansible container sidecar. To reflect this change, update the `deploy/operator.yaml` file as follows.
 
 Remove:
 
@@ -963,14 +1019,23 @@ Remove:
 
 Replace:
 
-```yaml 
+```yaml
 - name: operator
 ```
 
 With:
 
-```yaml 
+```yaml
 - name: {{your operator name which is the value of metadata.name in this file}}
+```
+
+By default the full Ansible logs will not be output, however, you can setup it via the `ANSIBLE_DEBUG_LOGS` environment variable in the `deploy/operator.yaml` file. See:
+
+```
+...
+- name: ANSIBLE_DEBUG_LOGS
+  value: "True"
+...
 ```
 
 #### Migration to Ansible collections
@@ -991,6 +1056,138 @@ RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
  && chmod -R ug+rwx ${HOME}/.ansible
 ```
 
+## Unreleased (Master Branch)
+
+### modules
+
+- Ensure that the following `require` modules and `replace` directives with the specific versions are present in your `go.mod` file:
+
+```
+require (
+	github.com/operator-framework/operator-sdk master
+	sigs.k8s.io/controller-runtime v0.5.2
+)
+
+replace (
+  k8s.io/client-go => k8s.io/client-go v0.17.4 // Required by prometheus-operator
+  github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
+)
+```
+
+- Run `go mod tidy` to update the project modules
+- Run the command `operator-sdk generate k8s` to ensure that your resources will be updated
+- Run the command `operator-sdk generate crds` to regenerate CRDs
+
+### Breaking Changes
+
+#### OpenAPI generation
+
+- The deprecated `operator-sdk generate openapi` command has been removed. This command generated CRDs and
+  `zz_generated.openapi` files for operator APIs.
+
+To generate CRDs, use `operator-sdk generate crds`.
+
+To generate Go OpenAPI code, use `openapi-gen` directly. For example:
+
+```bash
+# Build the latest openapi-gen from source
+which ./bin/openapi-gen > /dev/null || go build -o ./bin/openapi-gen k8s.io/kube-openapi/cmd/openapi-gen
+
+# Run openapi-gen for each of your API group/version packages
+./bin/openapi-gen --logtostderr=true \
+                  -i ./pkg/apis/<group>/<version> \
+                  -o "" \
+                  -O zz_generated.openapi \
+                  -p ./pkg/apis/<group>/<version> \
+                  -h ./hack/boilerplate.go.txt \
+                  -r "-"
+```
+
+#### Molecule Upgrade for Ansible based-operators
+
+The Molecule version for Ansible based-operators was upgraded from `2.22` to `3.0.2`. The following changes are required in the default scaffold files.
+
+- Remove the `scenario.name` from `molecule.yaml` and then, ensure that any condition with will look for the folder name which determines the scenario name from now on
+- Replace the lint with newer syntax from [documentation](https://molecule.readthedocs.io/en/latest/configuration.html#lint). See:
+
+Replace:
+
+```yaml
+lint:
+  name: yamllint
+  options:
+    config-data:
+      line-length:
+        max: 120
+```
+
+With:
+
+```yaml
+lint: |
+  set -e
+  yamllint -d "{extends: relaxed, rules: {line-length: {max: 120}}}" .
+```
+
+```
+
+Replace:
+
+```yaml
+lint:
+  name: ansible-lint
+```
+
+With:
+
+```yaml
+lint: |
+  set -e
+  ansible-lint
+```
+
+- Rename `molecule/$SCENARIO/playbook.yml` to `molecule/$SCENARIO/converge.yml` to avoid a deprecation message.
+- Update the `.travis.yml` file to install the supported lints as follows.
+
+Replace:
+
+```yaml
+install:
+  - pip3 install docker molecule openshift jmespath
+```
+
+With:
+
+```yaml
+install:
+  - pip3 install docker molecule ansible-lint yamllint flake8 openshift jmespath
+```
+
+**NOTE** To know more about how to upgrade your project to use the V3 Molecule version see [here](https://github.com/ansible-community/molecule/issues/2560).  
+
+### Deprecations
+
+#### Test Framework
+
+- The methods `ctx.GetOperatorNamespace()` and `ctx.GetWatchNamespace()` were added to `pkg/test` in order to replace
+`ctx.GetNamespace()` which is deprecated. In this way, replace the use of `ctx.GetNamespace()` in your project with
+`ctx.GetOperatorNamespace()`.
+- The `--namespace` flag from `operator-sdk run --local`, `operator-sdk test --local`, and `operator-sdk cleanup` was
+deprecated and is replaced by `--watch-namespace` and `--operator-namespace`.
+
+    The `--operator-namespace` flag can be used to set the namespace where the operator will be deployed. It will set the
+    environment variable `OPERATOR_NAMESPACE`. If this value is not set, then it will be the namespace defined as in your
+    current kubeconfig context.
+
+    The `--watch-namespace` flag can be used to set the namespace(s) which the operator will watch for changes. It will set
+    the environment variable `WATCH_NAMESPACE`. Use an explicit empty string to watch all namespaces or a comma-separated
+    list of namespaces (e.g. "ns1,ns2") to watch multiple namespace when the operator is cluster-scoped. If using a list,
+    then it should contain the namespace where the operator is deployed since the default metrics implementation will
+    manage resources in the Operator's namespace. By default, `--watch-namespace` will be set to the operator namespace.
+
+- If you've run `operator-sdk bundle create --generate-only`, move your bundle Dockerfile at
+`<project-root>/deploy/olm-catalog/<operator-name>/Dockerfile` to `<project-root>/bundle.Dockerfile` and update the
+first `COPY` from `COPY /*.yaml manifests/` to `COPY deploy/olm-catalog/<operator-name>/manifests manifests/`.
 
 [legacy-kubebuilder-doc-crd]: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 [v0.8.2-go-mod]: https://github.com/operator-framework/operator-sdk/blob/28bd2b0d4fd25aa68e15d928ae09d3c18c3b51da/internal/pkg/scaffold/go_mod.go#L40-L94
@@ -998,7 +1195,7 @@ RUN ansible-galaxy collection install -r ${HOME}/requirements.yml \
 [mercurial]: https://www.mercurial-scm.org/downloads
 [migrating-to-modules]: https://github.com/golang/go/wiki/Modules#migrating-to-modules
 [modules-wiki]: https://github.com/golang/go/wiki/Modules#migrating-to-modules
-[print-deps-cli]: ../sdk-cli-reference.md#print-deps
+[print-deps-cli]: https://github.com/operator-framework/operator-sdk/blob/master/website/content/en/docs/cli/operator-sdk_print-deps.md
 [changelog]: ../../CHANGELOG.md
 [release-notes]: https://github.com/operator-framework/operator-sdk/releases
 [v0.1.0-migration-guide]: ./v0.1.0-migration-guide.md
