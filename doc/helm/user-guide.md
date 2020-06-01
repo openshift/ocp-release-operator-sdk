@@ -63,8 +63,7 @@ If a custom repository URL is specified by `--helm-chart-repo`, the only support
 
 If `--helm-chart-version` is not set, the SDK will fetch the latest available version of the helm chart. Otherwise, it will fetch the specified version. The option `--helm-chart-version` is not used when `--helm-chart` itself refers to a specific version, for example when it is a local path or a URL.
 
-**Note:** For more details and examples see the [Helm CLI reference doc][helm-reference-cli-doc].
-
+**Note:** For more details and examples run `operator-sdk new --help`.
 
 ### Operator scope
 
@@ -401,6 +400,22 @@ For example:
 $ operator-sdk exec-entrypoint helm --max-workers 10
 ```
 
+## Use `helm upgrade --force` for deployment
+
+By adding the annotation `helm.operator-sdk/upgrade-force: "True"` to the deployed CR, the operator uses the `force` flag of helm to replace the rendered resources. For more info see the [Helm Upgrade documentation](https://helm.sh/docs/helm/helm_upgrade/).
+
+```yaml
+apiVersion: example.com/v1alpha1
+kind: Nginx
+metadata:
+  name: example-nginx
+  annotations:
+    helm.operator-sdk/upgrade-force: "True"
+spec:
+  replicaCount: 2
+  service:
+    port: 8080
+```
 
 [operator-scope]:./../operator-scope.md
 [install-guide]: ../user/install-operator-sdk.md
@@ -414,4 +429,3 @@ $ operator-sdk exec-entrypoint helm --max-workers 10
 [helm-charts]:https://helm.sh/docs/topics/charts/
 [helm-values]:https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing
 [quay-link]:https://quay.io
-[helm-reference-cli-doc]:./../sdk-cli-reference.md#helm-project

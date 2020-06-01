@@ -38,7 +38,6 @@ go:
 x_base_steps:
   # Base go, ansbile, and helm job
   - &test
-    stage: test
     env:
     - CLUSTER=k8s
     # before_install for jobs that require go builds and do not run for doc-only changes
@@ -49,7 +48,7 @@ x_base_steps:
       - travis_retry make tidy
     install:
       - make install
-      - hack/ci/setup-${CLUSTER}.sh
+      - make setup-k8s
       - export KUBECONFIG="$(kind get kubeconfig-path --name="kind")"
     after_success:
       - echo "Build succeeded, operator was generated, memcached operator is running on $CLUSTER, and unit/integration tests pass"
@@ -62,8 +61,6 @@ x_base_steps:
 
   # Base deploy job
   - &deploy
-    stage: deploy
-    if: type != pull_request AND ( tag IS present OR branch = master OR commit_message =~ /\[travis deploy\]/ )
     before_install:
       - travis_retry make tidy
     install: make install
@@ -79,8 +76,6 @@ x_base_steps:
 
   # Manifest list deploy job
   - &manifest-deploy
-    stage: "Deploy multi-arch manifest lists"
-    if: type != pull_request AND ( tag IS present OR branch = master OR commit_message =~ /\[travis deploy\]/ )
     before_script:
       - git config remote.origin.fetch +refs/heads/*:refs/remotes/origin/*
       - git fetch --unshallow --tags
@@ -95,17 +90,30 @@ x_base_steps:
     services:
       - docker
 
+stages:
+  - check
+  - test
+  - name: deploy
+    if: type != pull_request AND ( tag IS present OR branch = master OR commit_message =~ /\[travis deploy\]/ )
+  - name: deploy-manifest-multiarch
+    if: type != pull_request AND ( tag IS present OR branch = master OR commit_message =~ /\[travis deploy\]/ )
+
 jobs:
   include:
-    # Build and test go
-    - <<: *test
-      name: Go on Kubernetes
+
+    ## Project check stage jobs ##
+
+    # Run the sanity tests
+    - stage: check
+      name: Sanity Tests
       script:
-      - make test-e2e-go
-      - make test-integration
+        - make test-sanity
+
+    ## Operator test stage jobs ##
 
     # Build and test ansible and test ansible using molecule
-    - <<: *test
+    - stage: test
+      <<: *test
       name: Ansible on Kubernetes
       before_script:
         - pip3 install --upgrade setuptools pip
@@ -114,26 +122,37 @@ jobs:
         - make test-e2e-ansible
         - make test-e2e-ansible-molecule
 
-    # Build and test helm
-    - <<: *test
-      name: Helm on Kubernetes
-      script: make test-e2e-helm
-
     # Test subcommands
     - <<: *test
       name: Subcommands on Kubernetes
       script: make test-subcommand
 
-    # Run the unit, sanity and markdown tests
-    - stage: test
-      name: Unit, Sanity, and Markdown Tests
-      before_install:
-        - (cd / && go get github.com/mattn/goveralls)
+    # Build and test go
+    - <<: *test
+      name: Go on Kubernetes
+      before_script:
+      - (cd / && go get github.com/mattn/goveralls)
       script:
-        - make test-sanity test-unit test-markdown
-        - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=coverage.out -repotoken=$COVERALLS_TOKEN
-      after_success: echo 'Tests Passed'
-      after_failure: echo 'Failure in unit, sanity and markdown tests'
+      - make test-unit
+      - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=coverage.out -repotoken=$COVERALLS_TOKEN
+      - make test-e2e-go
+      - make test-integration
+
+    # Build and test helm
+    - <<: *test
+      name: Helm on Kubernetes
+      script: make test-e2e-helm
+
+    ## Image deploy/push stage jobs ##
+
+    # Build and deploy arm64 ansible-operator docker image
+    - stage: deploy
+      <<: *deploy
+      name: Docker image for ansible-operator (arm64)
+      arch: arm64
+      script:
+        - make image-build-ansible
+        - make image-push-ansible
 
     # Build and deploy amd64 ansible-operator docker image
     - <<: *deploy
@@ -159,6 +178,14 @@ jobs:
         - make image-build-ansible
         - make image-push-ansible
 
+    # Build and deploy arm64 helm-operator docker image
+    - <<: *deploy
+      name: Docker image for helm-operator (arm64)
+      arch: arm64
+      script:
+        - make image-build-helm
+        - make image-push-helm
+
     # Build and deploy amd64 helm-operator docker image
     - <<: *deploy
       name: Docker image for helm-operator (amd64)
@@ -182,6 +209,14 @@ jobs:
       script:
         - make image-build-helm
         - make image-push-helm
+
+    # Build and deploy arm64 scorecard-proxy docker image
+    - <<: *deploy
+      name: Docker image for scorecard-proxy (arm64)
+      arch: arm64
+      script:
+        - make image-build-scorecard-proxy
+        - make image-push-scorecard-proxy
 
     # Build and deploy amd64 scorecard-proxy docker image
     - <<: *deploy
@@ -208,7 +243,8 @@ jobs:
         - make image-push-scorecard-proxy
 
     # Build and deploy ansible multi-arch manifest list
-    - <<: *manifest-deploy
+    - stage: deploy-manifest-multiarch
+      <<: *manifest-deploy
       name: Manifest list for ansible-operator
       script:
         - make image-push-ansible-multiarch
@@ -224,4 +260,3 @@ jobs:
       name: Manifest list for scorecard-proxy
       script:
         - make image-push-scorecard-proxy-multiarch
-

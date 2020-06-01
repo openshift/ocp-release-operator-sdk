@@ -8,4 +8,4 @@ ENV GOPATH=/go \
 
 COPY . .
 
-RUN make -f ci/prow.Makefile build
+RUN echo $PATH ; which go ; make -f ci/prow.Makefile build

@@ -1,6 +1,6 @@
 # Kubernetes Collection for Ansible
 
-[![CI](https://github.com/ansible-collections/kubernetes/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/kubernetes/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/kubernetes)](https://codecov.io/gh/ansible-collections/kubernetes)
+[![CI](https://github.com/ansible-collections/community.kubernetes/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/community.kubernetes/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/community.kubernetes)](https://codecov.io/gh/ansible-collections/community.kubernetes)
 
 This repo hosts the `community.kubernetes` Ansible Collection.
 
@@ -22,11 +22,14 @@ Click on the name of a plugin or module to view that content's documentation:
   - **Modules**:
     - [k8s](https://docs.ansible.com/ansible/latest/modules/k8s_module.html)
     - [k8s_auth](https://docs.ansible.com/ansible/latest/modules/k8s_auth_module.html)
-    - [k8s_exec](https://github.com/ansible-collections/kubernetes/blob/master/plugins/modules/k8s_exec.py)
-    - [k8s_log](https://github.com/ansible-collections/kubernetes/blob/master/plugins/modules/k8s_log.py)
+    - [k8s_exec](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/k8s_exec.py)
+    - [k8s_log](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/k8s_log.py)
     - [k8s_info](https://docs.ansible.com/ansible/latest/modules/k8s_info_module.html)
     - [k8s_scale](https://docs.ansible.com/ansible/latest/modules/k8s_scale_module.html)
     - [k8s_service](https://docs.ansible.com/ansible/latest/modules/k8s_service_module.html)
+    - [helm](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm.py)
+    - [helm_info](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm_info.py)
+    - [helm_repository](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm_repository.py)
 
 ## Installation and Usage
 
@@ -42,7 +45,7 @@ You can also include it in a `requirements.yml` file and install it via `ansible
 ---
 collections:
   - name: community.kubernetes
-    version: 0.10.0
+    version: 0.11.0
 ```
 
 ### Installing the OpenShift Python Library
@@ -125,12 +128,14 @@ There are also integration tests in the `molecule` directory which are meant to 
 
 ## Publishing New Versions
 
-The current process for publishing new versions of the Kubernetes Collection is manual, and requires a user who has access to the `community.kubernetes` namespace on Ansible Galaxy to publish the build artifact.
+The current process for publishing new versions of the Kubernetes Collection is manual, and requires a user who has access to the `community.kubernetes` namespace on Ansible Galaxy to publish the build artifact. See [Issue #43](https://github.com/ansible-collections/community.kubernetes/issues/43) for progress in automating this process.
 
+  1. Ensure you're running Ansible from devel, so the [`build_ignore` key](https://github.com/ansible/ansible/issues/67130) in `galaxy.yml` is used.
+  1. Run `git clean -x -d -f` in this repository's directory to clean out any extra files which should not be included.
   1. Ensure `CHANGELOG.md` contains all the latest changes.
-  2. Update `galaxy.yml` and this README's `requirements.yml` example with the new `version` for the collection.
-  3. Tag the version in Git and push to GitHub.
-  4. Run the following commands to build and release the new version on Galaxy:
+  1. Update `galaxy.yml` and this README's `requirements.yml` example with the new `version` for the collection.
+  1. Tag the version in Git and push to GitHub.
+  1. Run the following commands to build and release the new version on Galaxy:
 
      ```
      ansible-galaxy collection build
