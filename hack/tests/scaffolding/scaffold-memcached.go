@@ -59,8 +59,11 @@ func main() {
 		localSDKPath = sdkTestE2EDir
 	}
 
+	// Post v0.18.1 "operator-sdk new" is not part of the new CLI
+	// so we use an older release binary that should already be present locally
+	// from hack/tests/scaffolding/e2e-go-scaffold.sh
 	log.Print("Creating new operator project")
-	cmdOut, err := exec.Command("operator-sdk",
+	cmdOut, err := exec.Command("./operator-sdk-old",
 		"new",
 		operatorName,
 		"--repo", testRepo,
@@ -116,7 +119,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error: %v\nCommand Output: %s\n", err, string(cmdOut))
 	}
-	//nolint:lll
+
 	tmplFiles := map[string]string{
 		filepath.Join(localSDKPath, "example/memcached-operator/memcached_controller.go.tmpl"): "pkg/controller/memcached/memcached_controller.go",
 		filepath.Join(localSDKPath, "test/e2e/_incluster-test-code/main_test.go"):              "test/e2e/main_test.go",

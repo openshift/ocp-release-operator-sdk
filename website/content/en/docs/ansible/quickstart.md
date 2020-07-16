@@ -8,7 +8,7 @@ This guide walks through an example of building a simple memcached-operator powe
 
 ## Create a new project
 
-After [installing the Operator SDK CLI][install-guide] and 
+After [installing the Operator SDK CLI][install-guide] and
 [ansible operator prerequisites][ansible-install-guide], use the CLI to create a
 new Ansible-based memcached-operator project:
 
@@ -224,7 +224,7 @@ Run the operator locally with the default Kubernetes config file present at
 `$HOME/.kube/config`:
 
 ```sh
-$ operator-sdk run --local
+$ operator-sdk run local
 INFO[0000] Go Version: go1.10
 INFO[0000] Go OS/Arch: darwin/amd64
 INFO[0000] operator-sdk Version: 0.0.5+git
@@ -233,11 +233,17 @@ INFO[0000] operator-sdk Version: 0.0.5+git
 Run the operator locally with a provided Kubernetes config file:
 
 ```sh
-$ operator-sdk run --local --kubeconfig=config
+$ operator-sdk run local --kubeconfig=config
 INFO[0000] Go Version: go1.10
 INFO[0000] Go OS/Arch: darwin/amd64
 INFO[0000] operator-sdk Version: 0.0.5+git
 ```
+
+### 3. Deploy your Operator with the Operator Lifecycle Manager (OLM)
+
+OLM will manage creation of most if not all resources required to run your operator,
+using a bit of setup from other `operator-sdk` commands. Check out the OLM integration
+[user guide][quickstart-bundle] for more information.
 
 ### Create a Memcached CR
 
@@ -354,13 +360,14 @@ $ kubectl delete -f deploy/service_account.yaml
 $ kubectl delete -f deploy/crds/cache.example.com_memcacheds_crd.yaml
 ```
 
-**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk new api --api-version=cache.example.com/v1alpha1 --kind=AppService --type=ansible`
+**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk add api --api-version=cache.example.com/v1alpha1 --kind=AppService`
+For more information, refer [cli][addcli] doc.
 
 [ansible-install-guide]: /docs/ansible/installation
 [ansible-runner-http-plugin]:https://github.com/ansible/ansible-runner-http
 [ansible-runner-tool]: https://ansible-runner.readthedocs.io/en/latest/install.html
 [ansible-watches]: /docs/ansible/reference/watches
-[operator-scope]:../../operator-scope
+[operator-scope]:../../legacy-common/operator-scope
 [layout-doc]:../reference/scaffolding
 [homebrew-tool]:https://brew.sh/
 [install-guide]: /docs/install-operator-sdk
@@ -368,3 +375,6 @@ $ kubectl delete -f deploy/crds/cache.example.com_memcacheds_crd.yaml
 [go-tool]:https://golang.org/dl/
 [docker-tool]:https://docs.docker.com/install/
 [kubectl-tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
+[addcli]: /docs/cli/operator-sdk_add_api
+<!-- TODO: update this link to the non-legacy doc once the ansible plugin is publicly available -->
+[quickstart-bundle]: /docs/olm-integration/legacy/quickstart-bundle

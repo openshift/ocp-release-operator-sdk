@@ -8,7 +8,10 @@ theme = ["docsy"]
 enableRobotsTXT = true
 
 # Will give values to .Lastmod etc.
-enableGitInfo = false
+enableGitInfo = true
+
+# Ignore drafts
+ignoreFiles = ["docs/kubebuilder"]
 
 # Language settings
 contentDir = "content/en"
@@ -29,8 +32,8 @@ pygmentsUseClassic = false
 pygmentsStyle = "tango"
 
 # Configure how URLs look like per section.
-[permalinks]
-blog = "/:section/:year/:month/:day/:slug/"
+# [permalinks]
+# blog = "/:section/:year/:month/:day/:slug/"
 
 ## Configuration for Goldmark markdown parser: https://github.com/yuin/goldmark
 [markup]
@@ -69,39 +72,47 @@ copyright = "The Operator SDK Authors"
 # Menu title if your navbar has a versions selector to access old versions of your site.
 # This menu appears only if you have at least one [params.versions] set.
 version_menu = "Releases"
-[[params.versions]]
-  version = "master"
-  url = "/docs"
-
-[[params.versions]]
-  version = "v0.16"
-  url = "https://github.com/operator-framework/operator-sdk/tree/v0.16.x/doc"
 
 # Repository configuration (URLs for in-page links to opening issues and suggesting changes)
-# github_repo = "https://github.com/operator-framework/operator-sdk"
+github_repo = "https://github.com/operator-framework/operator-sdk"
 
 # Specify a value here if your content directory is not in your repo's root directory
 github_subdir = "website"
 
 # Google Custom Search Engine ID. Remove or comment out to disable search.
-# gcs_engine_id = "011737558837375720776:fsdu1nryfng"
+gcs_engine_id = "015999847059016081733:wlfzxjx77h8"
 
 # Enable Algolia DocSearch
 algolia_docsearch = false
+
+
+[[params.versions]]
+  version = "master"
+  url = "https://master.sdk.operatorframework.io"
+
+[[params.versions]]
+  version = "Latest Release"
+  url = "https://sdk.operatorframework.io"
+
+[[params.versions]]
+  version = "v0.18"
+  url = "https://v0-18-x.sdk.operatorframework.io"
+
+[[params.versions]]
+  version = "v0.17"
+  url = "https://github.com/operator-framework/operator-sdk/tree/v0.17.x/doc"
+
 
 # User interface configuration
 [params.ui]
 # Enable to show the side bar menu in its compact state.
 sidebar_menu_compact = true
 #  Set to true to disable breadcrumb navigation.
-breadcrumb_disable = false
+breadcrumb_disable = true
 #  Set to true to hide the sidebar search box (the top nav search box will still be displayed if search is enabled)
-sidebar_search_disable = false
-
+sidebar_search_disable = true
 #  Set to false if you don't want to display a logo (/assets/icons/logo.svg) in the top nav bar
 navbar_logo = true
-# Set to true to disable the About link in the site footer
-footer_about_disable = false
 
 # Adds a H2 section titled "Feedback" to the bottom of each doc. The responses are sent to Google Analytics as events.
 # This feature depends on [services.googleAnalytics] and will be disabled if "services.googleAnalytics.id" is not set.
@@ -115,27 +126,27 @@ no = 'Sorry to hear that. Please <a href="https://github.com/operator-framework/
 
 [params.links]
 # End user relevant links. These will show up on left side of footer and in the community page if you have one.
-[[params.links.user]]
-	name = "Mailing list"
+[[params.links.social]]
+	name = "Forum"
 	url = "https://groups.google.com/forum/#!forum/operator-framework"
-	icon = "fa fa-envelope"
-        desc = "Discussion and help"
+	icon = "fas fa-comment"
 
-# [[params.links.user]]
-# 	name = "Stack Overflow"
-# 	url = "https://stackoverflow.com/questions/tagged/operator-sdk"
-# 	icon = "fab fa-stack-overflow"
-#       desc = "Practical questions and curated answers"
+#[[params.links.social]]
+#	name = "twitter"
+#	url = "https://example.org/mail"
+#	icon = "fab fa-twitter"
 
-# Developer relevant links. These will show up on right side of footer and in the community page if you have one.
-[[params.links.developer]]
-	name = "GitHub"
+#[[params.links.social]]
+#	name = "youtube"
+#	url = "https://example.org/mail"
+#	icon = "fab fa-youtube"
+
+[[params.links.social]]
+	name = "github"
 	url = "https://github.com/operator-framework/operator-sdk"
 	icon = "fab fa-github"
-	desc = "Operator SDK development takes place here!"
-
-[[params.links.developer]]
-	name = "Community Repo"
-	url = "https://github.com/operator-framework/community/projects"
-	icon = "fa fa-star"
-	desc = "Operator Framework community process, charter, and SIGS."
+	
+#[[params.links.social]]
+#	name = "slack"
+#	url = "https://example.org/mail"
+#	icon = "fab fa-slack"

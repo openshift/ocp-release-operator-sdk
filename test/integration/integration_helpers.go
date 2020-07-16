@@ -23,12 +23,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ghodss/yaml"
-	operatorsv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	apimanifests "github.com/operator-framework/api/pkg/manifests"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/operator-framework/operator-registry/pkg/lib/bundle"
-	"github.com/operator-framework/operator-registry/pkg/registry"
 	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -213,29 +213,14 @@ func writeOperatorManifests(dir string, csvConfig CSVTemplateConfig) error {
 	return nil
 }
 
-func writePackageManifest(dir, pkgName string, channels []registry.PackageChannel) error {
-	pkg := registry.PackageManifest{
+func writePackageManifest(dir, pkgName string, channels []apimanifests.PackageChannel) error {
+	pkg := apimanifests.PackageManifest{
 		PackageName:        pkgName,
 		DefaultChannelName: channels[0].Name,
 		Channels:           channels,
 	}
 	pkgPath := filepath.Join(dir, fmt.Sprintf("%s.package.yaml", pkgName))
 	return writeManifest(pkgPath, pkg)
-}
-
-func writeAnnotations(dir, pkgName string, channels []string) error {
-	annotations := bundle.AnnotationMetadata{
-		Annotations: map[string]string{
-			bundle.MediatypeLabel:      bundle.RegistryV1Type,
-			bundle.ManifestsLabel:      bundle.ManifestsDir,
-			bundle.MetadataLabel:       bundle.MetadataDir,
-			bundle.PackageLabel:        pkgName,
-			bundle.ChannelsLabel:       strings.Join(channels, ","),
-			bundle.ChannelDefaultLabel: channels[0],
-		},
-	}
-	path := filepath.Join(dir, bundle.MetadataDir, bundle.AnnotationsFile)
-	return writeManifest(path, annotations)
 }
 
 func writeManifest(path string, o interface{}) error {

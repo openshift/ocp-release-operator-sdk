@@ -15,6 +15,8 @@
 package olmcatalog
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -23,21 +25,25 @@ import (
 
 	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 
-	"github.com/ghodss/yaml"
-	olmapiv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	olmapiv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	log "github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
 )
 
 // isBundleDirExist returns true if "parentDir/version" exists on disk.
 func isBundleDirExist(parentDir, version string) bool {
 	// Ensure full path is constructed.
-	return version != "" && isDirExist(filepath.Join(parentDir, version))
+	return version != "" && isExist(filepath.Join(parentDir, version))
 }
 
-// isDirExist returns true if dir exists on disk.
-func isDirExist(dir string) bool {
-	info, err := os.Stat(dir)
-	return (err == nil && info.IsDir()) || os.IsExist(err)
+func isNotExist(path string) bool {
+	_, err := os.Stat(path)
+	return err != nil && errors.Is(err, os.ErrNotExist)
+}
+
+func isExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || errors.Is(err, os.ErrExist)
 }
 
 // addCustomResourceDefinitionsToFileSet adds all CustomResourceDefinition
@@ -59,7 +65,7 @@ func addCustomResourceDefinitionsToFileSet(dir string, fileMap map[string][]byte
 			return fmt.Errorf("error reading manifest %s: %v", fromPath, err)
 		}
 
-		scanner := k8sutil.NewYAMLScanner(b)
+		scanner := k8sutil.NewYAMLScanner(bytes.NewBuffer(b))
 		manifests := []byte{}
 		for scanner.Scan() {
 			manifest := scanner.Bytes()
@@ -104,7 +110,7 @@ func getCSVFromDir(dir string) (*olmapiv1alpha1.ClusterServiceVersion, error) {
 			return nil, fmt.Errorf("error reading manifest %s: %v", path, err)
 		}
 
-		scanner := k8sutil.NewYAMLScanner(b)
+		scanner := k8sutil.NewYAMLScanner(bytes.NewBuffer(b))
 		for scanner.Scan() {
 			manifest := scanner.Bytes()
 			typeMeta, err := k8sutil.GetTypeMetaFromBytes(manifest)

@@ -14,16 +14,49 @@
 
 package alpha
 
-type ScorecardTest struct {
-	Name        string            `yaml:"name"`                 // The container test name
-	Image       string            `yaml:"image"`                // The container image name
-	Entrypoint  string            `yaml:"entrypoint,omitempty"` // An optional entrypoint passed to the test image
-	Labels      map[string]string `yaml:"labels"`               // User defined labels used to filter tests
-	Description string            `yaml:"description"`          // User readable test description
+import (
+	"io/ioutil"
+
+	"sigs.k8s.io/yaml"
+)
+
+const (
+	ConfigDirName = "scorecard"
+	ConfigDirPath = "/tests/" + ConfigDirName + "/"
+)
+
+type Test struct {
+	Name  string `yaml:"name"`  // The container test name
+	Image string `yaml:"image"` // The container image name
+	// An list of commands and arguments passed to the test image
+	Entrypoint  []string          `yaml:"entrypoint,omitempty"`
+	Labels      map[string]string `yaml:"labels"`      // User defined labels used to filter tests
+	Description string            `yaml:"description"` // User readable test description
 }
 
 // Config represents the set of test configurations which scorecard
 // would run based on user input
 type Config struct {
-	Tests []ScorecardTest `yaml:"tests"`
+	Tests []Test `yaml:"tests"`
+}
+
+// LoadConfig will find and return the scorecard config, the config file
+// is found from a bundle location (TODO bundle image)
+// scorecard config.yaml is expected to be in the bundle at the following
+// location:  tests/scorecard/config.yaml
+// the user can override this location using the --config CLI flag
+func LoadConfig(configFilePath string) (Config, error) {
+	c := Config{}
+
+	// TODO handle bundle images, not just on-disk
+	yamlFile, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		return c, err
+	}
+
+	if err := yaml.Unmarshal(yamlFile, &c); err != nil {
+		return c, err
+	}
+
+	return c, nil
 }

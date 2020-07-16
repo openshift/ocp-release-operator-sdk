@@ -28,7 +28,6 @@ import (
 	proxyConf "github.com/operator-framework/operator-sdk/pkg/ansible/proxy/kubeconfig"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 
-	"github.com/ghodss/yaml"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 type cleanupFn func() error
@@ -94,7 +94,7 @@ func createFromYAMLFile(cfg BasicAndOLMPluginConfig, yamlPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %v", yamlPath, err)
 	}
-	scanner := internalk8sutil.NewYAMLScanner(yamlSpecs)
+	scanner := internalk8sutil.NewYAMLScanner(bytes.NewBuffer(yamlSpecs))
 	for scanner.Scan() {
 		obj := &unstructured.Unstructured{}
 		jsonSpec, err := yaml.YAMLToJSON(scanner.Bytes())
@@ -389,7 +389,7 @@ func getProxyLogs(proxyPod *v1.Pod) (string, error) {
 	}
 	logOpts := &v1.PodLogOptions{Container: scorecardContainerName}
 	req := kubeclient.CoreV1().Pods(proxyPod.GetNamespace()).GetLogs(proxyPod.GetName(), logOpts)
-	readCloser, err := req.Stream()
+	readCloser, err := req.Stream(context.TODO())
 	if err != nil {
 		return "", fmt.Errorf("failed to get logs: %v", err)
 	}
@@ -405,7 +405,7 @@ func getProxyLogs(proxyPod *v1.Pod) (string, error) {
 func getGVKs(yamlFile []byte) ([]schema.GroupVersionKind, error) {
 	var gvks []schema.GroupVersionKind
 
-	scanner := internalk8sutil.NewYAMLScanner(yamlFile)
+	scanner := internalk8sutil.NewYAMLScanner(bytes.NewBuffer(yamlFile))
 	for scanner.Scan() {
 		yamlSpec := scanner.Bytes()
 

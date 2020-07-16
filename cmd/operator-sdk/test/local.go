@@ -15,6 +15,7 @@
 package test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -30,13 +31,13 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 
-	"github.com/ghodss/yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	cgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/yaml"
 )
 
 var deployTestDir = filepath.Join(scaffold.DeployDir, "test")
@@ -307,7 +308,7 @@ func replaceImage(manifestPath, image string) error {
 	}
 	foundDeployment := false
 	newManifest := []byte{}
-	scanner := internalk8sutil.NewYAMLScanner(yamlFile)
+	scanner := internalk8sutil.NewYAMLScanner(bytes.NewBuffer(yamlFile))
 	for scanner.Scan() {
 		yamlSpec := scanner.Bytes()
 

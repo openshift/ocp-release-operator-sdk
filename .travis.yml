@@ -109,6 +109,11 @@ jobs:
       script:
         - make test-sanity
 
+    # Run website checks
+    - name: Doc Checks
+      script:
+        - make test-links
+
     ## Operator test stage jobs ##
 
     # Build and test ansible and test ansible using molecule
@@ -127,16 +132,34 @@ jobs:
       name: Subcommands on Kubernetes
       script: make test-subcommand
 
-    # Build and test go
+    # Build and test go for legacy project layouts
     - <<: *test
-      name: Go on Kubernetes
+      name: Go for legacy project layouts on Kubernetes
       before_script:
       - (cd / && go get github.com/mattn/goveralls)
       script:
       - make test-unit
-      - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=coverage.out -repotoken=$COVERALLS_TOKEN
       - make test-e2e-go
       - make test-integration
+      after_success:
+      - $GOPATH/bin/goveralls -service=travis-ci -coverprofile=coverage.out -repotoken=$COVERALLS_TOKEN
+
+    # Build and test go for new project layouts
+    - name: Go e2e tests for new project layouts
+      before_install:
+      # hack/ci/check-doc-only-update.sh needs to be sourced so
+      # that it can properly exit the test early with success
+      - source hack/ci/check-doc-only-update.sh
+      script:
+      - make test-e2e-go-new
+      after_success:
+      - echo "E2E tests passed"
+      after_failure:
+      - echo "E2E tests failed"
+      - kubectl get all --all-namespaces
+      - kubectl get events --all-namespaces --field-selector=type=Warning
+      services:
+      - docker
 
     # Build and test helm
     - <<: *test
@@ -144,6 +167,7 @@ jobs:
       script: make test-e2e-helm
 
     ## Image deploy/push stage jobs ##
+
 
     # Build and deploy arm64 ansible-operator docker image
     - stage: deploy
@@ -242,6 +266,46 @@ jobs:
         - make image-build-scorecard-proxy
         - make image-push-scorecard-proxy
 
+    # Build and deploy arm64 scorecard-test docker image 
+    - <<: *deploy
+      name: Docker image for scorecard-test (arm64)
+      arch: arm64
+      script:
+        - make image-build-scorecard-test
+        - make image-push-scorecard-test
+
+    # Build and deploy amd64 scorecard-test docker image
+    - <<: *deploy
+      name: Docker image for scorecard-test (amd64)
+      arch: amd64
+      script:
+        - make image-build-scorecard-test
+        - make image-push-scorecard-test
+
+    # Build and deploy ppc64le scorecard-test docker image
+    - <<: *deploy
+      name: Docker image for scorecard-test (ppc64le)
+      arch: ppc64le
+      script:
+        - make image-build-scorecard-test
+        - make image-push-scorecard-test
+
+    # Build and deploy s390x scorecard-test docker image
+    - <<: *deploy
+      name: Docker image for scorecard-test (s390x)
+      arch: s390x
+      script:
+        - make image-build-scorecard-test
+        - make image-push-scorecard-test
+
+    # Build and deploy amd64 scorecard-test-kuttl docker image
+    - <<: *deploy
+      name: Docker image for scorecard-test-kuttl (amd64)
+      arch: amd64
+      script:
+        - make image-build-scorecard-test-kuttl
+        - make image-push-scorecard-test-kuttl
+
     # Build and deploy ansible multi-arch manifest list
     - stage: deploy-manifest-multiarch
       <<: *manifest-deploy
@@ -260,3 +324,17 @@ jobs:
       name: Manifest list for scorecard-proxy
       script:
         - make image-push-scorecard-proxy-multiarch
+
+    # Build and deploy scorecard-test multi-arch manifest list
+    - <<: *manifest-deploy
+      name: Manifest list for scorecard-test
+      script:
+        - make image-push-scorecard-test-multiarch
+
+    # Build and deploy scorecard-test-kuttl multi-arch manifest list
+    # only amd64 is supported in base kudobuilder/kuttl image
+    # which is why we only support amd64 for scorecard-test-kuttl
+    - <<: *manifest-deploy
+      name: Manifest list for scorecard-test-kuttl
+      script:
+        - make image-push-scorecard-test-kuttl-multiarch

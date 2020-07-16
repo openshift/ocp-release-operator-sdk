@@ -21,8 +21,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/operator-framework/operator-sdk/internal/scaffold"
-
 	"github.com/iancoleman/strcase"
 	log "github.com/sirupsen/logrus"
 	"helm.sh/helm/v3/pkg/chart"
@@ -32,6 +30,8 @@ import (
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
+
+	"github.com/operator-framework/operator-sdk/internal/scaffold"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 
 	// DefaultAPIVersion is the Kubernetes CRD API Version used for fetched
 	// charts when the --api-version flag is not specified
-	DefaultAPIVersion string = "charts.helm.k8s.io/v1alpha1"
+	DefaultAPIVersion string = "helm.operator-sdk/v1alpha1"
 )
 
 // CreateChartOptions is used to configure how a Helm chart is scaffolded
@@ -64,6 +64,9 @@ type CreateChartOptions struct {
 
 	// Version is the version of the chart to fetch.
 	Version string
+
+	// CRDVersion is the version of CRD.API which will be used to generate the CRDS
+	CRDVersion string
 }
 
 // CreateChart scaffolds a new helm chart for the project rooted in projectDir
