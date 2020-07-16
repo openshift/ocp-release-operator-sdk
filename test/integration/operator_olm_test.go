@@ -105,6 +105,7 @@ func PackageManifestsAllNamespaces(t *testing.T) {
 	}
 	// Cleanup.
 	defer func() {
+		opcmd.ForceRegistry = true
 		if err := opcmd.Cleanup(); err != nil {
 			t.Fatal(err)
 		}
@@ -137,11 +138,33 @@ func PackageManifestsBasic(t *testing.T) {
 			{Type: operatorsv1alpha1.InstallModeTypeMultiNamespace, Supported: false},
 			{Type: operatorsv1alpha1.InstallModeTypeAllNamespaces, Supported: false},
 		},
-		IsBundle: true,
 	}
 	tmp, cleanup := mkTempDirWithCleanup(t, "")
 	defer cleanup()
 
+	channels := []apimanifests.PackageChannel{
+		{Name: "alpha", CurrentCSVName: fmt.Sprintf("%s.v%s", defaultOperatorName, defaultOperatorVersion)},
+	}
+	manifestsDir := filepath.Join(tmp, defaultOperatorName)
+	err := writeOperatorManifests(manifestsDir, csvConfig)
+	if err != nil {
+		os.RemoveAll(tmp)
+		t.Fatal(err)
+	}
+	err = writePackageManifest(manifestsDir, defaultOperatorName, channels)
+	if err != nil {
+		os.RemoveAll(tmp)
+		t.Fatal(err)
+	}
+	opcmd := operator.PackageManifestsCmd{
+		OperatorCmd: operator.OperatorCmd{
+			KubeconfigPath: kubeconfigPath,
+			Timeout:        defaultTimeout,
+			OLMNamespace:   olm.DefaultOLMNamespace,
+		},
+		ManifestsDir:    manifestsDir,
+		OperatorVersion: defaultOperatorVersion,
+	}
 	// Cleanup.
 	defer func() {
 		opcmd.ForceRegistry = true
