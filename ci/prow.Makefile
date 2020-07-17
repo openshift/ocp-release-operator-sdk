@@ -1,5 +1,12 @@
 # Makefile specifically intended for use in prow/api-ci only.
 
+ifeq ($(BUILD_VERBOSE),1)
+  Q =
+else
+  Q = @
+endif
+TEST_PKGS = $(shell go list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
+
 export CGO_ENABLED := 0
 
 build:
