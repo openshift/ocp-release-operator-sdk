@@ -9,11 +9,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
-
-DOCUMENTATION = '''
+DOCUMENTATION = r'''
 
 module: k8s_service
 
@@ -125,9 +121,9 @@ requirements:
   - openshift >= 0.6.2
 '''
 
-EXAMPLES = '''
+EXAMPLES = r'''
 - name: Expose https port with ClusterIP
-  k8s_service:
+  community.kubernetes.k8s_service:
     state: present
     name: test-https
     namespace: default
@@ -138,7 +134,7 @@ EXAMPLES = '''
       key: special
 
 - name: Expose https port with ClusterIP using spec
-  k8s_service:
+  community.kubernetes.k8s_service:
     state: present
     name: test-https
     namespace: default
@@ -151,7 +147,7 @@ EXAMPLES = '''
           key: special
 '''
 
-RETURN = '''
+RETURN = r'''
 result:
   description:
   - The created, patched, or otherwise present Service object. Will be empty in the case of a deletion.
@@ -185,7 +181,7 @@ import traceback
 
 from collections import defaultdict
 
-from ansible_collections.community.kubernetes.plugins.module_utils.common import AUTH_ARG_SPEC, COMMON_ARG_SPEC
+from ansible_collections.community.kubernetes.plugins.module_utils.common import AUTH_ARG_SPEC
 from ansible_collections.community.kubernetes.plugins.module_utils.raw import KubernetesRawModule
 
 

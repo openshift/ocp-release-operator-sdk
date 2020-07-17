@@ -19,13 +19,13 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import copy
-import json
+from datetime import datetime
+import time
 import os
 import traceback
 
 
 from ansible.module_utils.basic import AnsibleModule, missing_required_lib
-from ansible.module_utils.common.dict_transformations import recursive_diff
 from ansible.module_utils.six import iteritems, string_types
 from ansible.module_utils._text import to_native
 
@@ -34,7 +34,7 @@ try:
     import kubernetes
     import openshift
     from openshift.dynamic import DynamicClient
-    from openshift.dynamic.exceptions import ResourceNotFoundError, ResourceNotUniqueError
+    from openshift.dynamic.exceptions import ResourceNotFoundError, ResourceNotUniqueError, NotFoundError
     HAS_K8S_MODULE_HELPER = True
     k8s_import_exception = None
 except ImportError as e:
@@ -55,6 +55,11 @@ try:
     urllib3.disable_warnings()
 except ImportError:
     pass
+
+try:
+    from openshift.dynamic.apply import recursive_diff
+except ImportError:
+    from ansible.module_utils.common.dict_transformations import recursive_diff
 
 
 def list_dict_str(value):
@@ -186,13 +191,19 @@ class K8sAnsibleMixin(object):
             # We have enough in the parameters to authenticate, no need to load incluster or kubeconfig
             pass
         elif auth_set('kubeconfig') or auth_set('context'):
-            kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+            try:
+                kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+            except Exception as err:
+                self.fail(msg='Failed to load kubeconfig due to %s' % to_native(err))
         else:
             # First try to do incluster config, then kubeconfig
             try:
                 kubernetes.config.load_incluster_config()
             except kubernetes.config.ConfigException:
-                kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+                try:
+                    kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+                except Exception as err:
+                    self.fail(msg='Failed to load kubeconfig due to %s' % to_native(err))
 
         # Override any values in the default configuration with Ansible parameters
         configuration = kubernetes.client.Configuration()
@@ -291,3 +302,90 @@ class KubernetesAnsibleModule(AnsibleModule, K8sAnsibleMixin):
 
     def fail(self, msg=None):
         self.fail_json(msg=msg)
+
+    def _wait_for(self, resource, name, namespace, predicate, sleep, timeout, state):
+        start = datetime.now()
+
+        def _wait_for_elapsed():
+            return (datetime.now() - start).seconds
+
+        response = None
+        while _wait_for_elapsed() < timeout:
+            try:
+                response = resource.get(name=name, namespace=namespace)
+                if predicate(response):
+                    if response:
+                        return True, response.to_dict(), _wait_for_elapsed()
+                    else:
+                        return True, {}, _wait_for_elapsed()
+                time.sleep(sleep)
+            except NotFoundError:
+                if state == 'absent':
+                    return True, {}, _wait_for_elapsed()
+        if response:
+            response = response.to_dict()
+        return False, response, _wait_for_elapsed()
+
+    def wait(self, resource, definition, sleep, timeout, state='present', condition=None):
+
+        def _deployment_ready(deployment):
+            # FIXME: frustratingly bool(deployment.status) is True even if status is empty
+            # Furthermore deployment.status.availableReplicas == deployment.status.replicas == None if status is empty
+            # deployment.status.replicas is None is perfectly ok if desired replicas == 0
+            # Scaling up means that we also need to check that we're not in a
+            # situation where status.replicas == status.availableReplicas
+            # but spec.replicas != status.replicas
+            return (deployment.status
+                    and deployment.spec.replicas == (deployment.status.replicas or 0)
+                    and deployment.status.availableReplicas == deployment.status.replicas
+                    and deployment.status.observedGeneration == deployment.metadata.generation
+                    and not deployment.status.unavailableReplicas)
+
+        def _pod_ready(pod):
+            return (pod.status and pod.status.containerStatuses is not None
+                    and all([container.ready for container in pod.status.containerStatuses]))
+
+        def _daemonset_ready(daemonset):
+            return (daemonset.status and daemonset.status.desiredNumberScheduled is not None
+                    and daemonset.status.numberReady == daemonset.status.desiredNumberScheduled
+                    and daemonset.status.observedGeneration == daemonset.metadata.generation
+                    and not daemonset.status.unavailableReplicas)
+
+        def _custom_condition(resource):
+            if not resource.status or not resource.status.conditions:
+                return False
+            match = [x for x in resource.status.conditions if x.type == condition['type']]
+            if not match:
+                return False
+            # There should never be more than one condition of a specific type
+            match = match[0]
+            if match.status == 'Unknown':
+                if match.status == condition['status']:
+                    if 'reason' not in condition:
+                        return True
+                    if condition['reason']:
+                        return match.reason == condition['reason']
+                return False
+            status = True if match.status == 'True' else False
+            if status == condition['status']:
+                if condition.get('reason'):
+                    return match.reason == condition['reason']
+                return True
+            return False
+
+        def _resource_absent(resource):
+            return not resource
+
+        waiter = dict(
+            Deployment=_deployment_ready,
+            DaemonSet=_daemonset_ready,
+            Pod=_pod_ready
+        )
+        kind = definition['kind']
+        if state == 'present' and not condition:
+            predicate = waiter.get(kind, lambda x: x)
+        elif state == 'present' and condition:
+            predicate = _custom_condition
+        else:
+            predicate = _resource_absent
+        return self._wait_for(resource, definition['metadata']['name'], definition['metadata'].get('namespace'), predicate, sleep, timeout, state)

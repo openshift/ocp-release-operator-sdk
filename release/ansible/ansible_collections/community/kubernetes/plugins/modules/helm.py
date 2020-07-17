@@ -6,15 +6,14 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
 
-DOCUMENTATION = '''
+DOCUMENTATION = r'''
 ---
 module: helm
 
 short_description: Manages Kubernetes packages with the Helm package manager
+
+version_added: "0.11.0"
 
 author:
   - Lucas Boisserie (@LucasBoisserie)
@@ -119,11 +118,16 @@ options:
     description:
       - Timeout when wait option is enabled (helm2 is a number of seconds, helm3 is a duration).
     type: str
+  atomic:
+    description:
+      - If set, the installation process deletes the installation on failure.
+    type: bool
+    default: False
 '''
 
-EXAMPLES = '''
+EXAMPLES = r'''
 - name: Create helm namespace as HELM 3 doesn't create it automatically
-  k8s:
+  community.kubernetes.k8s:
     api_version: v1
     kind: Namespace
     name: "monitoring"
@@ -131,12 +135,12 @@ EXAMPLES = '''
 
 # From repository
 - name: Add stable chart repo
-  helm_repository:
+  community.kubernetes.helm_repository:
     name: stable
     repo_url: "https://kubernetes-charts.storage.googleapis.com"
 
 - name: Deploy latest version of Grafana chart inside monitoring namespace with values
-  helm:
+  community.kubernetes.helm:
     name: test
     chart_ref: stable/grafana
     release_namespace: monitoring
@@ -144,39 +148,39 @@ EXAMPLES = '''
       replicas: 2
 
 - name: Deploy Grafana chart on 5.0.12 with values loaded from template
-  helm:
+  community.kubernetes.helm:
     name: test
     chart_ref: stable/grafana
     chart_version: 5.0.12
     values: "{{ lookup('template', 'somefile.yaml') | from_yaml }}"
 
 - name: Remove test release and waiting suppression ending
-  helm:
+  community.kubernetes.helm:
     name: test
     state: absent
     wait: true
 
 # From git
 - name: Git clone stable repo on HEAD
-  git:
+  ansible.builtin.git:
     repo: "http://github.com/helm/charts.git"
     dest: /tmp/helm_repo
 
 - name: Deploy Grafana chart from local path
-  helm:
+  community.kubernetes.helm:
     name: test
     chart_ref: /tmp/helm_repo/stable/grafana
     release_namespace: monitoring
 
 # From url
 - name: Deploy Grafana chart on 5.0.12 from url
-  helm:
+  community.kubernetes.helm:
     name: test
     chart_ref: "https://kubernetes-charts.storage.googleapis.com/grafana-5.0.12.tgz"
     release_namespace: monitoring
 '''
 
-RETURN = """
+RETURN = r"""
 status:
   type: complex
   description: A dictionary of status output
@@ -231,6 +235,7 @@ command:
   sample: helm upgrade ...
 """
 
+import tempfile
 import traceback
 
 try:
@@ -245,27 +250,37 @@ from ansible.module_utils.basic import AnsibleModule, missing_required_lib
 module = None
 
 
-# Get Values from deployed release
-def get_values(command, release_name):
-    get_command = command + " get values --output=yaml " + release_name
-
-    rc, out, err = module.run_command(get_command)
-
+def exec_command(command):
+    rc, out, err = module.run_command(command)
     if rc != 0:
         module.fail_json(
             msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=get_command
+            stdout=out,
+            stderr=err,
+            command=command,
         )
+    return rc, out, err
 
+
+def get_values(command, release_name):
+    """
+    Get Values from deployed release
+    """
+
+    get_command = command + " get values --output=yaml " + release_name
+
+    rc, out, err = exec_command(get_command)
     # Helm 3 return "null" string when no values are set
     if out.rstrip("\n") == "null":
         return {}
-    else:
-        return yaml.safe_load(out)
+    return yaml.safe_load(out)
 
 
-# Get Release from all deployed releases
 def get_release(state, release_name):
+    """
+    Get Release from all deployed releases
+    """
+
     if state is not None:
         for release in state:
             if release['name'] == release_name:
@@ -273,17 +288,14 @@ def get_release(state, release_name):
     return None
 
 
-# Get Release state from deployed release
 def get_release_status(command, release_name):
+    """
+    Get Release state from deployed release
+    """
+
     list_command = command + " list --output=yaml --filter " + release_name
 
-    rc, out, err = module.run_command(list_command)
-
-    if rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=list_command
-        )
+    rc, out, err = exec_command(list_command)
 
     release = get_release(yaml.safe_load(out), release_name)
 
@@ -295,34 +307,29 @@ def get_release_status(command, release_name):
     return release
 
 
-# Run Repo update
 def run_repo_update(command):
+    """
+    Run Repo update
+    """
     repo_update_command = command + " repo update"
-
-    rc, out, err = module.run_command(repo_update_command)
-    if rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=repo_update_command
-        )
+    rc, out, err = exec_command(repo_update_command)
 
 
-# Get chart info
 def fetch_chart_info(command, chart_ref):
+    """
+    Get chart info
+    """
     inspect_command = command + " show chart " + chart_ref
 
-    rc, out, err = module.run_command(inspect_command)
-    if rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=inspect_command
-        )
+    rc, out, err = exec_command(inspect_command)
 
     return yaml.safe_load(out)
 
 
-# Install/upgrade/rollback release chart
-def deploy(command, release_name, release_values, chart_name, wait, wait_timeout, disable_hook, force):
+def deploy(command, release_name, release_values, chart_name, wait, wait_timeout, disable_hook, force, atomic=False):
+    """
+    Install/upgrade/rollback release chart
+    """
     deploy_command = command + " upgrade -i"  # install/upgrade
 
     # Always reset values to keep release_values equal to values released
@@ -333,6 +340,9 @@ def deploy(command, release_name, release_values, chart_name, wait, wait_timeout
         if wait_timeout is not None:
             deploy_command += " --timeout " + wait_timeout
 
+    if atomic:
+        deploy_command += " --atomic"
+
     if force:
         deploy_command += " --force"
 
@@ -340,11 +350,6 @@ def deploy(command, release_name, release_values, chart_name, wait, wait_timeout
         deploy_command += " --no-hooks"
 
     if release_values != {}:
-        try:
-            import tempfile
-        except ImportError:
-            module.fail_json(msg=missing_required_lib("tempfile"), exception=traceback.format_exc())
-
         fd, path = tempfile.mkstemp(suffix='.yml')
         with open(path, 'w') as yaml_file:
             yaml.dump(release_values, yaml_file, default_flow_style=False)
@@ -355,8 +360,11 @@ def deploy(command, release_name, release_values, chart_name, wait, wait_timeout
     return deploy_command
 
 
-# Delete release chart
 def delete(command, release_name, purge, disable_hook):
+    """
+    Delete release chart
+    """
+
     delete_command = command + " uninstall "
 
     if not purge:
@@ -392,6 +400,7 @@ def main():
             purge=dict(type='bool', default=True),
             wait=dict(type='bool', default=False),
             wait_timeout=dict(type='str'),
+            atomic=dict(type='bool', default=False),
         ),
         required_if=[
             ('release_state', 'present', ['release_name', 'chart_ref']),
@@ -423,6 +432,7 @@ def main():
     purge = module.params.get('purge')
     wait = module.params.get('wait')
     wait_timeout = module.params.get('wait_timeout')
+    atomic = module.params.get('atomic')
 
     if bin_path is not None:
         helm_cmd_common = bin_path
@@ -461,30 +471,40 @@ def main():
 
         if release_status is None:  # Not installed
             helm_cmd = deploy(helm_cmd, release_name, release_values, chart_ref, wait, wait_timeout,
-                              disable_hook, False)
+                              disable_hook, False, atomic=atomic)
             changed = True
 
         elif force or release_values != release_status['values'] \
                 or (chart_info['name'] + '-' + chart_info['version']) != release_status["chart"]:
             helm_cmd = deploy(helm_cmd, release_name, release_values, chart_ref, wait, wait_timeout,
-                              disable_hook, force)
+                              disable_hook, force, atomic=atomic)
             changed = True
 
     if module.check_mode:
-        module.exit_json(changed=changed)
+        module.exit_json(
+            changed=changed,
+            command=helm_cmd,
+            stdout='',
+            stderr='',
+        )
     elif not changed:
-        module.exit_json(changed=False, status=release_status)
-
-    rc, out, err = module.run_command(helm_cmd)
-
-    if rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=helm_cmd
+        module.exit_json(
+            changed=False,
+            status=release_status,
+            stdout='',
+            stderr='',
+            command=helm_cmd,
         )
 
-    module.exit_json(changed=changed, stdout=out, stderr=err,
-                     status=get_release_status(helm_cmd_common, release_name), command=helm_cmd)
+    rc, out, err = exec_command(helm_cmd)
+
+    module.exit_json(
+        changed=changed,
+        stdout=out,
+        stderr=err,
+        status=get_release_status(helm_cmd_common, release_name),
+        command=helm_cmd,
+    )
 
 
 if __name__ == '__main__':

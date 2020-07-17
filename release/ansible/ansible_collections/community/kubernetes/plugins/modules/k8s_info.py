@@ -9,11 +9,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
-
-DOCUMENTATION = '''
+DOCUMENTATION = r'''
 module: k8s_info
 
 short_description: Describe Kubernetes (K8s) objects
@@ -72,9 +68,9 @@ requirements:
   - "PyYAML >= 3.11"
 '''
 
-EXAMPLES = '''
+EXAMPLES = r'''
 - name: Get an existing Service object
-  k8s_info:
+  community.kubernetes.k8s_info:
     api_version: v1
     kind: Service
     name: web
@@ -82,32 +78,32 @@ EXAMPLES = '''
   register: web_service
 
 - name: Get a list of all service objects
-  k8s_info:
+  community.kubernetes.k8s_info:
     api_version: v1
     kind: Service
     namespace: testing
   register: service_list
 
 - name: Get a list of all pods from any namespace
-  k8s_info:
+  community.kubernetes.k8s_info:
     kind: Pod
   register: pod_list
 
 - name: Search for all Pods labelled app=web
-  k8s_info:
+  community.kubernetes.k8s_info:
     kind: Pod
     label_selectors:
       - app = web
       - tier in (dev, test)
 
 - name: Search for all running pods
-  k8s_info:
+  community.kubernetes.k8s_info:
     kind: Pod
     field_selectors:
       - status.phase=Running
 '''
 
-RETURN = '''
+RETURN = r'''
 resources:
   description:
   - The object(s) that exists
@@ -147,8 +143,6 @@ class KubernetesInfoModule(KubernetesAnsibleModule):
         KubernetesAnsibleModule.__init__(self, *args,
                                          supports_check_mode=True,
                                          **kwargs)
-        if self._name == 'k8s_facts':
-            self.deprecate("The 'k8s_facts' module has been renamed to 'k8s_info'", version='2.13')
 
     def execute_module(self):
         self.client = self.get_api_client()
