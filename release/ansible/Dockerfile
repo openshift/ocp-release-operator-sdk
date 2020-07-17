@@ -5,9 +5,9 @@ ENV GO111MODULE=on \
 
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make build/operator-sdk-dev VERSION=dev
+ && make build/ansible-operator VERSION=$(git describe --tags --always)
 
-FROM registry.access.redhat.com/ubi7/ubi
+FROM registry.access.redhat.com/ubi8/ubi
 
 RUN yum install -y \
       ansible \
@@ -18,7 +18,6 @@ RUN yum install -y \
       python-jmespath \
       tini \
       inotify-tools \
-      python-requests-2.6.0-7.el7_7 \
  && yum clean all \
  && rm -rf /var/cache/yum
 
@@ -34,7 +33,7 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
 
 COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
 
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator ${OPERATOR}
 COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
