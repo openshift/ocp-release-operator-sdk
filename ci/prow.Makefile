@@ -15,11 +15,19 @@ build:
 test-unit:
 	$(Q)go test -coverprofile=coverage.out -covermode=count -count=1 -short $(TEST_PKGS)
 
+test-sanity: tidy build/operator-sdk lint
+	./hack/tests/sanity-check.sh
+
 test-e2e-go test/e2e/go:
 	./ci/tests/e2e-go.sh $(ARGS)
 
-test-e2e-ansible test/e2e/ansible:
-	./ci/tests/e2e-ansible.sh
+test-e2e-ansible test/e2e/ansible: test-features-e2e-ansible test-scaffolding-e2e-ansible
+
+test-features-e2e-ansible:
+	./ci/tests/e2e-ansible-features.sh
+
+test-scaffolding-e2e-ansible:
+	./ci/tests/e2e-ansible-scaffolding.sh
 
 test-e2e-helm test/e2e/helm:
 	./ci/tests/e2e-helm.sh
