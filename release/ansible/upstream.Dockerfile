@@ -49,8 +49,8 @@ RUN mkdir -p ${HOME}/.ansible/tmp \
 
 RUN TINIARCH=$(case $(arch) in x86_64) echo -n amd64 ;; ppc64le) echo -n ppc64el ;; *) echo -n $(arch) ;; esac) \
   && curl -L -o /usr/local/bin/tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
-  && chmod +x /tini
+  && chmod +x /usr/local/bin/tini
 
-ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}
