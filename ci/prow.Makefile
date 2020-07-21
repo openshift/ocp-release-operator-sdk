@@ -21,7 +21,7 @@ test-sanity: tidy build/operator-sdk lint
 test-e2e-go test/e2e/go:
 	./ci/tests/e2e-go.sh $(ARGS)
 
-test-e2e-ansible test/e2e/ansible: test-features-e2e-ansible test-scaffolding-e2e-ansible
+test-e2e-ansible test/e2e/ansible:test-scaffolding-e2e-ansible # TODO, update openshift/release test-features-e2e-ansible 
 
 test-features-e2e-ansible:
 	./ci/tests/e2e-ansible-features.sh
@@ -40,3 +40,4 @@ ci-images:
 	docker build -f release/ansible/upstream.Dockerfile -t osdk-ansible .
 	docker build -f ci/dockerfiles/ansible-e2e-hybrid.Dockerfile -t osdk-ansible-e2e-hybrid .
 	docker build -f test/ansible/build/Dockerfile -t osdk-ansible-full-e2e test/ansible/
+	docker build -f ci/dockerfiles/ansible-molecule.Dockerfile -t osdk-ansible-molecule .
