@@ -22,6 +22,6 @@ RUN yum install -y \
       ansible \
  && ansible-galaxy collection install community.kubernetes
 
-COPY test/ansible /src
+COPY . /src
 
 WORKDIR /src
