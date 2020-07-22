@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	gencrd "github.com/operator-framework/operator-sdk/internal/generate/crd"
-	gen "github.com/operator-framework/operator-sdk/internal/generate/gen"
 	"github.com/operator-framework/operator-sdk/internal/scaffold"
 	"github.com/operator-framework/operator-sdk/internal/scaffold/input"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
@@ -33,6 +32,9 @@ import (
 // newAddCRDCmd - add crd command
 func newAddCRDCmd() *cobra.Command {
 	crdCmd := &cobra.Command{
+		Deprecated: `use 'operator-sdk add api' instead to create or update API definitions.
+Run 'operator-sdk add api --help' for more details.
+		`,
 		Use:   "crd",
 		Short: "Adds a Custom Resource Definition (CRD) and the Custom Resource (CR) files",
 		Long: `The operator-sdk add crd command will create a Custom Resource Definition (CRD)` +
@@ -102,10 +104,13 @@ func crdFunc(cmd *cobra.Command, args []string) error {
 
 	// This command does not consider an APIs dir. Instead it adds a plain CRD
 	// for the provided resource. We can use NewCRDNonGo to get this behavior.
-	gcfg := gen.Config{}
-	crd := gencrd.NewCRDNonGo(gcfg, *resource, crdVersion)
+	crd := gencrd.Generator{
+		IsOperatorGo: false,
+		Resource:     *resource,
+		CRDVersion:   crdVersion,
+	}
 	if err := crd.Generate(); err != nil {
-		log.Fatalf("Error generating CRD for %s: %w", resource, err)
+		log.Fatalf("Error generating CRD for %s: %v", resource, err)
 	}
 
 	// update deploy/role.yaml for the given resource r.

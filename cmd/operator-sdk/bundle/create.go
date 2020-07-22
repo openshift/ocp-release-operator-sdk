@@ -19,12 +19,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	catalog "github.com/operator-framework/operator-sdk/internal/generate/olm-catalog"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 
+	"github.com/operator-framework/operator-sdk/internal/registry"
+
 	"github.com/blang/semver"
 	"github.com/operator-framework/operator-registry/pkg/lib/bundle"
+	scorecard "github.com/operator-framework/operator-sdk/internal/scorecard/alpha"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -72,8 +76,8 @@ will be written if '--generate-only=true':
 '--generate-only' is useful if you want to build an operator's bundle image
 manually or modify metadata before building an image.
 
-More information on operator bundle images and the manifests/metadata format:
-https://github.com/openshift/enhancements/blob/master/enhancements/olm/operator-bundle.md
+More information about operator bundles and metadata:
+https://github.com/operator-framework/operator-registry#manifest-format.
 
 NOTE: bundle images are not runnable.
 `,
@@ -106,7 +110,7 @@ bundle.Dockerfile for your latest operator version without building the image:
 			}
 
 			if err = c.validate(args); err != nil {
-				return fmt.Errorf("error validating args: %v", err)
+				return fmt.Errorf("invalid command args: %v", err)
 			}
 
 			if c.generateOnly {
@@ -115,16 +119,17 @@ bundle.Dockerfile for your latest operator version without building the image:
 				c.imageTag = args[0]
 				err = c.runBuild()
 			}
+
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			return nil
 		},
+		Deprecated: "use 'generate bundle' and 'docker build -f bundle.Dockerfile' instead",
 	}
 
 	c.addToFlagSet(cmd.Flags())
-
 	return cmd
 }
 
@@ -170,6 +175,12 @@ func (c *bundleCreateCmd) setDefaults() (err error) {
 		c.directory = dir
 	}
 
+	// A default channel can be inferred if there is only one channel. Don't infer
+	// default otherwise; the user must set this value.
+	if c.defaultChannel == "" && strings.Count(c.channels, ",") == 0 {
+		c.defaultChannel = c.channels
+	}
+
 	return nil
 }
 
@@ -191,11 +202,18 @@ func (c bundleCreateCmd) validate(args []string) error {
 	if c.packageName == "" {
 		return fmt.Errorf("--package must be set")
 	}
+
+	// Ensure a default channel is present.
+	if c.defaultChannel == "" {
+		return fmt.Errorf("--default-channel must be set")
+	}
+
 	// Bundle commands only work with bundle directory formats, not package
 	// manifests formats.
 	if isPackageManifestsDir(c.directory, c.packageName) {
 		return fmt.Errorf("bundle commands can only be used on bundle directory formats")
 	}
+
 	if c.generateOnly {
 		if len(args) != 0 {
 			return errors.New("the command does not accept any arguments if --generate-only=true")
@@ -208,12 +226,26 @@ func (c bundleCreateCmd) validate(args []string) error {
 	return nil
 }
 
-// runGenerate generates a bundle.Dockerfile, and manifests/ and metadata/ dirs,
-// always overwriting their contents.
+// runGenerate generates a bundle.Dockerfile, and manifests/ and metadata/ dirs with scorecard config
+// copied to the bundle image.
 func (c bundleCreateCmd) runGenerate() error {
-	err := bundle.GenerateFunc(c.directory, c.outputDir, c.packageName, c.channels, c.defaultChannel, true)
+	if c.generateOnly {
+		c.overwrite = true
+	}
+
+	err := bundle.GenerateFunc(c.directory, c.outputDir, c.packageName, c.channels, c.defaultChannel, c.overwrite)
 	if err != nil {
 		return fmt.Errorf("error generating bundle image files: %v", err)
+	}
+
+	// rootDir is the location where metadata directory is present.
+	rootDir := c.outputDir
+	if rootDir == "" {
+		rootDir = filepath.Dir(c.directory)
+	}
+
+	if err = RewriteBundleImageContents(rootDir); err != nil {
+		return err
 	}
 	return nil
 }
@@ -234,11 +266,36 @@ func (c bundleCreateCmd) runBuild() error {
 	}
 
 	// Build with overwrite-able option.
-	err := bundle.BuildFunc(c.directory, c.outputDir, c.imageTag, c.imageBuilder,
-		c.packageName, c.channels, c.defaultChannel, c.overwrite)
+	err := c.buildFunc()
 	if err != nil {
 		return fmt.Errorf("error building bundle image: %v", err)
 	}
+	return nil
+}
+
+// buildFunc is used to build a container image from a list of manifests and generates dockerfile and annotations.yaml.
+func (c bundleCreateCmd) buildFunc() error {
+	_, err := os.Stat(c.directory)
+	if os.IsNotExist(err) {
+		return err
+	}
+
+	err = c.runGenerate()
+	if err != nil {
+		return err
+	}
+
+	// Build bundle image
+	log.Info("Building bundle image")
+	buildCmd, err := bundle.BuildBundleImage(c.imageTag, c.imageBuilder)
+	if err != nil {
+		return err
+	}
+
+	if err := bundle.ExecuteCommand(buildCmd); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -267,4 +324,65 @@ func isPackageManifestsDir(dir, operatorName string) bool {
 	packageManifestPath := filepath.Join(filepath.Dir(dir), operatorName+".package.yaml")
 	_, err := semver.ParseTolerant(filepath.Clean(filepath.Base(dir)))
 	return isExist(packageManifestPath) && err == nil
+}
+
+// copyScorecardConfigToBundle checks if bundle.Dockerfile and scorecard config exists in
+// the operator project. If it does, it injects the scorecard configuration into bundle
+// image.
+// TODO: Add labels to annotations.yaml and bundle.dockerfile.
+func copyScorecardConfig() error {
+	if isExist(bundle.DockerFile) && isExist(scorecard.ConfigDirName) {
+		scorecardFileContent := fmt.Sprintf("COPY %s %s\n", scorecard.ConfigDirName, scorecard.ConfigDirPath)
+		err := projutil.RewriteFileContents(bundle.DockerFile, "COPY", scorecardFileContent)
+		if err != nil {
+			return fmt.Errorf("error rewriting dockerfile, %v", err)
+		}
+	}
+	return nil
+}
+
+func addLabelsToDockerfile(filename string, metricAnnotation map[string]string) error {
+	var sdkMetricContent strings.Builder
+	for key, value := range metricAnnotation {
+		sdkMetricContent.WriteString(fmt.Sprintf("LABEL %s=%s\n", key, value))
+	}
+
+	err := projutil.RewriteFileContents(filename, "LABEL", sdkMetricContent.String())
+	if err != nil {
+		return fmt.Errorf("error rewriting dockerfile with metric labels, %v", err)
+	}
+	return nil
+}
+
+func RewriteBundleImageContents(rootDir string) error {
+	metricLabels := projutil.MakeBundleMetricsLabels()
+
+	// write metric labels to bundle.Dockerfile
+	if err := addLabelsToDockerfile(bundle.DockerFile, metricLabels); err != nil {
+		return fmt.Errorf("error writing metric labels to bundle.dockerfile: %v", err)
+	}
+
+	annotationsFilePath := getAnnotationsFilePath(rootDir)
+	if err := addLabelsToAnnotations(annotationsFilePath, metricLabels); err != nil {
+		return fmt.Errorf("error writing metric labels to annotations.yaml: %v", err)
+	}
+
+	// Add a COPY for the scorecard config to bundle.Dockerfile.
+	if err := copyScorecardConfig(); err != nil {
+		return fmt.Errorf("error copying scorecardConfig to bundle image, %v", err)
+	}
+	return nil
+}
+
+// getAnnotationsFilePath return the locations of annotations.yaml.
+func getAnnotationsFilePath(rootDir string) string {
+	return filepath.Join(rootDir, bundle.MetadataDir, bundle.AnnotationsFile)
+}
+
+func addLabelsToAnnotations(filename string, metricLables map[string]string) error {
+	err := registry.RewriteAnnotationsYaml(filename, metricLables)
+	if err != nil {
+		return err
+	}
+	return nil
 }

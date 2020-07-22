@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type Fragment struct {
@@ -28,13 +28,13 @@ func (f *Fragment) Validate() error {
 }
 
 type FragmentEntry struct {
-	Description string          `yaml:"description"`
-	Kind        EntryKind       `yaml:"kind"`
-	Breaking    bool            `yaml:"breaking"`
-	Migration   *EntryMigration `yaml:"migration,omitempty"`
-	PullRequest *uint           `yaml:"pull_request_override,omitempty"`
+	Description string          `json:"description"`
+	Kind        EntryKind       `json:"kind"`
+	Breaking    bool            `json:"breaking"`
+	Migration   *EntryMigration `json:"migration,omitempty"`
+	PullRequest *uint           `json:"pull_request_override,omitempty"`
 
-	PullRequestLink string `yaml:"-"`
+	PullRequestLink string `json:"-"`
 }
 
 func (e *FragmentEntry) Validate() error {
@@ -176,7 +176,7 @@ func (g *gitPullRequestNumberGetter) GetPullRequestNumberFor(filename string) (u
 }
 
 func (g *gitPullRequestNumberGetter) getCommitMessage(filename string) (string, error) {
-	args := fmt.Sprintf("log --follow --pretty=format:%%s --diff-filter=A --find-renames=40%% %s", filename)
+	args := fmt.Sprintf("log --follow --pretty=format:%%s --diff-filter=A --find-renames=90%% %s", filename)
 	line, err := exec.Command("git", strings.Split(args, " ")...).CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to locate git commit for PR discovery: %v", err)

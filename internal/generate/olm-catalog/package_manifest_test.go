@@ -15,90 +15,138 @@
 package olmcatalog
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 
-	"github.com/operator-framework/operator-registry/pkg/registry"
-	gen "github.com/operator-framework/operator-sdk/internal/generate/gen"
+	apimanifests "github.com/operator-framework/api/pkg/manifests"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGeneratePkgManifestToOutput(t *testing.T) {
-	cleanupFunc := chDirWithCleanup(t, testNonStandardLayoutDataDir)
-	defer cleanupFunc()
+func TestGeneratePackageManifestToOutput(t *testing.T) {
+	chdirCleanup := chDirWithCleanup(t, testNonStandardLayoutDataDir)
+	defer chdirCleanup()
 
-	cfg := gen.Config{
-		OperatorName: testProjectName,
-		OutputDir:    "expected-catalog",
+	// Temporary output dir for generating package manifest.
+	outputDir, mktempCleanup := mkTempDirWithCleanup(t, "-output-catalog")
+	defer mktempCleanup()
+
+	g := PkgGenerator{
+		OperatorName:     testProjectName,
+		OutputDir:        outputDir,
+		CSVVersion:       csvVersion,
+		Channel:          "stable",
+		ChannelIsDefault: true,
 	}
-	g := NewPackageManifest(cfg, "0.0.4", "beta", false)
-	fileMap, err := g.(pkgGenerator).generate()
-	if err != nil {
+	if err := g.Generate(); err != nil {
 		t.Fatalf("Failed to execute package manifest generator: %v", err)
 	}
 
-	if b, ok := fileMap[g.(pkgGenerator).fileName]; !ok {
-		t.Error("Failed to generate package manifest")
-	} else {
-		assert.Equal(t, packageManifestNonStandardExp, string(b))
+	pkgManFileName := getPkgFileName(testProjectName)
+
+	// Read expected Package Manifest
+	expCatalogDir := filepath.Join("expected-catalog", OLMCatalogChildDir)
+	pkgManExpBytes, err := ioutil.ReadFile(filepath.Join(expCatalogDir, testProjectName, pkgManFileName))
+	if err != nil {
+		t.Fatalf("Failed to read expected package manifest file: %v", err)
 	}
+	pkgManExp := string(pkgManExpBytes)
+
+	// Read generated Package Manifest from OutputDir/olm-catalog
+	outputCatalogDir := filepath.Join(g.OutputDir, OLMCatalogChildDir)
+	pkgManOutputBytes, err := ioutil.ReadFile(filepath.Join(outputCatalogDir, testProjectName, pkgManFileName))
+	if err != nil {
+		t.Fatalf("Failed to read output package manifest file: %v", err)
+	}
+	pkgManOutput := string(pkgManOutputBytes)
+
+	assert.Equal(t, pkgManExp, pkgManOutput)
+
 }
 
-const packageManifestNonStandardExp = `channels:
-- currentCSV: memcached-operator.v0.0.4
-  name: beta
-- currentCSV: memcached-operator.v0.0.3
-  name: stable
-defaultChannel: stable
-packageName: memcached-operator
-`
-
 func TestGeneratePackageManifest(t *testing.T) {
-	cleanupFunc := chDirWithCleanup(t, testGoDataDir)
-	defer cleanupFunc()
+	chdirCleanup := chDirWithCleanup(t, testNonStandardLayoutDataDir)
+	defer chdirCleanup()
 
-	cfg := gen.Config{
-		OperatorName: testProjectName,
-		OutputDir:    "deploy",
+	// Temporary output dir for generating package manifest.
+	outputDir, mktempCleanup := mkTempDirWithCleanup(t, "-output-catalog")
+	defer mktempCleanup()
+
+	manifestsRootDir := filepath.Join(outputDir, OLMCatalogChildDir, testProjectName)
+	if err := os.MkdirAll(manifestsRootDir, os.ModePerm); err != nil {
+		t.Fatal(err)
 	}
-	g := NewPackageManifest(cfg, csvVersion, "stable", true)
-	fileMap, err := g.(pkgGenerator).generate()
+	outputPath := filepath.Join(manifestsRootDir, getPkgFileName(testProjectName))
+	err := ioutil.WriteFile(outputPath, []byte(packageManifestInput), os.ModePerm)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	g := PkgGenerator{
+		OperatorName:     testProjectName,
+		CSVVersion:       csvVersion,
+		OutputDir:        outputDir,
+		Channel:          "stable",
+		ChannelIsDefault: true,
+	}
+	g.setDefaults()
+	fileMap, err := g.generate()
 	if err != nil {
 		t.Fatalf("Failed to execute package manifest generator: %v", err)
 	}
 
-	if b, ok := fileMap[g.(pkgGenerator).fileName]; !ok {
+	if b, ok := fileMap[g.fileName]; !ok {
 		t.Error("Failed to generate package manifest")
 	} else {
 		assert.Equal(t, packageManifestExp, string(b))
 	}
 }
 
+const packageManifestInput = `channels:
+- currentCSV: memcached-operator.v0.0.2
+  name: alpha
+defaultChannel: alpha
+packageName: memcached-operator
+`
+
+const packageManifestExp = `channels:
+- currentCSV: memcached-operator.v0.0.2
+  name: alpha
+- currentCSV: memcached-operator.v0.0.3
+  name: stable
+defaultChannel: stable
+packageName: memcached-operator
+`
+
 func TestValidatePackageManifest(t *testing.T) {
 	cleanupFunc := chDirWithCleanup(t, testGoDataDir)
 	defer cleanupFunc()
 
-	cfg := gen.Config{
-		OperatorName: testProjectName,
-		OutputDir:    "deploy",
+	g := PkgGenerator{
+		OperatorName:     testProjectName,
+		CSVVersion:       csvVersion,
+		Channel:          "stable",
+		ChannelIsDefault: true,
 	}
-	g := NewPackageManifest(cfg, csvVersion, "stable", true)
 
 	// pkg is a basic, valid package manifest.
-	pkg, err := g.(pkgGenerator).buildPackageManifest()
+	pkg, err := g.buildPackageManifest()
 	if err != nil {
 		t.Fatalf("Failed to execute package manifest generator: %v", err)
 	}
 
-	g.(pkgGenerator).setChannels(&pkg)
+	g.setChannels(&pkg)
 	sortChannelsByName(&pkg)
 
 	// invalid mock data, pkg with empty channel
 	invalidPkgWithEmptyChannels := pkg
-	invalidPkgWithEmptyChannels.Channels = []registry.PackageChannel{}
+	invalidPkgWithEmptyChannels.Channels = []apimanifests.PackageChannel{}
 
 	type args struct {
-		pkg *registry.PackageManifest
+		pkg *apimanifests.PackageManifest
 	}
 	tests := []struct {
 		name    string
@@ -133,11 +181,59 @@ func TestValidatePackageManifest(t *testing.T) {
 	}
 }
 
-const packageManifestExp = `channels:
-- currentCSV: memcached-operator.v0.0.2
-  name: alpha
-- currentCSV: memcached-operator.v0.0.3
-  name: stable
-defaultChannel: stable
-packageName: memcached-operator
-`
+func TestNewPackageManifest(t *testing.T) {
+	type args struct {
+		operatorName string
+		channelName  string
+		version      string
+	}
+	tests := []struct {
+		name string
+		args args
+		want apimanifests.PackageManifest
+	}{
+		{
+			name: "Should return a valid apimanifests.PackageManifest",
+			want: apimanifests.PackageManifest{
+				PackageName: "memcached-operator",
+				Channels: []apimanifests.PackageChannel{
+					apimanifests.PackageChannel{
+						Name:           "stable",
+						CurrentCSVName: "memcached-operator.v0.0.3",
+					},
+				},
+				DefaultChannelName: "stable",
+			},
+			args: args{
+				operatorName: testProjectName,
+				channelName:  "stable",
+				version:      csvVersion,
+			},
+		},
+		{
+			name: "Should return a valid apimanifests.PackageManifest with channel == alpha when it is not informed",
+			want: apimanifests.PackageManifest{
+				PackageName: "memcached-operator",
+				Channels: []apimanifests.PackageChannel{
+					apimanifests.PackageChannel{
+						Name:           "alpha",
+						CurrentCSVName: "memcached-operator.v0.0.3",
+					},
+				},
+				DefaultChannelName: "alpha",
+			},
+			args: args{
+				operatorName: testProjectName,
+				version:      csvVersion,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newPackageManifest(tt.args.operatorName, tt.args.channelName, tt.args.version)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewPackageManifest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

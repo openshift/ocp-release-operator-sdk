@@ -45,7 +45,7 @@ You can also include it in a `requirements.yml` file and install it via `ansible
 ---
 collections:
   - name: community.kubernetes
-    version: 0.11.0
+    version: 0.11.1
 ```
 
 ### Installing the OpenShift Python Library
@@ -56,7 +56,51 @@ Content in this collection requires the [OpenShift Python client](https://pypi.o
 
 ### Using modules from the Kubernetes Collection in your playbooks
 
-You can either call modules by their Fully Qualified Collection Namespace (FQCN), like `community.kubernetes.k8s_info`, or you can call modules by their short name if you list the `community.kubernetes` collection in the playbook's `collections`, like so:
+It's preferable to use content in this collection using their Fully Qualified Collection Namespace (FQCN), for example `community.kubernetes.k8s_info`:
+
+```yaml
+---
+- hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Ensure the myapp Namespace exists.
+      community.kubernetes.k8s:
+        api_version: v1
+        kind: Namespace
+        name: myapp
+        state: present
+
+    - name: Ensure the myapp Service exists in the myapp Namespace.
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: myapp
+            namespace: myapp
+          spec:
+            type: LoadBalancer
+            ports:
+            - port: 8080
+              targetPort: 8080
+            selector:
+              app: myapp
+
+    - name: Get a list of all Services in the myapp namespace.
+      community.kubernetes.k8s_info:
+        kind: Service
+        namespace: myapp
+      register: myapp_services
+
+    - name: Display number of Services in the myapp namespace.
+      debug:
+        var: myapp_services.resources | count
+```
+
+If upgrading older playbooks which were built prior to Ansible 2.10 and this collection's existence, you can also define `collections` in your play and refer to this collection's modules as you did in Ansible 2.9 and below, as in this example:
 
 ```yaml
 ---
@@ -74,34 +118,6 @@ You can either call modules by their Fully Qualified Collection Namespace (FQCN)
         kind: Namespace
         name: myapp
         state: present
-
-    - name: Ensure the myapp Service exists in the myapp Namespace.
-      k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: myapp
-            namespace: myapp
-          spec:
-            type: LoadBalancer
-            ports:
-            - port: 8080
-              targetPort: 8080
-            selector:
-              app: myapp
-
-    - name: Get a list of all Services in the myapp namespace.
-      k8s_info:
-        kind: Service
-        namespace: myapp
-      register: myapp_services
-
-    - name: Display number of Services in the myapp namespace.
-      debug:
-        var: myapp_services.resources | count
-
 ```
 
 For documentation on how to use individual modules and other content included in this collection, please see the links in the 'Included content' section earlier in this README.
@@ -132,8 +148,12 @@ The current process for publishing new versions of the Kubernetes Collection is 
 
   1. Ensure you're running Ansible from devel, so the [`build_ignore` key](https://github.com/ansible/ansible/issues/67130) in `galaxy.yml` is used.
   1. Run `git clean -x -d -f` in this repository's directory to clean out any extra files which should not be included.
-  1. Ensure `CHANGELOG.md` contains all the latest changes.
   1. Update `galaxy.yml` and this README's `requirements.yml` example with the new `version` for the collection.
+  1. Update the CHANGELOG:
+    1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
+    1. Make sure there are fragments for all known changes in `changelogs/fragments`.
+    1. Run `antsibull-changelog release`.
+  1. Commit the changes and create a PR with the changes. Wait for tests to pass, then merge it once they have.
   1. Tag the version in Git and push to GitHub.
   1. Run the following commands to build and release the new version on Galaxy:
 
@@ -146,7 +166,7 @@ After the version is published, verify it exists on the [Kubernetes Collection G
 
 ## More Information
 
-For more information about Ansible's Kubernetes integration, join the `#ansible-community` channel on Freenode IRC, and browse the resources in the [Kubernetes Working Group](https://github.com/ansible/community/wiki/Kubernetes) Community wiki page.
+For more information about Ansible's Kubernetes integration, join the `#ansible-kubernetes` channel on Freenode IRC, and browse the resources in the [Kubernetes Working Group](https://github.com/ansible/community/wiki/Kubernetes) Community wiki page.
 
 ## License
 

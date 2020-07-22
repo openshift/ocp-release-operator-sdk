@@ -1,18 +1,12 @@
 ---
 title: Operator SDK FAQ
 linkTitle: FAQ
-weight: 60
+weight: 80
 ---
-
-{{% alert title="Warning" color="warning" %}}
-These pages are under construction. Please continue to use the [docs in
-tree](https://github.com/operator-framework/operator-sdk/tree/master/doc)
-for now.
-{{% /alert %}}
 
 ## Controller Runtime FAQ
 
-Please see the upstream [Controller Runtime FAQ][cr-faq] first for any questions related to runtime mechanics or controller-runtime APIs. 
+Please see the upstream [Controller Runtime FAQ][cr-faq] first for any questions related to runtime mechanics or controller-runtime APIs.
 
 ## How can I have separate logic for Create, Update, and Delete events? When reconciling an object can I access its previous state?
 
@@ -56,7 +50,7 @@ Add the following to your `deploy/role.yaml` file to grant the operator permissi
   - "update"
 ```
 
-## My Ansible module is missing a dependency. How do I add it to the image? 
+## My Ansible module is missing a dependency. How do I add it to the image?
 
 Unfortunately, adding the entire dependency tree for all Ansible modules would be excessive. Fortunately, you can add it easily. Simply edit your build/Dockerfile. You'll want to change to root for the install command, just be sure to swap back using a series of commands like the following right after the `FROM` line.
 
@@ -76,8 +70,8 @@ If you run into the following error message:
 
 ```
 E0320 15:42:17.676888       1 reflector.go:280] pkg/mod/k8s.io/client-go@v0.0.0-20191016111102-bec269661e48/tools/cache/reflector.go:96: Failed to watch *v1.ImageStreamTag: unknown (get imagestreamtags.image.openshift.io)
-{"level":"info","ts":1584718937.766342,"logger":"controller_memcached","msg":"ImageStreamTag resource not found. 
-``` 
+{"level":"info","ts":1584718937.766342,"logger":"controller_memcached","msg":"ImageStreamTag resource not found.
+```
 
 Then, it means that your Operator is unable to watch the resource. This scenario can be faced because the Operator does not have the permission [(RBAC)[rbac]] to `Watch` the resource, or may be the Schema from the API used, did not implement this verb. In this way the solution would be to grant the permission in the `role.yaml` , or when it is not  possible, use the [client.Reader][client.Reader] instead of the client provided.
 
@@ -85,16 +79,16 @@ The client provided will work with a cache, and because of this, the `WATCH` ver
 
 **Example**
 
-Following are the changes in the `conttroler.go`,  to address the need to get the resource via the [client.Reader][client.Reader]. See: 
+Following are the changes in the `conttroler.go`,  to address the need to get the resource via the [client.Reader][client.Reader]. See:
 
-```go 
+```go
 
 import (
 	...
 	imagev1 "github.com/openshift/api/image/v1"
 )
 
-... 
+...
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
@@ -116,7 +110,7 @@ type ReconcileMemcached struct {
 
 ...
 func (r *ReconcileMemcached) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	
+
 	// Get the ImageStreamTag from OCP API which has not the WATCH verb.
 	img := &imagev1.ImageStreamTag{}
 	err = r.APIReader.Get(context.TODO(), types.NamespacedName{Name: fmt.Sprintf("%s:%s", "example-name", "example-tag"), img)
@@ -129,10 +123,30 @@ func (r *ReconcileMemcached) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 ```
 
+## I see deepcopy errors and image build fails. How do I fix this?
+
+When you run the ```operator-sdk generate k8s``` command, you might see an error like this
+
+```
+INFO[0000] Running deepcopy code-generation for Custom Resource group versions: [cache:[v1alpha1], ] 
+F0523 01:18:27.122034    5157 deepcopy.go:885] Hit an unsupported type invalid type for invalid type, from github.com/example-inc/memcached-operator/pkg/apis/cache/v1alpha1.Memcached
+```
+
+This is because of the `GOROOT` environment variable not being set. More details [here][goroot-github-issue].
+
+In order to fix this, you simply need to export the `GOROOT` environment variable
+
+```
+$ export GOROOT=$(go env GOROOT)
+```
+
+This will work for the current environment. To persist this fix, add the above line to your environment's config file, ex. `bashrc` file.
+
 [kube-apiserver_options]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/#options
 [controller-runtime_faq]: https://github.com/kubernetes-sigs/controller-runtime/blob/master/FAQ.md#q-how-do-i-have-different-logic-in-my-reconciler-for-different-types-of-events-eg-create-update-delete
-[finalizer]: https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md#handle-cleanup-on-deletion
-[gc-metrics]:./user/metrics/README.md#garbage-collection
+[finalizer]:/docs/golang/advanced-topics/#handle-cleanup-on-deletion
+[gc-metrics]:/docs/golang/legacy/monitoring/prometheus/#garbage-collection
 [cr-faq]:https://github.com/kubernetes-sigs/controller-runtime/blob/master/FAQ.md
 [client.Reader]:https://godoc.org/sigs.k8s.io/controller-runtime/pkg/client#Reader
 [rbac]:https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+[goroot-github-issue]:https://github.com/operator-framework/operator-sdk/issues/1854#issuecomment-525132306

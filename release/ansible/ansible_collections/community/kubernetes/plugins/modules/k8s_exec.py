@@ -9,15 +9,13 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
-
-DOCUMENTATION = '''
+DOCUMENTATION = r'''
 
 module: k8s_exec
 
 short_description: Execute command in Pod
+
+version_added: "0.10.0"
 
 author: "Tristan de Cacqueray (@tristanC)"
 
@@ -60,15 +58,15 @@ options:
     required: yes
 '''
 
-EXAMPLES = '''
+EXAMPLES = r'''
 - name: Execute a command
-  k8s_exec:
+  community.kubernetes.k8s_exec:
     namespace: myproject
     pod: zuul-scheduler
     command: zuul-scheduler full-reconfigure
 '''
 
-RETURN = '''
+RETURN = r'''
 result:
   description:
   - The command object

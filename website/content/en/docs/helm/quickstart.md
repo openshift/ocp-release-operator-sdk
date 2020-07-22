@@ -205,7 +205,7 @@ Run the operator locally with the default Kubernetes config file present at
 `$HOME/.kube/config`:
 
 ```sh
-$ operator-sdk run --local
+$ operator-sdk run local
 INFO[0000] Go Version: go1.10.3
 INFO[0000] Go OS/Arch: linux/amd64
 INFO[0000] operator-sdk Version: v0.1.1+git
@@ -214,11 +214,17 @@ INFO[0000] operator-sdk Version: v0.1.1+git
 Run the operator locally with a provided Kubernetes config file:
 
 ```sh
-$ operator-sdk run --local --kubeconfig=<path_to_config>
+$ operator-sdk run local --kubeconfig=<path_to_config>
 INFO[0000] Go Version: go1.10.3
 INFO[0000] Go OS/Arch: linux/amd64
 INFO[0000] operator-sdk Version: v0.2.0+git
 ```
+
+### 3. Deploy your Operator with the Operator Lifecycle Manager (OLM)
+
+OLM will manage creation of most if not all resources required to run your operator,
+using a bit of setup from other `operator-sdk` commands. Check out the OLM integration
+[user guide][quickstart-bundle] for more information.
 
 ## Deploy the Nginx custom resource
 
@@ -298,9 +304,14 @@ kubectl delete -f deploy/role.yaml
 kubectl delete -f deploy/service_account.yaml
 kubectl delete -f deploy/crds/example.com_nginxes_crd.yaml
 ```
+**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk add api --api-version=cache.example.com/v1alpha1 --kind=AppService`
+For more information, refer [cli][addcli] doc.
 
-[operator-scope]: /docs/operator-scope
+[operator-scope]: /docs/legacy-common/operator-scope
 [layout-doc]: /docs/helm/reference/scaffolding
 [helm-charts]:https://helm.sh/docs/topics/charts/
 [helm-values]:https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing
 [helm-official]:https://helm.sh/docs/
+[addcli]: /docs/cli/operator-sdk_add_api
+<!-- TODO: update this link to the non-legacy doc once the helm plugin is publicly available -->
+[quickstart-bundle]: /docs/olm-integration/legacy/quickstart-bundle

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:lll
 package crd
 
 import (
@@ -22,7 +21,6 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -77,42 +75,44 @@ func TestGenerate(t *testing.T) {
 	}{
 		{
 			description: "Generate Go CRD",
-			generator: NewCRDGo(gen.Config{
-				Inputs: map[string]string{
-					APIsDirKey: filepath.Join(testGoDataDir, scaffold.ApisDir),
-				},
-				OutputDir: filepath.Join(tmp, randomString()),
-			}, "v1beta1"),
+			generator: Generator{
+				IsOperatorGo: true,
+				ApisDir:      filepath.Join(testGoDataDir, scaffold.ApisDir),
+				OutputDir:    filepath.Join(tmp, randomString()),
+				CRDVersion:   "v1beta1",
+			},
 			wantErr: false,
 		},
 		{
 			description: "Generate non-Go CRD",
-			generator: NewCRDNonGo(gen.Config{
-				Inputs: map[string]string{
-					APIsDirKey: filepath.Join(testGoDataDir, scaffold.ApisDir),
-				},
-				OutputDir: filepath.Join(tmp, randomString()),
-			}, *r, "v1beta1"),
+			generator: Generator{
+				IsOperatorGo: false,
+				ApisDir:      filepath.Join(testGoDataDir, scaffold.ApisDir),
+				OutputDir:    filepath.Join(tmp, randomString()),
+				CRDVersion:   "v1beta1",
+				Resource:     *r,
+			},
 			wantErr: false,
 		},
 		{
 			description: "invalid Go CRD version",
-			generator: NewCRDGo(gen.Config{
-				Inputs: map[string]string{
-					APIsDirKey: filepath.Join(testGoDataDir, scaffold.ApisDir),
-				},
-				OutputDir: filepath.Join(tmp, randomString()),
-			}, "invalid"),
+			generator: Generator{
+				IsOperatorGo: true,
+				ApisDir:      filepath.Join(testGoDataDir, scaffold.ApisDir),
+				OutputDir:    filepath.Join(tmp, randomString()),
+				CRDVersion:   "invalid",
+			},
 			wantErr: true,
 		},
 		{
 			description: "invalid non-Go CRD version",
-			generator: NewCRDNonGo(gen.Config{
-				Inputs: map[string]string{
-					APIsDirKey: filepath.Join(testGoDataDir, scaffold.ApisDir),
-				},
-				OutputDir: filepath.Join(tmp, randomString()),
-			}, *r, "invalid"),
+			generator: Generator{
+				IsOperatorGo: false,
+				ApisDir:      filepath.Join(testGoDataDir, scaffold.ApisDir),
+				OutputDir:    filepath.Join(tmp, randomString()),
+				CRDVersion:   "invalid",
+				Resource:     *r,
+			},
 			wantErr: true,
 		},
 	}
@@ -131,10 +131,9 @@ func TestGenerate(t *testing.T) {
 }
 
 func TestCRDGo(t *testing.T) {
-	cfg := gen.Config{
-		Inputs: map[string]string{
-			APIsDirKey: filepath.Join(testGoDataDir, scaffold.ApisDir),
-		},
+	g := Generator{
+		IsOperatorGo: true,
+		ApisDir:      filepath.Join(testGoDataDir, scaffold.ApisDir),
 	}
 
 	r, err := scaffold.NewResource(testAPIVersion, testKind)
@@ -152,8 +151,9 @@ func TestCRDGo(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.crdVersion, func(t *testing.T) {
-			g := NewCRDGo(cfg, c.crdVersion)
-			fileMap, err := g.(crdGenerator).generateGo()
+
+			g.CRDVersion = c.crdVersion
+			fileMap, err := g.generateGo()
 			if err != nil {
 				t.Fatalf("Failed to execute CRD generator: %v", err)
 			}
@@ -200,19 +200,19 @@ func TestCRDNonGo(t *testing.T) {
 		},
 		{
 			"existing v1 to v1beta1 CRD with custom structural schema",
-			filepath.Join(testGoDataDir, scaffold.CRDsDir+"_v1"), "v1beta1", asV1beta1(crdCustomExpV1),
+			filepath.Join(testGoDataDir, scaffold.CRDsDir+"_v1"), "v1beta1", crdCustomExpV1beta1,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			cfg := gen.Config{
-				Inputs: map[string]string{
-					CRDsDirKey: c.crdsDir,
-				},
+			g := Generator{
+				CRDsDir:      c.crdsDir,
+				Resource:     *r,
+				CRDVersion:   c.crdVersion,
+				IsOperatorGo: false,
 			}
-			g := NewCRDNonGo(cfg, *r, c.crdVersion)
-			fileMap, err := g.(crdGenerator).generateNonGo()
+			fileMap, err := g.generateNonGo()
 			if err != nil {
 				t.Fatalf("Error executing CRD generator: %v", err)
 			}
@@ -223,10 +223,6 @@ func TestCRDNonGo(t *testing.T) {
 			}
 		})
 	}
-}
-
-func asV1beta1(crdV1 string) string {
-	return strings.ReplaceAll(crdV1, "apiVersion: apiextensions.k8s.io/v1", "apiVersion: apiextensions.k8s.io/v1beta1")
 }
 
 // crdNonGoDefaultExpV1beta1 is the default non-go v1beta1 CRD. Non-go projects don't have the

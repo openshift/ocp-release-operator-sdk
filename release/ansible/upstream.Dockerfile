@@ -6,7 +6,7 @@ ENV GO111MODULE=on \
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && rm -rf vendor/github.com/operator-framework/operator-sdk \
- && make build/operator-sdk-dev VERSION=dev
+ && make build/ansible-operator VERSION=$(git describe --tags --always)
 
 FROM registry.access.redhat.com/ubi8/ubi
 
@@ -23,8 +23,6 @@ ENV OPERATOR=/usr/local/bin/ansible-operator \
 # Install python dependencies
 RUN yum clean all && rm -rf /var/cache/yum/* \
  && yum -y update \
- && FEDORA=$(case $(arch) in ppc64le|s390x) echo -n fedora-secondary ;; *) echo -n fedora/linux ;; esac) \
- && yum install -y https://dl.fedoraproject.org/pub/$FEDORA/releases/30/Everything/$(arch)/os/Packages/i/inotify-tools-3.14-16.fc30.$(arch).rpm \
  && yum install -y libffi-devel openssl-devel python3 python3-devel gcc python3-pip python3-setuptools \
  && pip3 install --upgrade setuptools pip \
  && pip3 install --no-cache-dir --ignore-installed ipaddress \
@@ -39,7 +37,7 @@ RUN yum clean all && rm -rf /var/cache/yum/* \
 
 COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
 
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk-dev ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator ${OPERATOR}
 COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
@@ -50,9 +48,9 @@ RUN mkdir -p ${HOME}/.ansible/tmp \
  && chmod -R ug+rwx ${HOME}
 
 RUN TINIARCH=$(case $(arch) in x86_64) echo -n amd64 ;; ppc64le) echo -n ppc64el ;; *) echo -n $(arch) ;; esac) \
-  && curl -L -o /tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
-  && chmod +x /tini
+  && curl -L -o /usr/local/bin/tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
+  && chmod +x /usr/local/bin/tini
 
-ENTRYPOINT ["/tini", "--", "/usr/local/bin/entrypoint"]
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/usr/local/bin/entrypoint"]
 
 USER ${USER_UID}

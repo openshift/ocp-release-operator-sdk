@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	olmapiv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	olmapiv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -103,22 +103,30 @@ func (c Client) DoDelete(ctx context.Context, objs ...runtime.Object) error {
 		}
 		kind := obj.GetObjectKind().GroupVersionKind().Kind
 		log.Infof("  Deleting %s %q", kind, getName(a.GetNamespace(), a.GetName()))
-		err = c.KubeClient.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationForeground))
+		err = c.KubeClient.Delete(ctx, obj, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if err != nil {
 			if !apierrors.IsNotFound(err) {
 				return err
 			}
 			log.Infof("    %s %q does not exist", kind, getName(a.GetNamespace(), a.GetName()))
 		}
+		key, err := client.ObjectKeyFromObject(obj)
+		if err != nil {
+			return err
+		}
+		if err := wait.PollImmediateUntil(time.Millisecond*100, func() (bool, error) {
+			err := c.KubeClient.Get(ctx, key, obj)
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			} else if err != nil {
+				return false, err
+			}
+			return false, nil
+		}, ctx.Done()); err != nil {
+			return err
+		}
 	}
-
-	log.Infof("  Waiting for deleted resources to disappear")
-
-	return wait.PollImmediateUntil(time.Second, func() (bool, error) {
-		s := c.GetObjectsStatus(ctx, objs...)
-		installed, err := s.HasInstalledResources()
-		return !installed, err
-	}, ctx.Done())
+	return nil
 }
 
 func getName(namespace, name string) string {

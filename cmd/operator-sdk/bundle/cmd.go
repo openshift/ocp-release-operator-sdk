@@ -29,7 +29,7 @@ type bundleCmd struct {
 	generateOnly   bool
 }
 
-func NewCmd() *cobra.Command {
+func newCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bundle",
 		Short: "Manage operator bundle metadata",
@@ -38,15 +38,32 @@ An operator bundle is a portable operator packaging format understood by Kuberne
 native software, like the Operator Lifecycle Manager.
 
 More information about operator bundles and metadata:
-https://github.com/openshift/enhancements/blob/master/enhancements/olm/operator-bundle.md
-
-Operator Lifecycle Manager:
-https://github.com/operator-framework/operator-lifecycle-manager
+https://github.com/operator-framework/operator-registry/blob/master/docs/design/operator-bundle.md
 `,
 	}
+	return cmd
+}
 
+func NewCmdLegacy() *cobra.Command {
+	cmd := newCmd()
+	cmd.Long += `
+More information about the integration with OLM via SDK:
+https://sdk.operatorframework.io/docs/olm-integration/legacy
+`
 	cmd.AddCommand(
 		newCreateCmd(),
+		newValidateCmdLegacy(),
+	)
+	return cmd
+}
+
+func NewCmd() *cobra.Command {
+	cmd := newCmd()
+	cmd.Long += `
+More information about the integration with OLM via SDK:
+https://sdk.operatorframework.io/docs/olm-integration
+`
+	cmd.AddCommand(
 		newValidateCmd(),
 	)
 	return cmd

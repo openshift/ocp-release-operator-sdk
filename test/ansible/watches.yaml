@@ -11,11 +11,20 @@
 
 - version: v1alpha1
   group: test.example.com
-  kind: ExecTest
-  playbook: playbooks/exec.yml
+  kind: SubresourcesTest
+  playbook: playbooks/subresources.yml
 
 - version: v1
   group: ""
   kind: Secret
   playbook: playbooks/secret.yml
   manageStatus: false
+
+- version: v1alpha1
+  group: test.example.com
+  kind: SelectorTest
+  playbook: playbooks/selector.yml
+  selector:
+    matchExpressions:
+     - {key: testLabel, operator: Exists, values: []}
+

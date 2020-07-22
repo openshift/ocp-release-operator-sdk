@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/ansible/proxy/controllermap"
 	"github.com/operator-framework/operator-sdk/pkg/ansible/proxy/requestfactory"
 	k8sRequest "github.com/operator-framework/operator-sdk/pkg/ansible/proxy/requestfactory"
@@ -68,8 +67,8 @@ func (c *cacheResponseHandler) ServeHTTP(w http.ResponseWriter, req *http.Reques
 			break
 		}
 
-		// Skip cache for non-resource requests, not a part of skipCacheLookup for performance.
-		if !r.IsResourceRequest {
+		// Skip cache for non-cacheable requests, not a part of skipCacheLookup for performance.
+		if !r.IsResourceRequest || !(r.Subresource == "" || r.Subresource == "status") {
 			log.Info("Skipping cache lookup", "resource", r)
 			break
 		}
@@ -267,7 +266,7 @@ func (c *cacheResponseHandler) getListFromCache(r *requestfactory.RequestInfo, r
 			log.Error(err, "Unable to parse field selectors for the client")
 			return nil, err
 		}
-		clientListOpts = append(clientListOpts, k8sutil.MatchingFields{Sel: sel})
+		clientListOpts = append(clientListOpts, client.MatchingFieldsSelector{Selector: sel})
 	}
 	k.Kind = k.Kind + "List"
 	un := unstructured.UnstructuredList{}

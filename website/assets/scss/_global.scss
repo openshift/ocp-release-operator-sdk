@@ -58,7 +58,7 @@ ol {
         background: var(--of--color-brand--200);
         color: var(--of--color-white--100);
         &:hover,&:active,&:focus {
-            
+            color: var(--of--color-white--100);
             background: var(--of--color-brand--300);  
         }
     }
@@ -172,9 +172,12 @@ ol {
 }
 
 .of-section--largetext {
-    margin: var(--of--spacer--lg);
+    padding: var(--of--spacer--lg);
+    
     @media (min-width: $ov--breakpoint--lg) { 
-    margin: var(--of--spacer--2xl) var(--of--spacer--3xl);
+    padding: var(--of--spacer--2xl) var(--of--spacer--3xl);
+    margin: 0 auto;
+    max-width: 1200px;
     }
     .of-heading {
         text-transform: uppercase;
@@ -249,7 +252,9 @@ ol {
         }
         .of-section--largetext__content {
             grid-area: content;
+            @media (min-width: $ov--breakpoint--lg) {
             max-width: 550px;
+            }
         }
         .of-button {
             grid-area: action;
@@ -283,7 +288,7 @@ ol {
 }
 
 .of-masthead--subpage {
-    background: var(--of--color-black--100) url("/build/images/bg-masthead-green.svg") no-repeat;
+    background: var(--of--color-black--100) url("/build/images/bg-masthead-SDK.svg") no-repeat;
     background-size: 250px;
     background-position: 115% 0;
     min-height:135px;

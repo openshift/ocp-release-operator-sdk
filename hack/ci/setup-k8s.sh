@@ -6,7 +6,7 @@ set -eux
 # images at:
 # https://hub.docker.com/r/kindest/node/tags
 K8S_VERSION=$1
-KIND_VERSION="v0.7.0"
+KIND_VERSION="v0.8.1"
 KIND_IMAGE="docker.io/kindest/node:${K8S_VERSION}"
 
 # Download the latest version of kind, which supports all versions of

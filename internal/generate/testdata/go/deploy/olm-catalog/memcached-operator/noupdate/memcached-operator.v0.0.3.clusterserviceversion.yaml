@@ -58,6 +58,7 @@ spec:
         displayName: Nodes
         path: nodes
       version: v1alpha1
+  description: Memcached Operator description. TODO.
   displayName: Memcached Operator
   icon:
   - base64data: ""
@@ -166,9 +167,50 @@ spec:
   - supported: true
     type: AllNamespaces
   keywords:
-  - ""
+  - memcached-operator
+  links:
+  - name: Memcached Operator
+    url: https://memcached-operator.domain
   maintainers:
-  - {}
+  - email: your@email.com
+    name: Maintainer Name
   maturity: alpha
-  provider: {}
+  provider:
+    name: Provider Name
+    url: https://your.domain
   version: 0.0.3
+  webhookdefinitions:
+  - admissionReviewVersions: null
+    deploymentName: memcached-operator-webhook
+    failurePolicy: Fail
+    generateName: vmemcached.kb.io
+    rules:
+    - apiGroups:
+      - cache.example.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - memcacheds
+    sideEffects: null
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-cache-example-com-v1alpha1-memcached
+  - admissionReviewVersions: null
+    deploymentName: memcached-operator-webhook
+    failurePolicy: Fail
+    generateName: mmemcached.kb.io
+    rules:
+    - apiGroups:
+      - cache.example.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - memcacheds
+    sideEffects: null
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-cache-example-com-v1alpha1-memcached

@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/operator-framework/operator-sdk/internal/generate/gen"
 	gencatalog "github.com/operator-framework/operator-sdk/internal/generate/olm-catalog"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 
@@ -28,20 +27,21 @@ import (
 )
 
 type csvCmd struct {
-	csvVersion     string
-	csvChannel     string
-	fromVersion    string
-	operatorName   string
-	outputDir      string
-	deployDir      string
-	apisDir        string
-	crdDir         string
-	updateCRDs     bool
-	defaultChannel bool
-	makeManifests  bool
+	csvVersion       string
+	csvChannel       string
+	fromVersion      string
+	operatorName     string
+	outputDir        string
+	deployDir        string
+	apisDir          string
+	crdDir           string
+	interactivelevel projutil.InteractiveLevel
+	updateCRDs       bool
+	defaultChannel   bool
+	makeManifests    bool
+	interactive      bool
 }
 
-//nolint:lll
 func newGenerateCSVCmd() *cobra.Command {
 	c := &csvCmd{}
 	cmd := &cobra.Command{
@@ -172,11 +172,22 @@ Flags that change project default paths:
 				c.updateCRDs = false
 			}
 
+			// Check if the user has any specific preference to enable / disable interactive prompts.
+			// Default behaviour is to disable the prompts.
+			if cmd.Flags().Changed("interactive") {
+				if c.interactive {
+					c.interactivelevel = projutil.InteractiveOnAll
+				} else {
+					c.interactivelevel = projutil.InteractiveHardOff
+				}
+			}
+
 			if err := c.run(); err != nil {
 				log.Fatal(err)
 			}
 			return nil
 		},
+		Deprecated: "use 'generate bundle' or 'generate packagemanifests' instead",
 	}
 
 	cmd.Flags().StringVar(&c.csvVersion, "csv-version", "",
@@ -217,6 +228,9 @@ Flags that change project default paths:
 			"directory. This directory is intended to be used for your latest bundle manifests. "+
 			"The default location is deploy/olm-catalog/<operator-name>/manifests. "+
 			"If --output-dir is set, the directory will be <output-dir>/manifests")
+	cmd.Flags().BoolVar(&c.interactive, "interactive", false,
+		"When set, will enable the interactive command prompt feature to fill the UI "+
+			"metadata fields in CSV")
 
 	return cmd
 }
@@ -237,26 +251,33 @@ func (c csvCmd) run() error {
 	if c.operatorName == "" {
 		c.operatorName = filepath.Base(projutil.MustGetwd())
 	}
-	cfg := gen.Config{
-		OperatorName: c.operatorName,
-		// TODO(hasbro17): Remove the Input key map when the Generator input keys
-		// are removed in favour of config fields in the bundle generator
-		Inputs: map[string]string{
-			gencatalog.DeployDirKey: c.deployDir,
-			gencatalog.APIsDirKey:   c.apisDir,
-			gencatalog.CRDsDirKey:   c.crdDir,
-		},
-		OutputDir: c.outputDir,
+
+	csv := gencatalog.BundleGenerator{
+		OperatorName:          c.operatorName,
+		CSVVersion:            c.csvVersion,
+		FromVersion:           c.fromVersion,
+		UpdateCRDs:            c.updateCRDs,
+		MakeManifests:         c.makeManifests,
+		DeployDir:             c.deployDir,
+		ApisDir:               c.apisDir,
+		CRDsDir:               c.crdDir,
+		OutputDir:             c.outputDir,
+		InteractivePreference: c.interactivelevel,
 	}
 
-	csv := gencatalog.NewBundle(cfg, c.csvVersion, c.fromVersion, c.updateCRDs, c.makeManifests)
 	if err := csv.Generate(); err != nil {
 		return fmt.Errorf("error generating CSV: %v", err)
 	}
 
 	// A package manifest file is not a part of the bundle format.
 	if !c.makeManifests {
-		pkg := gencatalog.NewPackageManifest(cfg, c.csvVersion, c.csvChannel, c.defaultChannel)
+		pkg := gencatalog.PkgGenerator{
+			OperatorName:     c.operatorName,
+			CSVVersion:       c.csvVersion,
+			OutputDir:        c.outputDir,
+			Channel:          c.csvChannel,
+			ChannelIsDefault: c.defaultChannel,
+		}
 		if err := pkg.Generate(); err != nil {
 			return fmt.Errorf("error generating package manifest: %v", err)
 		}

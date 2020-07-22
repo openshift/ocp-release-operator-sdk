@@ -20,9 +20,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import copy
-from datetime import datetime
 from distutils.version import LooseVersion
-import time
 import sys
 import traceback
 
@@ -41,11 +39,6 @@ except ImportError:
     # Exceptions handled in common
     pass
 
-try:
-    import kubernetes_validate
-    HAS_KUBERNETES_VALIDATE = True
-except ImportError:
-    HAS_KUBERNETES_VALIDATE = False
 
 K8S_CONFIG_HASH_IMP_ERR = None
 try:
@@ -178,6 +171,8 @@ class KubernetesRawModule(KubernetesAnsibleModule):
 
         flattened_definitions = []
         for definition in self.resource_definitions:
+            if definition is None:
+                continue
             kind = definition.get('kind', self.kind)
             api_version = definition.get('apiVersion', self.api_version)
             if kind.endswith('List'):
@@ -299,7 +294,11 @@ class KubernetesRawModule(KubernetesAnsibleModule):
         else:
             if self.apply:
                 if self.check_mode:
-                    ignored, k8s_obj = apply_object(resource, definition)
+                    ignored, patch = apply_object(resource, definition)
+                    if existing:
+                        k8s_obj = dict_merge(existing.to_dict(), patch)
+                    else:
+                        k8s_obj = patch
                 else:
                     try:
                         k8s_obj = resource.apply(definition, namespace=namespace).to_dict()
@@ -438,83 +437,3 @@ class KubernetesRawModule(KubernetesAnsibleModule):
         result['changed'] = True
         result['method'] = 'create'
         return result
-
-    def _wait_for(self, resource, name, namespace, predicate, sleep, timeout, state):
-        start = datetime.now()
-
-        def _wait_for_elapsed():
-            return (datetime.now() - start).seconds
-
-        response = None
-        while _wait_for_elapsed() < timeout:
-            try:
-                response = resource.get(name=name, namespace=namespace)
-                if predicate(response):
-                    if response:
-                        return True, response.to_dict(), _wait_for_elapsed()
-                    else:
-                        return True, {}, _wait_for_elapsed()
-                time.sleep(sleep)
-            except NotFoundError:
-                if state == 'absent':
-                    return True, {}, _wait_for_elapsed()
-        if response:
-            response = response.to_dict()
-        return False, response, _wait_for_elapsed()
-
-    def wait(self, resource, definition, sleep, timeout, state='present', condition=None):
-
-        def _deployment_ready(deployment):
-            # FIXME: frustratingly bool(deployment.status) is True even if status is empty
-            # Furthermore deployment.status.availableReplicas == deployment.status.replicas == None if status is empty
-            return (deployment.status and deployment.status.replicas is not None and
-                    deployment.status.availableReplicas == deployment.status.replicas and
-                    deployment.status.observedGeneration == deployment.metadata.generation)
-
-        def _pod_ready(pod):
-            return (pod.status and pod.status.containerStatuses is not None and
-                    all([container.ready for container in pod.status.containerStatuses]))
-
-        def _daemonset_ready(daemonset):
-            return (daemonset.status and daemonset.status.desiredNumberScheduled is not None and
-                    daemonset.status.numberReady == daemonset.status.desiredNumberScheduled and
-                    daemonset.status.observedGeneration == daemonset.metadata.generation)
-
-        def _custom_condition(resource):
-            if not resource.status or not resource.status.conditions:
-                return False
-            match = [x for x in resource.status.conditions if x.type == condition['type']]
-            if not match:
-                return False
-            # There should never be more than one condition of a specific type
-            match = match[0]
-            if match.status == 'Unknown':
-                if match.status == condition['status']:
-                    if 'reason' not in condition:
-                        return True
-                    if condition['reason']:
-                        return match.reason == condition['reason']
-                return False
-            status = True if match.status == 'True' else False
-            if status == condition['status']:
-                if condition.get('reason'):
-                    return match.reason == condition['reason']
-                return True
-            return False
-
-        def _resource_absent(resource):
-            return not resource
-
-        waiter = dict(
-            Deployment=_deployment_ready,
-            DaemonSet=_daemonset_ready,
-            Pod=_pod_ready
-        )
-        kind = definition['kind']
-        if state == 'present' and not condition:
-            predicate = waiter.get(kind, lambda x: x)
-        elif state == 'present' and condition:
-            predicate = _custom_condition
-        else:
-            predicate = _resource_absent
-        return self._wait_for(resource, definition['metadata']['name'], definition['metadata'].get('namespace'), predicate, sleep, timeout, state)

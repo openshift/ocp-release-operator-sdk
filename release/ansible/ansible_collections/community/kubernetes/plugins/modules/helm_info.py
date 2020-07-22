@@ -1,20 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: Ansible Project
+# Copyright: (c) 2020, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
 
-DOCUMENTATION = '''
+DOCUMENTATION = r'''
 ---
 module: helm_info
 
-short_description: Get informations from Helm package deployed inside the cluster
+short_description: Get information from Helm package deployed inside the cluster
+
+version_added: "0.11.0"
 
 author:
   - Lucas Boisserie (@LucasBoisserie)
@@ -24,7 +23,7 @@ requirements:
   - "yaml (https://pypi.org/project/PyYAML/)"
 
 description:
-  -  Get informations (values, states, ...) from Helm package deployed inside the cluster
+  -  Get information (values, states, ...) from Helm package deployed inside the cluster.
 
 options:
   binary_path:
@@ -57,14 +56,14 @@ options:
     aliases: [ kubeconfig ]
 '''
 
-EXAMPLES = '''
+EXAMPLES = r'''
 - name: Deploy latest version of Grafana chart inside monitoring namespace
-  helm_info:
+  community.kubernetes.helm_info:
     name: test
     release_namespace: monitoring
 '''
 
-RETURN = """
+RETURN = r'''
 status:
   type: complex
   description: A dictionary of status output
@@ -102,7 +101,7 @@ status:
       type: str
       returned: always
       description: Dict of Values used to deploy
-"""
+'''
 
 import traceback
 
@@ -212,8 +211,8 @@ def main():
 
     if release_status is not None:
         module.exit_json(changed=False, status=release_status)
-    else:
-        module.exit_json(changed=False)
+
+    module.exit_json(changed=False)
 
 
 if __name__ == '__main__':
