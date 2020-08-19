@@ -58,7 +58,7 @@ EOF
 
 remove_operator() {
     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
-      kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/${cr}" || true
+      kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
     done
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
