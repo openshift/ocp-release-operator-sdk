@@ -181,6 +181,9 @@ pushd memcached-operator
 operator-sdk add crd --kind=Foo --api-version=ansible.example.com/v1alpha1
 cp deploy/operator.yaml deploy/operator-copy.yaml
 sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
+# TODO: We need to fix this in the deployment scaffold
+sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
+sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
@@ -200,6 +203,9 @@ fi
 
 cp deploy/operator-copy.yaml deploy/operator.yaml
 sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
+# TODO: We need to fix this in the deployment scaffold
+sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
+sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
 deploy_operator
 test_operator
 remove_operator
