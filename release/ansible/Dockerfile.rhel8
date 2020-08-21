@@ -16,6 +16,7 @@ RUN yum install -y \
       python3-kubernetes \
       python3-openshift \
       python3-oauthlib \
+      python3-requests-oauthlib \
       python3-jmespath \
       tini \
       inotify-tools \
