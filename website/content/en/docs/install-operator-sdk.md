@@ -22,7 +22,7 @@ $ brew install operator-sdk
 
 ```sh
 # Set the release version variable
-$ RELEASE_VERSION=v0.19.0
+$ RELEASE_VERSION=v0.19.3
 # Linux
 $ curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
 $ curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/ansible-operator-${RELEASE_VERSION}-x86_64-linux-gnu
@@ -111,8 +111,6 @@ $ cd operator-sdk
 $ git checkout master
 $ make tidy
 $ make install
-$ make install-ansible
-$ make install-helm
 ```
 
 **Note:** Ensure that your `GOPROXY` is set with its default value for Go

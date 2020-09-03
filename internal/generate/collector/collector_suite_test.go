@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2
+package collector
 
-import "sigs.k8s.io/kubebuilder/pkg/model/config"
+import (
+	"testing"
 
-// Config configures this plugin, and is saved in the project config file.
-type Config struct{}
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+)
 
-// hasPluginConfig returns true if cfg.Plugins contains an exact match for this plugin's key.
-func hasPluginConfig(cfg *config.Config) bool {
-	if !cfg.IsV3() || len(cfg.Plugins) == 0 {
-		return false
-	}
-	_, hasKey := cfg.Plugins[pluginConfigKey]
-	return hasKey
+func TestCollector(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Collector Suite")
 }
