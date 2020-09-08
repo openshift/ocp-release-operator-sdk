@@ -19,7 +19,6 @@ RUN yum install -y \
       python-requests-oauthlib \
       python-jmespath \
       tini \
-      inotify-tools \
  && yum clean all \
  && rm -rf /var/cache/yum
 

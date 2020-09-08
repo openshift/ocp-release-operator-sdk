@@ -288,6 +288,12 @@ Once this is done, there are two ways to run the operator:
 - As Go program outside a cluster
 - As a Deployment inside a Kubernetes cluster
 
+## Configuring your test environment
+
+Projects are scaffolded with unit tests that utilize the [envtest](https://godoc.org/sigs.k8s.io/controller-runtime/pkg/envtest)
+library, which requires certain Kubernetes server binaries be present locally.
+Installation instructions can be found [here][env-test-setup].
+
 ### 1. Run locally outside the cluster
 
 To run the operator locally execute the following command:
@@ -484,7 +490,7 @@ Also see the [advanced topics][advanced_topics] doc for more use cases and under
 [markers]: https://book.kubebuilder.io/reference/markers.html
 [crd-markers]: https://book.kubebuilder.io/reference/markers/crd-validation.html
 [rbac-markers]: https://book.kubebuilder.io/reference/markers/rbac.html
-[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/master/example/kb-memcached-operator/memcached_controller.go.tmpl
+[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/v0.19.x/example/kb-memcached-operator/memcached_controller.go.tmpl
 [builder_godocs]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/builder#example-Builder
 [legacy_quickstart_doc]:/docs/golang/legacy/quickstart/
 [activate_modules]: https://github.com/golang/go/wiki/Modules#how-to-install-and-activate-module-support
@@ -494,3 +500,4 @@ Also see the [advanced topics][advanced_topics] doc for more use cases and under
 [status_subresource]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#status-subresource
 [API-groups]:https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups
 [legacy_CLI]:/docs/cli
+[env-test-setup]: /docs/golang/references/env-test-setup

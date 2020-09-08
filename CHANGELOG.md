@@ -1,9 +1,40 @@
+## v0.19.3
+
+### Changes
+
+- **Breaking change**: Changed the `go.operator-sdk.io` plugin to only write a `plugins` PROJECT field and run the OLM integration plugin if the project version is "3-alpha" or above. ([#3716](https://github.com/operator-framework/operator-sdk/pull/3716))
+- Fix CVE-2020-14040 by upgrading to golang.org/x/text v0.3.3. ([#3459](https://github.com/operator-framework/operator-sdk/pull/3459))
+
+### Bug Fixes
+
+- Fixed debug logging in the `bundle validate` subcommand of `operator-sdk`. ([#3812](https://github.com/operator-framework/operator-sdk/pull/3812))
+- Fixed incorrect (cluster) role name assignments in generated CSVs [#3600](https://github.com/operator-framework/operator-sdk/issues/3600). ([#3714](https://github.com/operator-framework/operator-sdk/pull/3714))
+- Fixed issue that caused scorecard to fail loading local bundle due to a bug search method for the bundle metadata directory. ([#3829](https://github.com/operator-framework/operator-sdk/pull/3829))
+- Stop reconciling tasks when the event raised is a rescue in Ansible-based Operators.  More info: [Bugzilla 1856714](https://bugzilla.redhat.com/show_bug.cgi?id=1856714). ([#3727](https://github.com/operator-framework/operator-sdk/pull/3727))
+
+## v0.19.2
+
+### Changes
+
+- The `generate bundle` subcommand no longer requires a default channel be set nor defaults to the first channel provided to `--channels`. ([#3605](https://github.com/operator-framework/operator-sdk/pull/3605))
+- The `bundle validate` subcommand no longer returns an error if a bundle does not have a default channel. ([#3605](https://github.com/operator-framework/operator-sdk/pull/3605))
+
+## v0.19.1
+
+### Additions
+
+- Added the `--from-version` flag to `generate packagemanifests`. ([#3524](https://github.com/operator-framework/operator-sdk/pull/3524))
+
+### Bug Fixes
+
+- Fixed a bug that caused the Ansible operator not to set the environment variables `ANSIBLE_ROLES_PATH` and `ANSIBLE_COLLECTIONS_PATH` based on  the flags `--ansible-roles-path` and `--ansible-collections-path`. ([#3565](https://github.com/operator-framework/operator-sdk/pull/3565))
+
 ## v0.19.0
 
 ### Additions
 
 - Add "panic" level for --zap-stacktrace-level (allows "debug", "info", "error", "panic"). ([#3040](https://github.com/operator-framework/operator-sdk/pull/3040))
-- The `operator-sdk` binary has a new CLI workflow and project layout for scaffolding Go operators that is aligned with Kubebuilder's CLI and project layout. See the new [Quickstart Guide](https://master.sdk.operatorframework.io/docs/golang/quickstart) and the new [CLI reference](https://master.sdk.operatorframework.io/docs/new-cli) for more details. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
+The `operator-sdk` binary has a new CLI workflow and project layout for scaffolding Go operators that is aligned with Kubebuilder's CLI and project layout. See the new [Quickstart Guide](https://sdk.operatorframework.io/docs/building-operators/golang/quickstart/) and the new [CLI reference](https://v0-19-x.sdk.operatorframework.io/docs/new-cli/) for more details. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
 - `bundle validate` can now use a containerd image ("none") tool to unpack images, removing the need for an external image tool like docker/podman. ([#3222](https://github.com/operator-framework/operator-sdk/pull/3222))
 - The SDK `scorecard` command adds a new test image, scorecard-test-kuttl, that allows end users to write and execute kuttl based tests. ([#3278](https://github.com/operator-framework/operator-sdk/pull/3278))
 - Add "--olm-namespace" flag to olm subcommands (install, uninstall) to allow users to specify the  namespace where olm is to be installed or uninstalled. ([#3300](https://github.com/operator-framework/operator-sdk/pull/3300))
@@ -25,15 +56,15 @@
 - Upgrade Helm dependency for Helm based-Operators from `v3.2.0` to `v3.2.4` in order to fix CVE-2020-4053. ([#3313](https://github.com/operator-framework/operator-sdk/pull/3313))
 - Change default value of `--overwrite` flag in `operator-sdk generate bundle` to true. ([#3280](https://github.com/operator-framework/operator-sdk/pull/3280))
 - The scorecard-test-kuttl image was updated to be based off the v0.5.1 version of kudobuilder/kuttl.  This update fixes bugs found in kuttl v0.5.0. ([#3369](https://github.com/operator-framework/operator-sdk/pull/3369))
-- The `alpha scorecard` subcommand now outputs results as a [scorecard.operatorframework.io/v1alpha3 Test](https://godoc.org/github.com/operator-framework/operator-sdk/pkg/apis/scorecard/v1alpha3#Test) instead of a [scorecard.operatorframework.io/v1alpha2 ScorecardOutput](https://godoc.org/github.com/operator-framework/operator-sdk/pkg/apis/scorecard/v1alpha2#ScorecardOutput). As a result, the `--list` argument will now just output a list of tests, without associated labels. ([#3208](https://github.com/operator-framework/operator-sdk/pull/3208))
+- The `alpha scorecard` subcommand now outputs results as a [scorecard.operatorframework.io/v1alpha3 Test](https://pkg.go.dev/github.com/operator-framework/operator-sdk@v0.19.1/pkg/apis/scorecard/v1alpha3?tab=doc#Test) instead of a [scorecard.operatorframework.io/v1alpha2 ScorecardOutput](https://pkg.go.dev/github.com/operator-framework/operator-sdk@v0.19.1/pkg/apis/scorecard/v1alpha2?tab=doc#ScorecardOutput). As a result, the `--list` argument will now just output a list of tests, without associated labels. ([#3208](https://github.com/operator-framework/operator-sdk/pull/3208))
 
 ### Removals
 
-- The `operator-sdk new` command no longer supports scaffolding new Go projects with the `--type=Go` flag.  To scaffold new projects, users are expected to use `operator-sdk init` as part of the  [new CLI](https://master.sdk.operatorframework.io/docs/new-cli) for Go operators. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
+- The `operator-sdk new` command no longer supports scaffolding new Go projects with the `--type=Go` flag.  To scaffold new projects, users are expected to use `operator-sdk init` as part of the  [new CLI](https://v0-19-x.sdk.operatorframework.io/docs/new-cli/) for Go operators. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
 
 ### Deprecations
 
-- With the introduction of the new [Kubebuilder aligned CLI](https://master.sdk.operatorframework.io/docs/new-cli)  and project layout for Go operators, the [old CLI](https://sdk.operatorframework.io/docs/cli)  will still continue to work for Go projects scaffolded in the old layout with `operator-sdk new`. However the old CLI is now deprecated and will be removed in a future release. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
+- With the introduction of the new [Kubebuilder aligned CLI](https://v0-19-x.sdk.operatorframework.io/docs/new-cli/)  and project layout for Go operators, the [old CLI](https://sdk.operatorframework.io/docs/cli)  will still continue to work for Go projects scaffolded in the old layout with `operator-sdk new`. However the old CLI is now deprecated and will be removed in a future release. ([#3190](https://github.com/operator-framework/operator-sdk/pull/3190))
 - The migrate sub-command is deprecated. ([#3319](https://github.com/operator-framework/operator-sdk/pull/3319))
 - Deprecate 'operator-sdk add crd'. Use 'operator-sdk add api' instead. ([#3180](https://github.com/operator-framework/operator-sdk/pull/3180))
 - `bundle create` is deprecated in favor of a combination of `generate bundle` and `docker build -f bundle.Dockerfile ...`. ([#3323](https://github.com/operator-framework/operator-sdk/pull/3323))
