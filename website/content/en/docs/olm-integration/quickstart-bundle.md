@@ -9,12 +9,16 @@ The Operator SDK supports both creating manifests for OLM deployment, and testin
 Kubernetes cluster.
 
 This document succinctly walks through getting an Operator OLM-ready with [bundles][bundle], and glosses over
-explanations of certains steps for brevity. The following documents contain more detail on these steps:
+explanations of certain steps for brevity. The following documents contain more detail on these steps:
 - All operator-framework manifest commands supported by the SDK: [CLI overview][doc-cli-overview].
 - Generating operator-framework manifests: [generation overview][doc-olm-generate].
 
 If you are working with package manifests, see the [package manifests quickstart][quickstart-package-manifests]
 once you have completed the *Setup* section below.
+
+**Important:** this guide assumes your project was scaffolded with `operator-sdk init --project-version=3-alpha`.
+These features are unavailable to projects of version `2` or less; this information can be found by inspecting
+your `PROJECT` file's `version` value.
 
 ## Setup
 
@@ -30,8 +34,7 @@ Ensure OLM is enabled on your cluster before following this guide. [`operator-sd
 has several subcommands that can install, uninstall, and check the status of particular OLM versions in a cluster.
 
 **Note:** Certain cluster types may already have OLM enabled, but under a non-default (`"olm"`) namespace,
-which can be configured by setting `--olm-namespace=[non-default-olm-namespace]` for `operator-sdk olm` subcommands
-and `operator-sdk run packagemanifests`.
+which can be configured by setting `--olm-namespace=[non-default-olm-namespace]` for `operator-sdk olm status|uninstall` subcommands.
 
 You can check if OLM is already installed by running the following command,
 which will detect the installed OLM version automatically (0.15.1 in this example):
@@ -119,14 +122,14 @@ OLM and Operator Registry consumes Operator bundles via an [index image][index-i
 which are composed of one or more bundles. To build a memcached-operator bundle, run:
 
 ```console
-$ docker build -f bundle.Dockerfile -t quay.io/<username>/memcached-operator:v0.1.0 .
+make bundle-build BUNDLE_IMG=<some-registry>/memcached-operator-bundle:<tag>
+docker push <some-registry>/memcached-operator-bundle:<tag>
 ```
 
 Although we've validated on-disk manifests and metadata, we also must make sure the bundle itself is valid:
 
 ```console
-$ docker push quay.io/<username>/memcached-operator:v0.1.0
-$ operator-sdk bundle validate quay.io/<username>/memcached-operator:v0.1.0
+$ operator-sdk bundle validate <some-registry>/memcached-operator-bundle:<tag>
 INFO[0000] Unpacked image layers                         bundle-dir=/tmp/bundle-716785960 container-tool=docker
 INFO[0000] running docker pull                           bundle-dir=/tmp/bundle-716785960 container-tool=docker
 INFO[0002] running docker save                           bundle-dir=/tmp/bundle-716785960 container-tool=docker
@@ -139,17 +142,17 @@ to add an index to a cluster catalog, and the catalog [discovery docs][doc-olm-d
 about your cataloged Operator.
 
 
-[sdk-user-guide-go]:/docs/golang/legacy/quickstart
-[sdk-user-guide-ansible]:/docs/ansible/quickstart
-[sdk-user-guide-helm]:/docs/helm/quickstart
+[sdk-user-guide-go]:/docs/building-operators/golang/quickstart
+[sdk-user-guide-ansible]:/docs/building-operators/ansible/quickstart
+[sdk-user-guide-helm]:/docs/building-operators/helm/quickstart
 [quickstart-package-manifests]:/docs/olm-integration/quickstart-package-manifests
 [olm]:https://github.com/operator-framework/operator-lifecycle-manager/
 [bundle]:https://github.com/operator-framework/operator-registry/blob/v1.12.6/docs/design/operator-bundle.md
 [bundle-metadata]:https://github.com/operator-framework/operator-registry/blob/v1.12.6/docs/design/operator-bundle.md#bundle-annotations
 [bundle-dockerfile]:https://github.com/operator-framework/operator-registry/blob/v1.12.6/docs/design/operator-bundle.md#bundle-dockerfile
-[cli-olm]:/docs/new-cli/operator-sdk_olm
+[cli-olm]:/docs/cli/operator-sdk_olm
 [doc-cli-overview]:/docs/olm-integration/cli-overview
-[doc-olm-generate]:/docs/olm-integration/generating-a-csv
+[doc-olm-generate]:/docs/olm-integration/generation
 [opm]:https://github.com/operator-framework/operator-registry/blob/master/docs/design/opm-tooling.md
 [index-image]:https://github.com/operator-framework/operator-registry/blob/master/docs/design/opm-tooling.md#index
 [doc-index-build]:https://github.com/operator-framework/operator-registry#building-an-index-of-operators-using-opm

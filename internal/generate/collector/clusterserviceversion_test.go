@@ -20,14 +20,13 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var _ = Describe("ClusterServiceVersion", func() {
 	var (
 		c       *Manifests
-		in, out []runtime.Object
+		in, out []controllerutil.Object
 	)
 
 	BeforeEach(func() {
@@ -245,26 +244,26 @@ var _ = Describe("ClusterServiceVersion", func() {
 
 })
 
-func getRoleNames(objs []runtime.Object) []string {
-	return getNamesForKind(roleKind, objs)
+func getRoleNames(objs []controllerutil.Object) []string {
+	return getNamesForKind("Role", objs)
 }
 
-func getRoleBindingNames(objs []runtime.Object) []string {
-	return getNamesForKind(roleBindingKind, objs)
+func getRoleBindingNames(objs []controllerutil.Object) []string {
+	return getNamesForKind("RoleBinding", objs)
 }
 
-func getClusterRoleNames(objs []runtime.Object) []string {
-	return getNamesForKind(clusterRoleKind, objs)
+func getClusterRoleNames(objs []controllerutil.Object) []string {
+	return getNamesForKind("ClusterRole", objs)
 }
 
-func getClusterRoleBindingNames(objs []runtime.Object) []string {
-	return getNamesForKind(clusterRoleBindingKind, objs)
+func getClusterRoleBindingNames(objs []controllerutil.Object) []string {
+	return getNamesForKind("ClusterRoleBinding", objs)
 }
 
-func getNamesForKind(kind string, objs []runtime.Object) (names []string) {
+func getNamesForKind(kind string, objs []controllerutil.Object) (names []string) {
 	for _, obj := range objs {
 		if obj.GetObjectKind().GroupVersionKind().Kind == kind {
-			names = append(names, obj.(metav1.Object).GetName())
+			names = append(names, obj.GetName())
 		}
 	}
 	return
@@ -276,19 +275,19 @@ func newDeploymentWithServiceAccount(name string) (d appsv1.Deployment) {
 }
 
 func newRole(name string) (r rbacv1.Role) {
-	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind(roleKind))
+	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("Role"))
 	r.SetName(name)
 	return r
 }
 
 func newClusterRole(name string) (r rbacv1.ClusterRole) {
-	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind(clusterRoleKind))
+	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("ClusterRole"))
 	r.SetName(name)
 	return r
 }
 
 func newRoleBinding(name string, ref rbacv1.RoleRef, subjects ...rbacv1.Subject) (r rbacv1.RoleBinding) {
-	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind(roleBindingKind))
+	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("RoleBinding"))
 	r.SetName(name)
 	r.RoleRef = ref
 	r.Subjects = subjects
@@ -296,7 +295,7 @@ func newRoleBinding(name string, ref rbacv1.RoleRef, subjects ...rbacv1.Subject)
 }
 
 func newClusterRoleBinding(name string, ref rbacv1.RoleRef, subjects ...rbacv1.Subject) (r rbacv1.ClusterRoleBinding) {
-	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind(clusterRoleBindingKind))
+	r.SetGroupVersionKind(rbacv1.SchemeGroupVersion.WithKind("ClusterRoleBinding"))
 	r.SetName(name)
 	r.RoleRef = ref
 	r.Subjects = subjects
@@ -311,11 +310,11 @@ func newRef(name, kind, apiGroup string) (s rbacv1.RoleRef) {
 }
 
 func newRoleRef(name string) (s rbacv1.RoleRef) {
-	return newRef(name, roleKind, rbacv1.SchemeGroupVersion.Group)
+	return newRef(name, "Role", rbacv1.SchemeGroupVersion.Group)
 }
 
 func newClusterRoleRef(name string) (s rbacv1.RoleRef) {
-	return newRef(name, clusterRoleKind, rbacv1.SchemeGroupVersion.Group)
+	return newRef(name, "ClusterRole", rbacv1.SchemeGroupVersion.Group)
 }
 
 func newSubject(name, kind string) (s rbacv1.Subject) {

@@ -16,7 +16,7 @@ package collector
 
 import (
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // TODO(estroz): there's a significant amount of code dupliation here, a byproduct of Go's type system.
@@ -25,11 +25,13 @@ import (
 const (
 	// This service account exists in every namespace as the default.
 	defaultServiceAccountName = "default"
+
+	serviceAccountKind = "ServiceAccount"
 )
 
 // SplitCSVPermissionsObjects splits roles that should be written to a CSV as permissions (in)
 // from roles and role bindings that should be written directly to the bundle (out).
-func (c *Manifests) SplitCSVPermissionsObjects() (in, out []runtime.Object) { //nolint:dupl
+func (c *Manifests) SplitCSVPermissionsObjects() (in, out []controllerutil.Object) { //nolint:dupl
 	roleMap := make(map[string]*rbacv1.Role)
 	for i := range c.Roles {
 		roleMap[c.Roles[i].GetName()] = &c.Roles[i]
@@ -79,7 +81,7 @@ func (c *Manifests) SplitCSVPermissionsObjects() (in, out []runtime.Object) { //
 	outRoleBindingNames := make(map[string]struct{})
 	for _, binding := range c.RoleBindings {
 		roleRef := binding.RoleRef
-		if roleRef.Kind == roleKind && (roleRef.APIGroup == "" || roleRef.APIGroup == rbacv1.SchemeGroupVersion.Group) {
+		if roleRef.Kind == "Role" && (roleRef.APIGroup == "" || roleRef.APIGroup == rbacv1.SchemeGroupVersion.Group) {
 			numSubjects := len(binding.Subjects)
 			if numSubjects == 1 {
 				// cases (1) and (2).
@@ -125,7 +127,7 @@ func (c *Manifests) SplitCSVPermissionsObjects() (in, out []runtime.Object) { //
 
 // SplitCSVClusterPermissionsObjects splits cluster roles that should be written to a CSV as clusterPermissions (in)
 // from cluster roles and cluster role bindings that should be written directly to the bundle (out).
-func (c *Manifests) SplitCSVClusterPermissionsObjects() (in, out []runtime.Object) { //nolint:dupl
+func (c *Manifests) SplitCSVClusterPermissionsObjects() (in, out []controllerutil.Object) { //nolint:dupl
 	roleMap := make(map[string]*rbacv1.ClusterRole)
 	for i := range c.ClusterRoles {
 		roleMap[c.ClusterRoles[i].GetName()] = &c.ClusterRoles[i]
@@ -140,7 +142,7 @@ func (c *Manifests) SplitCSVClusterPermissionsObjects() (in, out []runtime.Objec
 		hasRef := false
 		for _, roleBinding := range roleBindingMap {
 			roleRef := roleBinding.RoleRef
-			if roleRef.Kind == clusterRoleKind && (roleRef.APIGroup == "" || roleRef.APIGroup == rbacv1.SchemeGroupVersion.Group) {
+			if roleRef.Kind == "ClusterRole" && (roleRef.APIGroup == "" || roleRef.APIGroup == rbacv1.SchemeGroupVersion.Group) {
 				if roleRef.Name == roleName {
 					hasRef = true
 					break

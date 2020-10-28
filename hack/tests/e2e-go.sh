@@ -1,16 +1,30 @@
 #!/usr/bin/env bash
-set -ex
 
-source hack/lib/image_lib.sh
+set -o errexit
+set -o nounset
+set -o pipefail
 
-source hack/tests/scaffolding/e2e-go-scaffold.sh
+source ./hack/lib/test_lib.sh
+source ./hack/lib/image_lib.sh
 
-pushd $BASEPROJECTDIR/memcached-operator
-operator-sdk build $IMAGE_NAME
-# If using a kind cluster, load the image into all nodes.
-load_image_if_kind "$IMAGE_NAME"
+test_dir=./test
+tests=$test_dir/e2e-go
 
-operator-sdk test local ./test/e2e
-popd
+export TRACE=1
+export GO111MODULE=on
 
-go test ./test/e2e/... -root=. -globalMan=testdata/empty.yaml
+###########################################################################
+### DO NOT UNCOMMENT THESE LINES UNLESS YOU KNOW WHAT YOU'RE DOING !!!! ###
+###                                                                     ###
+### They cause the integration image not to be loaded into kind in      ###
+### TravisCI.                                                           ###
+###                                                                     ###
+###########################################################################
+###
+###    #prepare_staging_dir $tmp_sdk_root
+###    #fetch_envtest_tools $tmp_sdk_root
+###
+###########################################################################
+setup_envs $tmp_sdk_root
+
+go test $tests -v -ginkgo.v

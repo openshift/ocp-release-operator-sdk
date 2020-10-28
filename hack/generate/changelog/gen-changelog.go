@@ -9,7 +9,7 @@ import (
 	"github.com/blang/semver"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/operator-framework/operator-sdk/hack/generate/changelog/util"
+	"github.com/operator-framework/operator-sdk/hack/generate/changelog/internal/util"
 )
 
 const repo = "github.com/operator-framework/operator-sdk"
@@ -30,7 +30,7 @@ func main() {
 	flag.StringVar(&changelogFile, "changelog", "CHANGELOG.md",
 		"Path to CHANGELOG")
 	flag.StringVar(&migrationDir, "migration-guide-dir",
-		filepath.Join("website", "content", "en", "docs", "migration"),
+		filepath.Join("website", "content", "en", "docs", "upgrading-sdk-version"),
 		"Path to migration guide directory")
 	flag.BoolVar(&validateOnly, "validate-only", false,
 		"Only validate fragments")
@@ -56,8 +56,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("flag '-tag' is not a valid semantic version: %v", err)
 	}
-	if len(version.Pre) > 0 || len(version.Build) > 0 {
-		log.Fatalf("flag '-tag' must not include a build number or pre-release identifiers")
+	if len(version.Build) > 0 {
+		log.Fatalf("flag '-tag' must not include a build number")
 	}
 
 	cl := util.ChangelogFromEntries(version, entries)
