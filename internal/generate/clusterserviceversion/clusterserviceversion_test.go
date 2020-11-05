@@ -16,16 +16,16 @@ package clusterserviceversion
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
 
+	"github.com/blang/semver"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
-
-	"github.com/blang/semver"
 	operatorversion "github.com/operator-framework/api/pkg/lib/version"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/operator-framework/operator-registry/pkg/lib/bundle"
@@ -33,9 +33,9 @@ import (
 	"sigs.k8s.io/kubebuilder/pkg/model/config"
 	"sigs.k8s.io/yaml"
 
+	metricsannotations "github.com/operator-framework/operator-sdk/internal/annotations/metrics"
 	"github.com/operator-framework/operator-sdk/internal/generate/collector"
 	genutil "github.com/operator-framework/operator-sdk/internal/generate/internal"
-	kbutil "github.com/operator-framework/operator-sdk/internal/util/kubebuilder"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 )
 
@@ -43,16 +43,12 @@ var (
 	testDataDir           = filepath.Join("..", "testdata")
 	csvDir                = filepath.Join(testDataDir, "clusterserviceversions")
 	csvBasesDir           = filepath.Join(csvDir, "bases")
-	csvNewLayoutBundleDir = filepath.Join(csvDir, "newlayout", "manifests")
+	csvNewLayoutBundleDir = filepath.Join(csvDir, "output")
 
-	// TODO: create a new testdata dir (top level?) that has both a "config"
-	// dir and a "deploy" dir that contains `kustomize build config/default`
-	// output to simulate actual manifest collection behavior. Using "config"
-	// directly is not standard behavior.
-	goTestDataDir = filepath.Join(testDataDir, "non-standard-layout")
-	goAPIsDir     = filepath.Join(goTestDataDir, "api")
-	goConfigDir   = filepath.Join(goTestDataDir, "config")
-	goCRDsDir     = filepath.Join(goConfigDir, "crds")
+	goTestDataDir       = filepath.Join(testDataDir, "go")
+	goAPIsDir           = filepath.Join(goTestDataDir, "api")
+	goStaticDir         = filepath.Join(goTestDataDir, "static")
+	goBasicOperatorPath = filepath.Join(goStaticDir, "basic.operator.yaml")
 )
 
 var (
@@ -61,8 +57,8 @@ var (
 )
 
 const (
-	testSDKbuilderStamp = "operators.operatorframework.io/builder: operator-sdk-unknown"
-	testSDKlayoutStamp  = "operators.operatorframework.io/project_layout: unknown"
+	testSDKbuilderAnnotationKey = "operators.operatorframework.io/builder"
+	testSDKlayoutAnnotationKey  = "operators.operatorframework.io/project_layout"
 )
 
 var (
@@ -72,7 +68,7 @@ var (
 
 var _ = BeforeSuite(func() {
 	col = &collector.Manifests{}
-	Expect(col.UpdateFromDirs(goConfigDir, goCRDsDir)).ToNot(HaveOccurred())
+	collectManifestsFromFileHelper(col, goBasicOperatorPath)
 
 	cfg = readConfigHelper(goTestDataDir)
 
@@ -95,7 +91,7 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 		buf = &bytes.Buffer{}
 	})
 
-	Describe("for the new Go project layout", func() {
+	Describe("for a Go project", func() {
 
 		Context("with correct Options", func() {
 
@@ -127,7 +123,7 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 					WithWriter(buf),
 				}
 				Expect(g.Generate(cfg, opts...)).ToNot(HaveOccurred())
-				outputCSV := removeSDKLabelsFromCSVString(buf.String())
+				outputCSV := removeSDKAnnotationsFromCSVString(buf.String())
 				Expect(outputCSV).To(MatchYAML(newCSVStr))
 			})
 			It("should write a ClusterServiceVersion manifest to a base file", func() {
@@ -161,8 +157,8 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 
 				annotations := outputCSV.GetAnnotations()
 				Expect(annotations).ToNot(BeNil())
-				Expect(annotations).Should(HaveKey(projutil.OperatorBuilder))
-				Expect(annotations).Should(HaveKey(projutil.OperatorLayout))
+				Expect(annotations).Should(HaveKey(metricsannotations.BuilderObjectAnnotation))
+				Expect(annotations).Should(HaveKey(metricsannotations.LayoutObjectAnnotation))
 			})
 			It("should write a ClusterServiceVersion manifest to a bundle file", func() {
 				g = Generator{
@@ -196,39 +192,6 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 				Expect(outputFile).To(BeAnExistingFile())
 				Expect(readFileHelper(outputFile)).To(MatchYAML(newCSVStr))
 			})
-
-			It("should write a ClusterServiceVersion manifest to a legacy bundle file", func() {
-				g = Generator{
-					OperatorName: operatorName,
-					OperatorType: operatorType,
-					Version:      version,
-					Collector:    col,
-				}
-				opts := []LegacyOption{
-					WithBundleBase(csvBasesDir, goAPIsDir, projutil.InteractiveHardOff),
-					LegacyOption(WithBundleWriter(tmp)),
-				}
-				Expect(g.GenerateLegacy(opts...)).ToNot(HaveOccurred())
-				outputFile := filepath.Join(tmp, bundle.ManifestsDir, makeCSVFileName(operatorName))
-				Expect(outputFile).To(BeAnExistingFile())
-				Expect(readFileHelper(outputFile)).To(MatchYAML(newCSVStr))
-			})
-			It("should write a ClusterServiceVersion manifest as a legacy package file", func() {
-				g = Generator{
-					OperatorName: operatorName,
-					OperatorType: operatorType,
-					Version:      version,
-					Collector:    col,
-				}
-				opts := []LegacyOption{
-					WithPackageBase(csvBasesDir, goAPIsDir, projutil.InteractiveHardOff),
-					LegacyOption(WithPackageWriter(tmp)),
-				}
-				Expect(g.GenerateLegacy(opts...)).Should(Succeed())
-				outputFile := filepath.Join(tmp, g.Version, makeCSVFileName(operatorName))
-				Expect(outputFile).To(BeAnExistingFile())
-				Expect(string(readFileHelper(outputFile))).To(MatchYAML(newCSVStr))
-			})
 		})
 
 		Context("with incorrect Options", func() {
@@ -257,23 +220,6 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 					WithWriter(&bytes.Buffer{}),
 				}
 				Expect(g.Generate(cfg, opts...)).To(MatchError(noGetBaseError))
-			})
-
-			It("should return an error without any LegacyOptions", func() {
-				opts := []LegacyOption{}
-				Expect(g.GenerateLegacy(opts...)).To(MatchError(noGetWriterError))
-			})
-			It("should return an error without a getWriter (legacy)", func() {
-				opts := []LegacyOption{
-					WithBundleBase(csvBasesDir, goAPIsDir, projutil.InteractiveHardOff),
-				}
-				Expect(g.GenerateLegacy(opts...)).To(MatchError(noGetWriterError))
-			})
-			It("should return an error without a getBase (legacy)", func() {
-				opts := []LegacyOption{
-					LegacyOption(WithWriter(&bytes.Buffer{})),
-				}
-				Expect(g.GenerateLegacy(opts...)).To(MatchError(noGetBaseError))
 			})
 		})
 
@@ -329,7 +275,7 @@ var _ = Describe("Generating a ClusterServiceVersion", func() {
 					getBase:      makeBaseGetter(newCSV),
 				}
 				// Update the input's and expected CSV's Deployment image.
-				Expect(g.Collector.UpdateFromDirs(goConfigDir, goCRDsDir)).ToNot(HaveOccurred())
+				collectManifestsFromFileHelper(g.Collector, goBasicOperatorPath)
 				Expect(len(g.Collector.Deployments)).To(BeNumerically(">=", 1))
 				imageTag := "controller:v" + g.Version
 				modifyDepImageHelper(&g.Collector.Deployments[0].Spec, imageTag)
@@ -400,11 +346,18 @@ var _ = Describe("Generation requires interaction", func() {
 	})
 })
 
+func collectManifestsFromFileHelper(col *collector.Manifests, path string) {
+	f, err := os.Open(path)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	ExpectWithOffset(1, col.UpdateFromReader(f)).ToNot(HaveOccurred())
+	ExpectWithOffset(1, f.Close()).Should(Succeed())
+}
+
 func readConfigHelper(dir string) *config.Config {
 	wd, err := os.Getwd()
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	ExpectWithOffset(1, os.Chdir(dir)).ToNot(HaveOccurred())
-	cfg, err := kbutil.ReadConfig()
+	cfg, err := projutil.ReadConfig()
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	ExpectWithOffset(1, os.Chdir(wd)).ToNot(HaveOccurred())
 	return cfg
@@ -426,7 +379,7 @@ func initTestCSVsHelper() {
 func readFileHelper(path string) string {
 	b, err := ioutil.ReadFile(path)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
-	return removeSDKLabelsFromCSVString(string(b))
+	return removeSDKAnnotationsFromCSVString(string(b))
 }
 
 func modifyCSVDepImageHelper(tag string) func(csv *v1alpha1.ClusterServiceVersion) {
@@ -496,10 +449,14 @@ func upgradeCSV(csv *v1alpha1.ClusterServiceVersion, name, version string) *v1al
 	return upgraded
 }
 
-// removeSDKLabelsFromCSVString to remove the sdk labels from test CSV structs. The test
-// cases do not generate a PROJECTFILE or an entire operator to get the version or layout
-// of SDK. Hence the values of those will appear "unknown".
-func removeSDKLabelsFromCSVString(csv string) string {
-	replacer := strings.NewReplacer(testSDKbuilderStamp, "", testSDKlayoutStamp, "")
-	return replacer.Replace(csv)
+// removeSDKAnnotationsFromCSVString removes SDK annotations from test CSVs.
+// These annotations will update on each new release and will cause tests to fail erroneously,
+// so they should be removed for each test case.
+func removeSDKAnnotationsFromCSVString(csv string) string {
+	builderRe := regexp.MustCompile(fmt.Sprintf(".*%s: .[^\n]+\n", regexp.QuoteMeta(testSDKbuilderAnnotationKey)))
+	layoutRe := regexp.MustCompile(fmt.Sprintf(".*%s: .[^\n]+\n", regexp.QuoteMeta(testSDKlayoutAnnotationKey)))
+
+	csv = builderRe.ReplaceAllString(csv, "")
+	csv = layoutRe.ReplaceAllString(csv, "")
+	return csv
 }

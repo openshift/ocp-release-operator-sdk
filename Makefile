@@ -9,9 +9,12 @@ else
   Q = @
 endif
 
-VERSION = $(shell git describe --dirty --tags --always)
+SIMPLE_VERSION=$(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
+GIT_VERSION = $(shell git describe --dirty --tags --always)
 GIT_COMMIT = $(shell git rev-parse HEAD)
 K8S_VERSION = v1.18.2
+GOLANGCI_LINT_VER = "1.30.0"
+OLM_VERSION = "0.15.1"
 REPO = github.com/operator-framework/operator-sdk
 PKGS = $(shell go list ./... | grep -v /vendor/)
 TEST_PKGS = $(shell go list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
@@ -21,29 +24,33 @@ GO_BUILD_ARGS = \
   -gcflags "all=-trimpath=$(shell go env GOPATH)" \
   -asmflags "all=-trimpath=$(shell go env GOPATH)" \
   -ldflags " \
-    -X '$(REPO)/version.GitVersion=$(VERSION)' \
-    -X '$(REPO)/version.GitCommit=$(GIT_COMMIT)' \
-    -X '$(REPO)/version.KubernetesVersion=$(K8S_VERSION)' \
+    -X '$(REPO)/internal/version.Version=$(SIMPLE_VERSION)' \
+    -X '$(REPO)/internal/version.GitVersion=$(GIT_VERSION)' \
+    -X '$(REPO)/internal/version.GitCommit=$(GIT_COMMIT)' \
+    -X '$(REPO)/internal/version.KubernetesVersion=$(K8S_VERSION)' \
   " \
-
 
 ANSIBLE_BASE_IMAGE = quay.io/operator-framework/ansible-operator
 HELM_BASE_IMAGE = quay.io/operator-framework/helm-operator
-SCORECARD_PROXY_BASE_IMAGE = quay.io/operator-framework/scorecard-proxy
+OPERATOR_SDK_BASE_IMAGE = quay.io/operator-framework/operator-sdk
+CUSTOM_SCORECARD_TESTS_BASE_IMAGE = quay.io/operator-framework/custom-scorecard-tests
 SCORECARD_TEST_BASE_IMAGE = quay.io/operator-framework/scorecard-test
 SCORECARD_TEST_KUTTL_BASE_IMAGE = quay.io/operator-framework/scorecard-test-kuttl
 
 ANSIBLE_IMAGE ?= $(ANSIBLE_BASE_IMAGE)
 HELM_IMAGE ?= $(HELM_BASE_IMAGE)
-SCORECARD_PROXY_IMAGE ?= $(SCORECARD_PROXY_BASE_IMAGE)
+OPERATOR_SDK_IMAGE ?= $(OPERATOR_SDK_BASE_IMAGE)
+CUSTOM_SCORECARD_TESTS_IMAGE ?= $(CUSTOM_SCORECARD_TESTS_BASE_IMAGE)
 SCORECARD_TEST_IMAGE ?= $(SCORECARD_TEST_BASE_IMAGE)
 SCORECARD_TEST_KUTTL_IMAGE ?= $(SCORECARD_TEST_KUTTL_BASE_IMAGE)
 
-ANSIBLE_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
-HELM_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
-SCORECARD_PROXY_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
-SCORECARD_TEST_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
-SCORECARD_TEST_KUTTL_ARCHES:="amd64" "ppc64le" "s390x" "arm64"
+ANSIBLE_ARCHES:="amd64" "ppc64le" "arm64" "s390x"
+HELM_ARCHES:="amd64" "ppc64le" "arm64" "s390x"
+OPERATOR_SDK_ARCHES:="amd64" "ppc64le" "arm64" "s390x"
+SCORECARD_TEST_ARCHES:="amd64" "ppc64le" "arm64" "s390x"
+SCORECARD_TEST_KUTTL_ARCHES:="amd64" "ppc64le" "arm64"
+# the custom scorecard test image is a scorecard example only
+CUSTOM_SCORECARD_TESTS_ARCHES:="amd64" "ppc64le" "arm64"
 
 export CGO_ENABLED:=0
 .DEFAULT_GOAL:=help
@@ -69,6 +76,7 @@ all: format test build/operator-sdk ## Test and Build the Operator SDK
 install: ## Install the binaries
 	$(Q)$(GOARGS) go install $(GO_BUILD_ARGS) ./cmd/operator-sdk ./cmd/ansible-operator ./cmd/helm-operator
 
+
 # Code management.
 .PHONY: format tidy clean cli-doc lint
 
@@ -81,14 +89,12 @@ tidy: ## Update dependencies
 clean: ## Clean up the build artifacts
 	$(Q)rm -rf build
 
-lint-dev:  ## Run golangci-lint with all checks enabled (development purpose only)
-	./hack/tests/check-lint.sh dev
-
-lint-fix: ## Run golangci-lint automatically fix (development purpose only)
-	./hack/tests/check-lint.sh fix
-
-lint: ## Run golangci-lint with all checks enabled in the ci
-	./hack/tests/check-lint.sh ci
+lint: ## Install and run golangci-lint checks
+ifneq (${GOLANGCI_LINT_VER}, "$(shell ./bin/golangci-lint --version 2>/dev/null | cut -b 27-32)")
+	@echo "golangci-lint missing or not version '${GOLANGCI_LINT_VER}', downloading..."
+	curl -sSfL "https://raw.githubusercontent.com/golangci/golangci-lint/v${GOLANGCI_LINT_VER}/install.sh" | sh -s -- -b ./bin "v${GOLANGCI_LINT_VER}"
+endif
+	./bin/golangci-lint --timeout 5m run
 
 setup-k8s:
 	hack/ci/setup-k8s.sh ${K8S_VERSION}
@@ -99,18 +105,21 @@ setup-k8s:
 
 ##@ Generate
 
-.PHONY: generate gen-cli-doc gen-test-framework gen-changelog
+.PHONY: generate cli-doc changelog samples
 
-generate: gen-cli-doc gen-test-framework  ## Run all non-release generate targets
+generate: cli-doc samples bindata ## Run all non-release generate targets
 
-gen-cli-doc: ## Generate CLI documentation
-	./hack/generate/cli-doc/gen-cli-doc.sh
+cli-doc: ## Generate CLI documentation
+	go run ./hack/generate/cli-doc/gen-cli-doc.go
 
-gen-test-framework: build/operator-sdk ## Run generate commands to update test/test-framework
-	./hack/generate/test-framework/gen-test-framework.sh
+samples: ## Generate samples
+	go run ./hack/generate/samples/generate_all.go
 
-gen-changelog: ## Generate CHANGELOG.md and migration guide updates
+changelog: ## Generate CHANGELOG.md and migration guide updates
 	./hack/generate/changelog/gen-changelog.sh
+
+bindata:
+	./hack/generate/olm_bindata.sh $(OLM_VERSION)
 
 ##############################
 # Release                    #
@@ -122,21 +131,21 @@ gen-changelog: ## Generate CHANGELOG.md and migration guide updates
 .PHONY: release_builds release
 
 release_builds := \
-	build/operator-sdk-$(VERSION)-aarch64-linux-gnu \
-	build/operator-sdk-$(VERSION)-x86_64-linux-gnu \
-	build/operator-sdk-$(VERSION)-x86_64-apple-darwin \
-	build/operator-sdk-$(VERSION)-ppc64le-linux-gnu \
-	build/operator-sdk-$(VERSION)-s390x-linux-gnu \
-	build/ansible-operator-$(VERSION)-aarch64-linux-gnu \
-	build/ansible-operator-$(VERSION)-x86_64-linux-gnu \
-	build/ansible-operator-$(VERSION)-x86_64-apple-darwin \
-	build/ansible-operator-$(VERSION)-ppc64le-linux-gnu \
-	build/ansible-operator-$(VERSION)-s390x-linux-gnu \
-	build/helm-operator-$(VERSION)-aarch64-linux-gnu \
-	build/helm-operator-$(VERSION)-x86_64-linux-gnu \
-	build/helm-operator-$(VERSION)-x86_64-apple-darwin \
-	build/helm-operator-$(VERSION)-ppc64le-linux-gnu \
-	build/helm-operator-$(VERSION)-s390x-linux-gnu
+	build/operator-sdk-$(GIT_VERSION)-aarch64-linux-gnu \
+	build/operator-sdk-$(GIT_VERSION)-x86_64-linux-gnu \
+	build/operator-sdk-$(GIT_VERSION)-x86_64-apple-darwin \
+	build/operator-sdk-$(GIT_VERSION)-ppc64le-linux-gnu \
+	build/operator-sdk-$(GIT_VERSION)-s390x-linux-gnu \
+	build/ansible-operator-$(GIT_VERSION)-aarch64-linux-gnu \
+	build/ansible-operator-$(GIT_VERSION)-x86_64-linux-gnu \
+	build/ansible-operator-$(GIT_VERSION)-x86_64-apple-darwin \
+	build/ansible-operator-$(GIT_VERSION)-ppc64le-linux-gnu \
+	build/ansible-operator-$(GIT_VERSION)-s390x-linux-gnu \
+	build/helm-operator-$(GIT_VERSION)-aarch64-linux-gnu \
+	build/helm-operator-$(GIT_VERSION)-x86_64-linux-gnu \
+	build/helm-operator-$(GIT_VERSION)-x86_64-apple-darwin \
+	build/helm-operator-$(GIT_VERSION)-ppc64le-linux-gnu \
+	build/helm-operator-$(GIT_VERSION)-s390x-linux-gnu
 
 release: clean $(release_builds) $(release_builds:=.asc) ## Release the Operator SDK
 
@@ -163,7 +172,7 @@ build/helm-operator-%-linux-gnu: GOARGS = GOOS=linux
 
 build/%: $(SOURCES) ## Build the operator-sdk binary
 	$(Q){ \
-	cmdpkg=$$(echo $* | sed "s/\(operator-sdk\|ansible-operator\|helm-operator\).*/\1/"); \
+	cmdpkg=$$(echo $* | sed -E "s/(operator-sdk|ansible-operator|helm-operator).*/\1/"); \
 	$(GOARGS) go build $(GO_BUILD_ARGS) -o $@ ./cmd/$$cmdpkg; \
 	}
 
@@ -180,20 +189,17 @@ build/%.asc: ## Create release signatures for operator-sdk release binaries
 	fi; \
 	}
 
-# Image scaffold/build/push.
+# Image build/push.
 .PHONY: image image-build image-push
 
 image: image-build image-push ## Build and push all images
 
-image-build: image-build-ansible image-build-helm image-build-scorecard-proxy image-build-scorecard-test image-build-scorecard-test-kuttl## Build all images
+image-build: image-build-ansible image-build-helm image-build-scorecard-test image-build-scorecard-test-kuttl image-build-sdk ## Build all images
 
-image-push: image-push-ansible image-push-helm image-push-scorecard-proxy image-push-scorecard-test ## Push all images
+image-push: image-push-ansible image-push-helm image-push-scorecard-test image-push-scorecard-test-kuttl image-push-sdk ## Push all images
 
-# Ansible operator image scaffold/build/push.
-.PHONY: image-scaffold-ansible image-build-ansible image-push-ansible image-push-ansible-multiarch
-
-image-scaffold-ansible:
-	go run ./hack/image/ansible/scaffold-ansible-image.go
+# Ansible operator image build/push.
+.PHONY: image-build-ansible image-push-ansible image-push-ansible-multiarch
 
 image-build-ansible: build/ansible-operator-dev-linux-gnu
 	./hack/image/build-ansible-image.sh $(ANSIBLE_BASE_IMAGE):dev
@@ -204,11 +210,8 @@ image-push-ansible:
 image-push-ansible-multiarch:
 	./hack/image/push-manifest-list.sh $(ANSIBLE_IMAGE) ${ANSIBLE_ARCHES}
 
-# Helm operator image scaffold/build/push.
-.PHONY: image-scaffold-helm image-build-helm image-push-helm image-push-helm-multiarch
-
-image-scaffold-helm:
-	go run ./hack/image/helm/scaffold-helm-image.go
+# Helm operator image build/push.
+.PHONY: image-build-helm image-push-helm image-push-helm-multiarch
 
 image-build-helm: build/helm-operator-dev-linux-gnu
 	./hack/image/build-helm-image.sh $(HELM_BASE_IMAGE):dev
@@ -219,23 +222,26 @@ image-push-helm:
 image-push-helm-multiarch:
 	./hack/image/push-manifest-list.sh $(HELM_IMAGE) ${HELM_ARCHES}
 
-# Scorecard proxy image scaffold/build/push.
-.PHONY: image-build-scorecard-proxy image-push-scorecard-proxy image-push-scorecard-proxy-multiarch
+.PHONY: image-build-sdk image-push-sdk image-push-sdk-multiarch
 
-image-build-scorecard-proxy:
-	./hack/image/build-scorecard-proxy-image.sh $(SCORECARD_PROXY_BASE_IMAGE):dev
+image-build-sdk: build/operator-sdk-dev-linux-gnu
+	./hack/image/build-sdk-image.sh $(OPERATOR_SDK_BASE_IMAGE):dev
 
-image-push-scorecard-proxy:
-	./hack/image/push-image-tags.sh $(SCORECARD_PROXY_BASE_IMAGE):dev $(SCORECARD_PROXY_IMAGE)-$(shell go env GOARCH)
+image-push-sdk:
+	./hack/image/push-image-tags.sh $(OPERATOR_SDK_BASE_IMAGE):dev $(OPERATOR_SDK_IMAGE)-$(shell go env GOARCH)
 
-image-push-scorecard-proxy-multiarch:
-	./hack/image/push-manifest-list.sh $(SCORECARD_PROXY_IMAGE) ${SCORECARD_PROXY_ARCHES}
+image-push-sdk-multiarch:
+	./hack/image/push-manifest-list.sh $(OPERATOR_SDK_IMAGE) ${OPERATOR_SDK_ARCHES}
 
-# Scorecard test image scaffold/build/push.
+
+# Scorecard custom test image build/push.
+.PHONY: image-build-custom-scorecard-tests
+
+image-build-custom-scorecard-tests:
+	./hack/image/build-custom-scorecard-tests-image.sh $(CUSTOM_SCORECARD_TESTS_BASE_IMAGE):dev
+
+# Scorecard test image build/push.
 .PHONY: image-build-scorecard-test image-push-scorecard-test image-push-scorecard-test-multiarch
-
-# Scorecard test kuttl image scaffold/build/push.
-.PHONY: image-build-scorecard-test-kuttl image-push-scorecard-test-kuttl image-push-scorecard-test-kuttl-multiarch
 
 image-build-scorecard-test:
 	./hack/image/build-scorecard-test-image.sh $(SCORECARD_TEST_BASE_IMAGE):dev
@@ -245,6 +251,9 @@ image-push-scorecard-test:
 
 image-push-scorecard-test-multiarch:
 	./hack/image/push-manifest-list.sh $(SCORECARD_TEST_IMAGE) ${SCORECARD_TEST_ARCHES}
+
+# Scorecard test kuttl image build/push.
+.PHONY: image-build-scorecard-test-kuttl image-push-scorecard-test-kuttl image-push-scorecard-test-kuttl-multiarch
 
 image-build-scorecard-test-kuttl:
 	./hack/image/build-scorecard-test-kuttl-image.sh $(SCORECARD_TEST_KUTTL_BASE_IMAGE):dev
@@ -282,33 +291,22 @@ test-links:
 test-ci: test-sanity test-unit install test-subcommand test-e2e ## Run the CI test suite
 
 # Subcommand tests.
-.PHONY: test-subcommand test-subcommand-local test-subcommand-scorecard test-subcommand-olm-install
+.PHONY: test-subcommand test-subcommand-olm-install
 
-test-subcommand: test-subcommand-local test-subcommand-scorecard test-subcommand-olm-install
-	./hack/tests/subcommand-bundle.sh
-	./hack/tests/subcommand-generate-csv.sh
-
-test-subcommand-local:
-	./hack/tests/subcommand.sh
-
-test-subcommand-scorecard:
-	./hack/tests/subcommand-scorecard.sh
+test-subcommand: test-subcommand-olm-install
 
 test-subcommand-olm-install:
 	./hack/tests/subcommand-olm-install.sh
 
 # E2E tests.
-.PHONY: test-e2e test-e2e-go test-e2e-go-new test-e2e-ansible test-e2e-ansible-molecule test-e2e-helm
+.PHONY: test-e2e test-e2e-go test-e2e-ansible test-e2e-ansible-molecule test-e2e-helm
 
-test-e2e: test-e2e-go test-e2e-go-new test-e2e-ansible test-e2e-ansible-molecule test-e2e-helm ## Run the e2e tests
+test-e2e: test-e2e-go test-e2e-ansible test-e2e-ansible-molecule test-e2e-helm ## Run the e2e tests
 
-test-e2e-go:
-	./hack/tests/e2e-go.sh $(ARGS)
+test-e2e-go: image-build-scorecard-test image-build-custom-scorecard-tests
+	./hack/tests/e2e-go.sh
 
-test-e2e-go-new:
-	K8S_VERSION=$(K8S_VERSION) ./hack/tests/e2e-go-new.sh
-
-test-e2e-ansible: image-build-ansible
+test-e2e-ansible: image-build-ansible image-build-scorecard-test
 	./hack/tests/e2e-ansible.sh
 
 test-e2e-ansible2 test/e2e/ansible2:
@@ -320,7 +318,7 @@ test-e2e-helm2 test/e2e/helm2:
 test-e2e-ansible-molecule: image-build-ansible
 	./hack/tests/e2e-ansible-molecule.sh
 
-test-e2e-helm: image-build-helm
+test-e2e-helm: image-build-helm image-build-scorecard-test
 	./hack/tests/e2e-helm.sh
 
 # Integration tests.

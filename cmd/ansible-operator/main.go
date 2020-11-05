@@ -15,21 +15,24 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"log"
 
-	"github.com/operator-framework/operator-sdk/pkg/ansible"
-	aoflags "github.com/operator-framework/operator-sdk/pkg/ansible/flags"
-	"github.com/operator-framework/operator-sdk/pkg/log/zap"
+	"github.com/spf13/cobra"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	"github.com/operator-framework/operator-sdk/internal/cmd/ansible-operator/run"
+	"github.com/operator-framework/operator-sdk/internal/cmd/ansible-operator/version"
 )
 
 func main() {
-	flags := aoflags.AddTo(pflag.CommandLine)
-	pflag.Parse()
-	logf.SetLogger(zap.Logger())
+	root := cobra.Command{
+		Use: "ansible-operator",
+	}
 
-	if err := ansible.Run(flags); err != nil {
+	root.AddCommand(run.NewCmd())
+	root.AddCommand(version.NewCmd())
+
+	if err := root.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
