@@ -32,6 +32,5 @@ test-subcommand test/subcommand:
 ci-images:
 	docker build -f ci/dockerfiles/builder.Dockerfile -t osdk-builder .
 	docker build -f release/ansible/upstream.Dockerfile -t osdk-ansible .
-	docker build -f ci/dockerfiles/ansible-e2e-hybrid.Dockerfile -t osdk-ansible-e2e-hybrid .
 	docker build -f test/ansible/build/Dockerfile -t osdk-ansible-full-e2e test/ansible/
 	docker build -f ci/dockerfiles/ansible-molecule.Dockerfile -t osdk-ansible-molecule .
