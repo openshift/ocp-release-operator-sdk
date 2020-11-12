@@ -1,4 +1,4 @@
-FROM registry.svc.ci.openshift.org/ocp/builder:rhel-8-golang-1.15-openshift-4.6 AS builder
+FROM registry.svc.ci.openshift.org/ocp/builder:rhel-8-golang-1.15-openshift-4.7 AS builder
 
 ENV GO111MODULE=on \
     GOFLAGS=-mod=vendor
@@ -7,7 +7,7 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make build/helm-operator VERSION=$(git describe --tags --always)
 
-FROM registry.svc.ci.openshift.org/ocp/4.6:base
+FROM registry.svc.ci.openshift.org/ocp/4.7:base
 
 ENV OPERATOR=/usr/local/bin/helm-operator \
     USER_UID=1001 \
