@@ -1,0 +1,33 @@
+diff -up ./hack/tests/sanity-check.sh.fixsanity ./hack/tests/sanity-check.sh
+--- ./hack/tests/sanity-check.sh.fixsanity	2020-11-19 15:43:41.100487066 -0500
++++ ./hack/tests/sanity-check.sh	2020-11-19 15:51:00.804861322 -0500
+@@ -1,7 +1,6 @@
+ #!/usr/bin/env bash
+ set -ex
+ 
+-go mod tidy
+ go vet ./...
+ go fmt ./...
+ 
+@@ -9,9 +8,3 @@ go fmt ./...
+ ./hack/check-error-log-msg-format.sh
+ make cli-doc
+ go run ./hack/generate/changelog/gen-changelog.go -validate-only
+-
+-make install
+-make samples
+-
+-# Make sure repo is still in a clean state.
+-git diff --exit-code
+diff -up ./Makefile.fixsanity ./Makefile
+--- ./Makefile.fixsanity	2020-11-19 15:42:40.830613344 -0500
++++ ./Makefile	2020-11-19 15:43:13.626088780 -0500
+@@ -275,7 +275,7 @@ image-push-scorecard-test-kuttl-multiarc
+ 
+ test: test-unit ## Run the tests
+ 
+-test-sanity: tidy build/operator-sdk lint
++test-sanity: build/operator-sdk lint
+ 	./hack/tests/sanity-check.sh
+ 
+ # TODO remove this and update prow to use ci/prow.Makefile

@@ -9,6 +9,9 @@ TEST_PKGS = $(shell go list ./... | grep -v -E 'github.com/operator-framework/op
 
 export CGO_ENABLED := 0
 
+patch:
+	for i in ./patches/*.patch; do patch -p0 < $$i; done
+
 build:
 	$(MAKE) -f Makefile build/operator-sdk
 
