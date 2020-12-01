@@ -6,8 +6,8 @@ set -eux
 
 component="osdk-ansible-e2e"
 eval IMAGE=$IMAGE_FORMAT
-component="osdk-ansible-e2e-hybrid"
-eval IMAGE2=$IMAGE_FORMAT
+#component="osdk-ansible-e2e-hybrid"
+#eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
 GOTMP="$(mktemp -d -p $GOPATH/src)"
 trap_add 'rm -rf $GOTMP' EXIT
@@ -16,7 +16,7 @@ mkdir -p $ROOTDIR/bin
 export PATH=$ROOTDIR/bin:$PATH
 
 if ! [ -x "$(command -v kubectl)" ]; then
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.2/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
+    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.8/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
 fi
 
 if ! [ -x "$(command -v oc)" ]; then
@@ -26,9 +26,11 @@ fi
 
 oc version
 
+echo $ROOTDIR
 make install
 
 deploy_operator() {
+    echo "ENTERED deploy_operator"
     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
     if oc api-versions | grep openshift; then
         oc adm policy add-cluster-role-to-user cluster-admin -z memcached-operator || :
@@ -58,6 +60,7 @@ EOF
 }
 
 remove_operator() {
+    echo "ENTERED remove_operator"
     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
       kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
     done
@@ -71,6 +74,7 @@ remove_operator() {
 }
 
 test_operator() {
+    echo "ENTERED test_operator"
     # wait for operator pod to run
     if ! timeout 1m kubectl rollout status deployment/memcached-operator;
     then
@@ -201,13 +205,13 @@ then
     exit 1
 fi
 
-cp deploy/operator-copy.yaml deploy/operator.yaml
-sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
-# TODO: We need to fix this in the deployment scaffold
-sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
-sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
-deploy_operator
-test_operator
-remove_operator
-
+# cp deploy/operator-copy.yaml deploy/operator.yaml
+# sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
+# # TODO: We need to fix this in the deployment scaffold
+# sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
+# sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
+# deploy_operator
+# test_operator
+# remove_operator
+#
 popd
