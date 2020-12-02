@@ -8,3 +8,4 @@ FROM osdk-ansible
 
 COPY --from=builder /ansible/memcached-operator/watches.yaml ${HOME}/watches.yaml
 COPY --from=builder /ansible/memcached-operator/roles/ ${HOME}/roles/
+COPY --from=builder /ansible/memcached-operator/playbooks/ ${HOME}/playbooks/
