@@ -21,10 +21,7 @@ test-e2e-go test/e2e/go:
 test-e2e-ansible:
 	./ci/tests/e2e-ansible-scaffolding.sh
 
-#test-e2e-ansible test/e2e/ansible:test-scaffolding-e2e-ansible # TODO, update openshift/release test-features-e2e-ansible 
-
-#test-features-e2e-ansible:
-#	./ci/tests/e2e-ansible-features.sh
+#test-e2e-ansible test/e2e/ansible:test-scaffolding-e2e-ansible
 
 #test-scaffolding-e2e-ansible:
 	#./ci/tests/e2e-ansible-scaffolding.sh
