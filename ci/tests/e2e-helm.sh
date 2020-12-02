@@ -179,6 +179,8 @@ ls
 # trap_add 'remove_operator' EXIT
 
 # deploy_operator
+echo "running make build"
+make build IMG=$IMAGE
 echo "running make deploy"
 make deploy IMG=$IMAGE
 
