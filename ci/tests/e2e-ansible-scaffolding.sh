@@ -197,8 +197,17 @@ ls
 
 # trap_add 'remove_operator' EXIT
 # deploy_operator
-echo "running make build"
-make build IMG=$IMAGE
+echo "make kustomize"
+make kustomize
+if [ -f ./bin/kustomize ] ; then
+  KUSTOMIZE="$(realpath ./bin/kustomize)"
+else
+  KUSTOMIZE="$(which kustomize)"
+fi
+pushd config/default
+${KUSTOMIZE} edit set namespace default
+popd
+
 echo "running make deploy"
 make deploy IMG=$IMAGE
 
