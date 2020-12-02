@@ -190,9 +190,9 @@ oc project default
 # sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
-cp $ROOTDIR/testdata/ansible/memcached-operator/ $OPERATORDIR/
 
-pushd memcached-operator
+# use sample in testdata
+pushd $ROOTDIR/testdata/ansible/memcached-operator
 ls
 
 # trap_add 'remove_operator' EXIT
@@ -205,7 +205,7 @@ test_operator
 
 # remove_operator
 echo "running make undeploy"
-make undeploy
+trap_add 'make undeploy' EXIT
 
 # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
 if ! timeout 60s bash -c -- "until kubectl get pods -l name=memcached-operator |& grep \"No resources found\"; do sleep 2; done";

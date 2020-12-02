@@ -6,8 +6,8 @@ set -eux
 
 component="osdk-helm-e2e"
 eval IMAGE=$IMAGE_FORMAT
-component="osdk-helm-e2e-hybrid"
-eval IMAGE2=$IMAGE_FORMAT
+# component="osdk-helm-e2e-hybrid"
+# eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
 GOTMP="$(mktemp -d -p $GOPATH/src)"
 trap_add 'rm -rf $GOTMP' EXIT
@@ -26,9 +26,11 @@ fi
 
 oc version
 
+echo $ROOTDIR
 make install
 
 deploy_operator() {
+    echo "ENTERED deploy_operator"
     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
     if oc api-versions | grep openshift; then
         oc adm policy add-cluster-role-to-user cluster-admin -z nginx-operator || :
@@ -57,6 +59,7 @@ EOF
 }
 
 remove_operator() {
+    echo "ENTERED remove_operator"
     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
       kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
     done
@@ -159,20 +162,32 @@ test_operator() {
 # switch to the "default" namespace
 oc project default
 
-# create and build the operator
-pushd "$GOTMP"
-operator-sdk new nginx-operator --api-version=helm.example.com/v1alpha1 --kind=Nginx --type=helm
-
-pushd nginx-operator
-cp deploy/operator.yaml deploy/operator-copy.yaml
-sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
+# # create and build the operator
+# pushd "$GOTMP"
+# operator-sdk new nginx-operator --api-version=helm.example.com/v1alpha1 --kind=Nginx --type=helm
+#
+# pushd nginx-operator
+# cp deploy/operator.yaml deploy/operator-copy.yaml
+# sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
-trap_add 'remove_operator' EXIT
-deploy_operator
+# use sample in testdata
+pushd $ROOTDIR/testdata/helm/memcached-operator
+ls
+
+# trap_add 'remove_operator' EXIT
+
+# deploy_operator
+echo "running make deploy"
+make deploy IMG=$IMAGE
+
+echo "running test_operator"
 test_operator
-remove_operator
+
+# remove_operator
+echo "running make undeploy"
+trap_add 'make undeploy' EXIT
 
 # the nginx-operator pods remain after the deployment is gone; wait until the pods are removed
 if ! timeout 60s bash -c -- "until kubectl get pods -l name=nginx-operator |& grep \"No resources found\"; do sleep 2; done";
@@ -184,11 +199,11 @@ then
     exit 1
 fi
 
-cp deploy/operator-copy.yaml deploy/operator.yaml
-sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
-deploy_operator
-test_operator
-remove_operator
-
-popd
+# cp deploy/operator-copy.yaml deploy/operator.yaml
+# sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
+# deploy_operator
+# test_operator
+# remove_operator
+#
+# popd
 popd
