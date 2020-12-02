@@ -29,134 +29,134 @@ oc version
 echo $ROOTDIR
 make install
 
-deploy_operator() {
-    echo "ENTERED deploy_operator"
-    kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
-    if oc api-versions | grep openshift; then
-        oc adm policy add-cluster-role-to-user cluster-admin -z nginx-operator || :
-    fi
-    kubectl create -f "$OPERATORDIR/deploy/role.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
-    cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-all
-spec:
-  podSelector: {}
-  ingress:
-  - {}
-  egress:
-  - {}
-  policyTypes:
-  - Ingress
-  - Egress
-EOF
-    kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
-}
-
-remove_operator() {
-    echo "ENTERED remove_operator"
-    for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
-      kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
-    done
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
-}
+# deploy_operator() {
+#     echo "ENTERED deploy_operator"
+#     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
+#     if oc api-versions | grep openshift; then
+#         oc adm policy add-cluster-role-to-user cluster-admin -z nginx-operator || :
+#     fi
+#     kubectl create -f "$OPERATORDIR/deploy/role.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
+#     cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: allow-all
+# spec:
+#   podSelector: {}
+#   ingress:
+#   - {}
+#   egress:
+#   - {}
+#   policyTypes:
+#   - Ingress
+#   - Egress
+# EOF
+#     kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
+# }
+#
+# remove_operator() {
+#     echo "ENTERED remove_operator"
+#     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
+#       kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
+#     done
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/helm.example.com_nginxes_crd.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
+# }
 
 test_operator() {
     local metrics_test_image="registry.access.redhat.com/ubi8/ubi-minimal:latest"
 
     # wait for operator pod to run
-    if ! timeout 1m kubectl rollout status deployment/nginx-operator;
+    if ! timeout 1m kubectl rollout status deployment/memcached-operator;
     then
         echo FAIL: for operator pod to run
-        kubectl logs deployment/nginx-operator
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # verify that metrics service was created
-    if ! timeout 60s bash -c -- "until kubectl get service/nginx-operator-metrics > /dev/null 2>&1; do sleep 1; done";
+    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
-        kubectl logs deployment/nginx-operator
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://nginx-operator-metrics:8383/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
-        kubectl logs deployment/nginx-operator
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # create CR
-    kubectl create -f deploy/crds/helm.example.com_v1alpha1_nginx_cr.yaml
-    trap_add 'kubectl delete --ignore-not-found -f ${OPERATORDIR}/deploy/crds/helm.example.com_v1alpha1_nginx_cr.yaml' EXIT
-    if ! timeout 1m bash -c -- 'until kubectl get nginxes.helm.example.com example-nginx -o jsonpath="{..status.deployedRelease.name}" | grep "example-nginx"; do sleep 1; done';
+    kubectl create -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml
+    trap_add 'kubectl delete --ignore-not-found -f ${OPERATORDIR}/deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml' EXIT
+    if ! timeout 1m bash -c -- 'until kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}" | grep "example-memcached"; do sleep 1; done';
     then
         echo "Failed to create CR"
-        kubectl logs deployment/nginx-operator
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # verify that the custom resource metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-cr-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://nginx-operator-metrics:8686/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-cr-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
     then
         echo "Failed to verify that custom resource metrics endpoint exists"
-        kubectl logs deployment/nginx-operator
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
-    release_name=$(kubectl get nginxes.helm.example.com example-nginx -o jsonpath="{..status.deployedRelease.name}")
-    nginx_deployment=$(kubectl get deployment -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
+    release_name=$(kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}")
+    memcached_deployment=$(kubectl get deployment -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
 
-    if ! timeout 1m kubectl rollout status deployment/${nginx_deployment};
+    if ! timeout 1m kubectl rollout status deployment/${memcached_deployment};
     then
         echo FAIL: to rollout status deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
-        kubectl describe deployments ${nginx_deployment}
-        kubectl logs deployment/nginx-operator
+        kubectl describe deployments ${memcached_deployment}
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
-    nginx_service=$(kubectl get service -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
-    kubectl get service ${nginx_service}
+    memcached_service=$(kubectl get service -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
+    kubectl get service ${memcached_service}
 
     # scale deployment replicas to 2 and verify the
     # deployment automatically scales back down to 1.
-    kubectl scale deployment/${nginx_deployment} --replicas=2
-    if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${nginx_deployment} -o jsonpath='{..spec.replicas}') -eq 1; do sleep 1; done";
+    kubectl scale deployment/${memcached_deployment} --replicas=2
+    if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${memcached_deployment} -o jsonpath='{..spec.replicas}') -eq 1; do sleep 1; done";
     then
         echo FAIL: to scale deployment replicas to 2 and verify the
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
-        kubectl describe deployments ${nginx_deployment}
-        kubectl logs deployment/nginx-operator
+        kubectl describe deployments ${memcached_deployment}
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
     # update CR to replicaCount=2 and verify the deployment
     # automatically scales up to 2 replicas.
-    kubectl patch nginxes.helm.example.com example-nginx -p '[{"op":"replace","path":"/spec/replicaCount","value":2}]' --type=json
-    if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${nginx_deployment} -o jsonpath='{..spec.replicas}') -eq 2; do sleep 1; done";
+    kubectl patch memcachedes.helm.example.com example-memcached -p '[{"op":"replace","path":"/spec/replicaCount","value":2}]' --type=json
+    if ! timeout 1m bash -c -- "until test \$(kubectl get deployment/${memcached_deployment} -o jsonpath='{..spec.replicas}') -eq 2; do sleep 1; done";
     then
         echo FAIL: to update CR to replicaCount=2 and verify the deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
-        kubectl describe deployments ${nginx_deployment}
-        kubectl logs deployment/nginx-operator
+        kubectl describe deployments ${memcached_deployment}
+        kubectl logs deployment/memcached-operator
         exit 1
     fi
 
-    kubectl delete -f deploy/crds/helm.example.com_v1alpha1_nginx_cr.yaml --wait=true
-    kubectl logs deployment/nginx-operator | grep "Uninstalled release" | grep "${release_name}"
+    kubectl delete -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    kubectl logs deployment/memcached-operator | grep "Uninstalled release" | grep "${release_name}"
 }
 
 # switch to the "default" namespace
