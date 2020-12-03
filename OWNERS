@@ -5,3 +5,4 @@ reviewers:
 - sdk-admins
 - sdk-approvers
 - sdk-reviewers
+component: "Operator SDK"
