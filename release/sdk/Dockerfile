@@ -15,13 +15,12 @@ RUN yum install -y \
  && yum clean all \
  && rm -rf /var/cache/yum
 
-ENV OPERATOR=/usr/local/bin/operator-sdk \
-    USER_UID=1001 \
+ENV USER_UID=1001 \
     USER_NAME=sdk \
     HOME=/opt/sdk
 
 # install operator binary
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk /usr/local/bin/operator-sdk
 COPY release/sdk/bin /usr/local/bin
 RUN /usr/local/bin/user_setup
 

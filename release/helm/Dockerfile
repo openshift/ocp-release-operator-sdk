@@ -9,17 +9,16 @@ RUN cd /go/src/github.com/operator-framework/operator-sdk \
 
 FROM registry.svc.ci.openshift.org/ocp/4.6:base
 
-ENV OPERATOR=/usr/local/bin/helm-operator \
-    USER_UID=1001 \
+ENV HOME=/opt/helm \
     USER_NAME=helm \
-    HOME=/opt/helm
+    USER_UID=1001
 
 # install operator binary
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/helm-operator ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/helm-operator /usr/local/bin/helm-operator
 COPY release/helm/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
-
+WORKDIR ${HOME}
 USER ${USER_UID}
+ENTRYPOINT ["/usr/local/bin/helm-operator", "run", "--watches-file=./watches.yaml"]
