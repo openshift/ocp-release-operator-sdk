@@ -80,7 +80,7 @@ test_operator() {
     then
         echo FAIL: operator failed to run
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -89,7 +89,7 @@ test_operator() {
     then
         echo "Failed to get metrics service"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -101,7 +101,7 @@ test_operator() {
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
     # TODO: I think this is obsolete now
@@ -111,7 +111,7 @@ test_operator() {
     # then
     #     echo "Failed to verify that metrics endpoint exists"
     #     kubectl describe pods
-    #     kubectl logs deployment/memcached-operator-controller-manager
+    #     kubectl logs deployment/memcached-operator-controller-manager -c manager
     #     exit 1
     # fi
 
@@ -121,7 +121,7 @@ test_operator() {
     then
         echo FAIL: operator failed to create memcached Deployment
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -130,7 +130,7 @@ test_operator() {
     # then
     #     echo "Failed to verify custom resource metrics"
     #     kubectl describe pods
-    #     kubectl logs deployment/memcached-operator-controller-manager
+    #     kubectl logs deployment/memcached-operator-controller-manager -c manager
     #     exit 1
     # fi
 
@@ -155,7 +155,7 @@ test_operator() {
     then
         echo FAIL: the finalizer did not delete the configmap
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -164,16 +164,16 @@ test_operator() {
     then
         echo FAIL: memcached Deployment did not get garbage collected
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
     # Ensure that no errors appear in the log
-    if kubectl logs deployment/memcached-operator-controller-manager | grep -i error;
+    if kubectl logs deployment/memcached-operator-controller-manager -c manager | grep -i error;
     then
         echo FAIL: the operator log includes errors
         kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 }
@@ -229,7 +229,7 @@ if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods
-    kubectl logs deployment/memcached-operator-controller-manager
+    kubectl logs deployment/memcached-operator-controller-manager -c manager
     exit 1
 fi
 

@@ -75,10 +75,10 @@ test_operator() {
     local metrics_test_image="registry.access.redhat.com/ubi8/ubi-minimal:latest"
 
     # wait for operator pod to run
-    if ! timeout 1m kubectl rollout status deployment/memcached-operator;
+    if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager;
     then
         echo FAIL: for operator pod to run
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -86,7 +86,7 @@ test_operator() {
     if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -94,7 +94,7 @@ test_operator() {
     if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -104,7 +104,7 @@ test_operator() {
     if ! timeout 1m bash -c -- 'until kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}" | grep "example-memcached"; do sleep 1; done';
     then
         echo "Failed to create CR"
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -112,7 +112,7 @@ test_operator() {
     if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-cr-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
     then
         echo "Failed to verify that custom resource metrics endpoint exists"
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -124,7 +124,7 @@ test_operator() {
         echo FAIL: to rollout status deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${memcached_deployment}
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -139,7 +139,7 @@ test_operator() {
         echo FAIL: to scale deployment replicas to 2 and verify the
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${memcached_deployment}
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -151,12 +151,12 @@ test_operator() {
         echo FAIL: to update CR to replicaCount=2 and verify the deployment
         kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
         kubectl describe deployments ${memcached_deployment}
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
     kubectl delete -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml --wait=true
-    kubectl logs deployment/memcached-operator | grep "Uninstalled release" | grep "${release_name}"
+    kubectl logs deployment/memcached-operator-controller-manager -c manager | grep "Uninstalled release" | grep "${release_name}"
 }
 
 # switch to the "default" namespace
@@ -200,13 +200,13 @@ test_operator
 echo "running make undeploy"
 trap_add 'make undeploy' EXIT
 
-# the nginx-operator pods remain after the deployment is gone; wait until the pods are removed
-if ! timeout 60s bash -c -- "until kubectl get pods -l name=nginx-operator |& grep \"No resources found\"; do sleep 2; done";
+# the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
+if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
 then
-    echo FAIL: nginx-operator Deployment did not get garbage collected
+    echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods -l "app.kubernetes.io/instance=${release_name}"
-    kubectl describe deployments ${nginx_deployment}
-    kubectl logs deployment/nginx-operator
+    kubectl describe deployments ${memcached_deployment}
+    kubectl logs deployment/memcached-operator-controller-manager -c manager
     exit 1
 fi
 
