@@ -93,23 +93,23 @@ test_operator() {
         exit 1
     fi
 
-    # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
-    then
-        echo "Failed to verify that metrics endpoint exists"
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
-        exit 1
-    fi
-
-    # verify that the operator metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
-    then
-        echo "Failed to verify that metrics endpoint exists"
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
-        exit 1
-    fi
+    # # verify that the metrics endpoint exists
+    # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
+    # then
+    #     echo "Failed to verify that metrics endpoint exists"
+    #     kubectl describe pods
+    #     kubectl logs deployment/memcached-operator-controller-manager
+    #     exit 1
+    # fi
+    #
+    # # verify that the operator metrics endpoint exists
+    # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
+    # then
+    #     echo "Failed to verify that metrics endpoint exists"
+    #     kubectl describe pods
+    #     kubectl logs deployment/memcached-operator-controller-manager
+    #     exit 1
+    # fi
 
     # create CR
     kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
@@ -121,14 +121,14 @@ test_operator() {
         exit 1
     fi
 
-    # verify that metrics reflect cr creation
-    if ! bash -c -- 'kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached';
-    then
-        echo "Failed to verify custom resource metrics"
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager
-        exit 1
-    fi
+    # # verify that metrics reflect cr creation
+    # if ! bash -c -- 'kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached';
+    # then
+    #     echo "Failed to verify custom resource metrics"
+    #     kubectl describe pods
+    #     kubectl logs deployment/memcached-operator-controller-manager
+    #     exit 1
+    # fi
 
     memcached_deployment=$(kubectl get deployment -l app=memcached -o jsonpath="{..metadata.name}")
     if ! timeout 1m kubectl rollout status deployment/${memcached_deployment};
