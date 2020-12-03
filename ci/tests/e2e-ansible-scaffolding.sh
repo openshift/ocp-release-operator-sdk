@@ -93,14 +93,18 @@ test_operator() {
         exit 1
     fi
 
-    # # verify that the metrics endpoint exists
-    # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
-    # then
-    #     echo "Failed to verify that metrics endpoint exists"
-    #     kubectl describe pods
-    #     kubectl logs deployment/memcached-operator-controller-manager
-    #     exit 1
-    # fi
+    serviceaccount_secret=$(kubectl get serviceaccounts default -o jsonpath='{.secrets[0].name}')
+    token=$(kubectl get secret ${serviceaccount_secret} -o jsonpath={.data.token} | base64 -d)
+
+    # verify that the metrics endpoint exists
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
+    then
+        echo "Failed to verify that metrics endpoint exists"
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator-controller-manager
+        exit 1
+    fi
+    # TODO: I think this is obsolete now
     #
     # # verify that the operator metrics endpoint exists
     # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
