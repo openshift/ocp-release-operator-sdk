@@ -83,38 +83,44 @@ test_operator() {
     fi
 
     # verify that metrics service was created
-    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
+    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
+        kubectl describe pods
         kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
+    serviceaccount_secret=$(kubectl get serviceaccounts default -o jsonpath='{.secrets[0].name}')
+    token=$(kubectl get secret ${serviceaccount_secret} -o jsonpath={.data.token} | base64 -d)
+
     # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
+        kubectl describe pods
         kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
     # create CR
-    kubectl create -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml
-    trap_add 'kubectl delete --ignore-not-found -f ${OPERATORDIR}/deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml' EXIT
-    if ! timeout 1m bash -c -- 'until kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}" | grep "example-memcached"; do sleep 1; done';
+    kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+    #if ! timeout 1m bash -c -- 'until kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}" | grep "example-memcached"; do sleep 1; done';
+    if ! timeout 60s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
     then
         echo "Failed to create CR"
+        kubectl describe pods
         kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
-    # verify that the custom resource metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-cr-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
-    then
-        echo "Failed to verify that custom resource metrics endpoint exists"
-        kubectl logs deployment/memcached-operator-controller-manager -c manager
-        exit 1
-    fi
+    # # verify that the custom resource metrics endpoint exists
+    # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-cr-metrics --image=$metrics_test_image -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
+    # then
+    #     echo "Failed to verify that custom resource metrics endpoint exists"
+    #     kubectl logs deployment/memcached-operator-controller-manager -c manager
+    #     exit 1
+    # fi
 
     release_name=$(kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}")
     memcached_deployment=$(kubectl get deployment -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
@@ -155,7 +161,8 @@ test_operator() {
         exit 1
     fi
 
-    kubectl delete -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    # kubectl delete -f deploy/crds/helm.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    kubectl delete -f config/samples/cache_v1alpha1_memcached.yaml --wait=true
     kubectl logs deployment/memcached-operator-controller-manager -c manager | grep "Uninstalled release" | grep "${release_name}"
 }
 
