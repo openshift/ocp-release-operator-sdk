@@ -76,20 +76,20 @@ make install
 test_operator() {
     echo "ENTERED test_operator"
     # wait for operator pod to run
-    if ! timeout 1m kubectl rollout status deployment/memcached-operator;
+    if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager;
     then
         echo FAIL: operator failed to run
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
     # verify that metrics service was created
-    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
+    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
@@ -98,7 +98,7 @@ test_operator() {
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
@@ -107,17 +107,17 @@ test_operator() {
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
     # create CR
-    kubectl create -f deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml
+    kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
     if ! timeout 60s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
     then
         echo FAIL: operator failed to create memcached Deployment
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
@@ -126,7 +126,7 @@ test_operator() {
     then
         echo "Failed to verify custom resource metrics"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
@@ -144,13 +144,14 @@ test_operator() {
     kubectl create configmap deleteme
     trap_add 'kubectl delete --ignore-not-found configmap deleteme' EXIT
 
-    kubectl delete -f ${OPERATORDIR}/deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    #kubectl delete -f ${OPERATORDIR}/deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    kubectl delete -f config/samples/cache_v1alpha1_memcached.yaml --wait=true
     # if the finalizer did not delete the configmap...
     if kubectl get configmap deleteme 2> /dev/null;
     then
         echo FAIL: the finalizer did not delete the configmap
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
@@ -159,16 +160,16 @@ test_operator() {
     then
         echo FAIL: memcached Deployment did not get garbage collected
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 
     # Ensure that no errors appear in the log
-    if kubectl logs deployment/memcached-operator | grep -i error;
+    if kubectl logs deployment/memcached-operator-controller-manager | grep -i error;
     then
         echo FAIL: the operator log includes errors
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager
         exit 1
     fi
 }
@@ -218,12 +219,13 @@ test_operator
 echo "running make undeploy"
 trap_add 'make undeploy' EXIT
 
+echo "waiting for controller-manager pod to go away"
 # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
-if ! timeout 60s bash -c -- "until kubectl get pods -l name=memcached-operator |& grep \"No resources found\"; do sleep 2; done";
+if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods
-    kubectl logs deployment/memcached-operator
+    kubectl logs deployment/memcached-operator-controller-manager
     exit 1
 fi
 
