@@ -7,9 +7,11 @@ go fmt ./...
 
 ./hack/check-license.sh
 ./hack/check-error-log-msg-format.sh
-./hack/generate/cli-doc/gen-cli-doc.sh
-./hack/generate/test-framework/gen-test-framework.sh
+make cli-doc
 go run ./hack/generate/changelog/gen-changelog.go -validate-only
+
+make install
+make samples
 
 # Make sure repo is still in a clean state.
 git diff --exit-code

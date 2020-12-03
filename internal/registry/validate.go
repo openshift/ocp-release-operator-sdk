@@ -36,6 +36,9 @@ import (
 // if they can be applied to a cluster using `kubectl` provided users have all
 // necessary permissions and configurations.
 func ValidateBundleContent(logger *log.Entry, bundle *apimanifests.Bundle, mediaType string) []apierrors.ManifestResult {
+	if logger == nil {
+		logger = DiscardLogger()
+	}
 
 	// Use errs to collect bundle-level validation errors.
 	errs := apierrors.ManifestResult{
@@ -176,7 +179,7 @@ func writeAnnotationFile(filename string, annotation *registrybundle.AnnotationM
 		mode = info.Mode()
 	}
 
-	err = ioutil.WriteFile(filename, []byte(file), mode)
+	err = ioutil.WriteFile(filename, file, mode)
 	if err != nil {
 		return fmt.Errorf("error writing modified contents to annotations file, %v", err)
 	}

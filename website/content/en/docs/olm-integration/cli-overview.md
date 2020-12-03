@@ -45,12 +45,12 @@ with an existing OLM installation.
 
 [bundle]:https://github.com/operator-framework/operator-registry/blob/v1.12.6/docs/design/operator-bundle.md
 [package-manifests]:https://github.com/operator-framework/operator-registry/tree/v1.5.3#manifest-format
-[doc-olm-generate]:/docs/olm-integration/generating-a-csv
-[cli-olm-install]:/docs/new-cli/operator-sdk_olm_install
-[cli-olm-status]:/docs/new-cli/operator-sdk_olm_status
-[cli-olm-uninstall]:/docs/new-cli/operator-sdk_olm_uninstall
-[cli-gen-bundle]:/docs/new-cli/operator-sdk_generate_bundle
-[cli-gen-packagemanifests]:/docs/new-cli/operator-sdk_generate_packagemanifests
-[cli-gen-kustomize-manifests]:/docs/new-cli/operator-sdk_generate_kustomize_manifests
-[cli-bundle-validate]:/docs/new-cli/operator-sdk_bundle_validate
+[doc-olm-generate]:/docs/olm-integration/generation
+[cli-olm-install]:/docs/cli/operator-sdk_olm_install
+[cli-olm-status]:/docs/cli/operator-sdk_olm_status
+[cli-olm-uninstall]:/docs/cli/operator-sdk_olm_uninstall
+[cli-gen-bundle]:/docs/cli/operator-sdk_generate_bundle
+[cli-gen-packagemanifests]:/docs/cli/operator-sdk_generate_packagemanifests
+[cli-gen-kustomize-manifests]:/docs/cli/operator-sdk_generate_kustomize_manifests
+[cli-bundle-validate]:/docs/cli/operator-sdk_bundle_validate
 [doc-testing-deployment]:/docs/olm-integration/testing-deployment

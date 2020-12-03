@@ -100,13 +100,19 @@ images/scorecard-test/scorecard-test
 images/scorecard-test-kuttl/scorecard-test-kuttl
 
 # Test artifacts
-pkg/ansible/runner/testdata/valid.yaml
+internal/ansible/runner/testdata/valid.yaml
 /bin
-test/test-framework/go.sum
-internal/scorecard/alpha/examples/custom-scorecard-tests/go.sum
+internal/scorecard/examples/custom-scorecard-tests/go.sum
 
 # Website
 website/public/
 website/resources/
 website/node_modules/
 website/tech-doc-hugo
+
+# samples bin
+testdata/go/memcached-operator/bin/*
+
+
+*\.DS_Store
+

@@ -15,7 +15,7 @@ More information about operator bundles and metadata:
 https://github.com/operator-framework/operator-registry/blob/master/docs/design/operator-bundle.md
 
 More information about the integration with OLM via SDK:
-https://sdk.operatorframework.io/docs/olm-integration/legacy
+https://sdk.operatorframework.io/docs/olm-integration
 
 
 ### Options
@@ -24,8 +24,14 @@ https://sdk.operatorframework.io/docs/olm-integration/legacy
   -h, --help   help for bundle
 ```
 
+### Options inherited from parent commands
+
+```
+      --verbose   Enable verbose logging
+```
+
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - An SDK for building operators with ease
+* [operator-sdk](../operator-sdk)	 - Development kit for building Kubernetes extensions and tools.
 * [operator-sdk bundle validate](../operator-sdk_bundle_validate)	 - Validate an operator bundle
 

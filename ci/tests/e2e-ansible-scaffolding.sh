@@ -6,8 +6,8 @@ set -eux
 
 component="osdk-ansible-e2e"
 eval IMAGE=$IMAGE_FORMAT
-component="osdk-ansible-e2e-hybrid"
-eval IMAGE2=$IMAGE_FORMAT
+#component="osdk-ansible-e2e-hybrid"
+#eval IMAGE2=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
 GOTMP="$(mktemp -d -p $GOPATH/src)"
 trap_add 'rm -rf $GOTMP' EXIT
@@ -16,7 +16,7 @@ mkdir -p $ROOTDIR/bin
 export PATH=$ROOTDIR/bin:$PATH
 
 if ! [ -x "$(command -v kubectl)" ]; then
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.14.2/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
+    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.8/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
 fi
 
 if ! [ -x "$(command -v oc)" ]; then
@@ -26,105 +26,113 @@ fi
 
 oc version
 
+echo $ROOTDIR
 make install
 
-deploy_operator() {
-    kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
-    if oc api-versions | grep openshift; then
-        oc adm policy add-cluster-role-to-user cluster-admin -z memcached-operator || :
-    fi
-    kubectl create -f "$OPERATORDIR/deploy/role.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
-    kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
-    cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-all
-spec:
-  podSelector: {}
-  ingress:
-  - {}
-  egress:
-  - {}
-  policyTypes:
-  - Ingress
-  - Egress
-EOF
-    kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
-}
+# deploy_operator() {
+#     echo "ENTERED deploy_operator"
+#     kubectl create -f "$OPERATORDIR/deploy/service_account.yaml"
+#     if oc api-versions | grep openshift; then
+#         oc adm policy add-cluster-role-to-user cluster-admin -z memcached-operator || :
+#     fi
+#     kubectl create -f "$OPERATORDIR/deploy/role.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/role_binding.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
+#     kubectl create -f "$OPERATORDIR/deploy/operator.yaml"
+#     cat << EOF > "$OPERATORDIR/deploy/network-policy.yaml"
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: allow-all
+# spec:
+#   podSelector: {}
+#   ingress:
+#   - {}
+#   egress:
+#   - {}
+#   policyTypes:
+#   - Ingress
+#   - Egress
+# EOF
+#     kubectl create -f "$OPERATORDIR/deploy/network-policy.yaml"
+# }
 
-remove_operator() {
-    for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
-      kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
-    done
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
-    kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
-}
+# remove_operator() {
+#     echo "ENTERED remove_operator"
+#     for cr in $(ls $OPERATORDIR/deploy/crds/*_cr.yaml) ; do
+#       kubectl delete --wait=true --ignore-not-found=true -f "${cr}" || true
+#     done
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_memcacheds_crd.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/crds/ansible.example.com_foos_crd.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/operator.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role_binding.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/service_account.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/role.yaml"
+#     kubectl delete --wait=true --ignore-not-found=true -f "$OPERATORDIR/deploy/network-policy.yaml"
+# }
 
 test_operator() {
+    echo "ENTERED test_operator"
     # wait for operator pod to run
-    if ! timeout 1m kubectl rollout status deployment/memcached-operator;
+    if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager;
     then
         echo FAIL: operator failed to run
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
     # verify that metrics service was created
-    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-metrics > /dev/null 2>&1; do sleep 1; done";
+    if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
         echo "Failed to get metrics service"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
+
+    serviceaccount_secret=$(kubectl get serviceaccounts default -o jsonpath='{.secrets[0].name}')
+    token=$(kubectl get secret ${serviceaccount_secret} -o jsonpath={.data.token} | base64 -d)
 
     # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8383/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
-
-    # verify that the operator metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
-    then
-        echo "Failed to verify that metrics endpoint exists"
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator
-        exit 1
-    fi
+    # TODO: I think this is obsolete now
+    #
+    # # verify that the operator metrics endpoint exists
+    # if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfo /dev/null http://memcached-operator-metrics:8686/metrics; do sleep 1; done";
+    # then
+    #     echo "Failed to verify that metrics endpoint exists"
+    #     kubectl describe pods
+    #     kubectl logs deployment/memcached-operator-controller-manager -c manager
+    #     exit 1
+    # fi
 
     # create CR
-    kubectl create -f deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml
+    kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
     if ! timeout 60s bash -c -- 'until kubectl get deployment -l app=memcached | grep memcached; do sleep 1; done';
     then
         echo FAIL: operator failed to create memcached Deployment
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
-    # verify that metrics reflect cr creation
-    if ! bash -c -- 'kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached';
-    then
-        echo "Failed to verify custom resource metrics"
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator
-        exit 1
-    fi
+    # # verify that metrics reflect cr creation
+    # if ! bash -c -- 'kubectl run -i --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl http://memcached-operator-metrics:8686/metrics | grep example-memcached';
+    # then
+    #     echo "Failed to verify custom resource metrics"
+    #     kubectl describe pods
+    #     kubectl logs deployment/memcached-operator-controller-manager -c manager
+    #     exit 1
+    # fi
 
     memcached_deployment=$(kubectl get deployment -l app=memcached -o jsonpath="{..metadata.name}")
     if ! timeout 1m kubectl rollout status deployment/${memcached_deployment};
@@ -140,13 +148,14 @@ test_operator() {
     kubectl create configmap deleteme
     trap_add 'kubectl delete --ignore-not-found configmap deleteme' EXIT
 
-    kubectl delete -f ${OPERATORDIR}/deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    #kubectl delete -f ${OPERATORDIR}/deploy/crds/ansible.example.com_v1alpha1_memcached_cr.yaml --wait=true
+    kubectl delete -f config/samples/cache_v1alpha1_memcached.yaml --wait=true
     # if the finalizer did not delete the configmap...
     if kubectl get configmap deleteme 2> /dev/null;
     then
         echo FAIL: the finalizer did not delete the configmap
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
@@ -155,16 +164,16 @@ test_operator() {
     then
         echo FAIL: memcached Deployment did not get garbage collected
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 
     # Ensure that no errors appear in the log
-    if kubectl logs deployment/memcached-operator | grep -i error;
+    if kubectl logs deployment/memcached-operator-controller-manager -c manager | grep -i error;
     then
         echo FAIL: the operator log includes errors
         kubectl describe pods
-        kubectl logs deployment/memcached-operator
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
         exit 1
     fi
 }
@@ -172,42 +181,65 @@ test_operator() {
 # switch to the "default" namespace
 oc project default
 
-# create and build the operator
-pushd "$GOTMP"
-operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 --kind=Memcached --type=ansible
-
-pushd memcached-operator
-# Add a second Kind to test watching multiple GVKs
-operator-sdk add crd --kind=Foo --api-version=ansible.example.com/v1alpha1
-cp deploy/operator.yaml deploy/operator-copy.yaml
-sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
-# TODO: We need to fix this in the deployment scaffold
-sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
-sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
+# # create and build the operator
+# pushd "$GOTMP"
+# operator-sdk new memcached-operator --api-version=ansible.example.com/v1alpha1 --kind=Memcached --type=ansible
+#
+# pushd memcached-operator
+# # Add a second Kind to test watching multiple GVKs
+# operator-sdk add crd --kind=Foo --api-version=ansible.example.com/v1alpha1
+# cp deploy/operator.yaml deploy/operator-copy.yaml
+# sed -i "s|REPLACE_IMAGE|$IMAGE|g" deploy/operator.yaml
+# # TODO: We need to fix this in the deployment scaffold
+# sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
+# sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
 
 OPERATORDIR="$(pwd)"
 
-trap_add 'remove_operator' EXIT
-deploy_operator
-test_operator
-remove_operator
+# use sample in testdata
+pushd $ROOTDIR/testdata/ansible/memcached-operator
+ls
 
+# trap_add 'remove_operator' EXIT
+# deploy_operator
+echo "make kustomize"
+make kustomize
+if [ -f ./bin/kustomize ] ; then
+  KUSTOMIZE="$(realpath ./bin/kustomize)"
+else
+  KUSTOMIZE="$(which kustomize)"
+fi
+pushd config/default
+${KUSTOMIZE} edit set namespace default
+popd
+
+echo "running make deploy"
+make deploy IMG=$IMAGE
+
+echo "running test_operator"
+test_operator
+
+# remove_operator
+echo "running make undeploy"
+trap_add 'make undeploy' EXIT
+
+echo "waiting for controller-manager pod to go away"
 # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
-if ! timeout 60s bash -c -- "until kubectl get pods -l name=memcached-operator |& grep \"No resources found\"; do sleep 2; done";
+if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods
-    kubectl logs deployment/memcached-operator
+    kubectl logs deployment/memcached-operator-controller-manager -c manager
     exit 1
 fi
 
-cp deploy/operator-copy.yaml deploy/operator.yaml
-sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
-# TODO: We need to fix this in the deployment scaffold
-sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
-sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
-deploy_operator
-test_operator
-remove_operator
-
+# cp deploy/operator-copy.yaml deploy/operator.yaml
+# sed -i "s|REPLACE_IMAGE|$IMAGE2|g" deploy/operator.yaml
+# # TODO: We need to fix this in the deployment scaffold
+# sed -i "s|initialDelaySeconds: 5|initialDelaySeconds: 10|g" deploy/operator.yaml
+# sed -i "s|periodSeconds: 3|periodSeconds: 10|g" deploy/operator.yaml
+# deploy_operator
+# test_operator
+# remove_operator
+#
 popd

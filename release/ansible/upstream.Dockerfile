@@ -13,14 +13,16 @@ FROM registry.access.redhat.com/ubi8/ubi
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
     && echo '[defaults]' > /etc/ansible/ansible.cfg \
-    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg
+    && echo 'roles_path = /opt/ansible/roles' >> /etc/ansible/ansible.cfg \
+    && echo 'library = /usr/share/ansible/openshift' >> /etc/ansible/ansible.cfg
 
-ENV OPERATOR=/usr/local/bin/ansible-operator \
-    USER_UID=1001 \
-    USER_NAME=ansible-operator\
-    HOME=/opt/ansible
+ENV HOME=/opt/ansible \
+    USER_NAME=ansible \
+    USER_UID=1001
 
 # Install python dependencies
+# Ensure fresh metadata rather than cached metadata in the base by running
+# yum clean all && rm -rf /var/yum/cache/* first
 RUN yum clean all && rm -rf /var/cache/yum/* \
  && yum -y update \
  && yum install -y libffi-devel openssl-devel python3 python3-devel gcc python3-pip python3-setuptools \
@@ -36,14 +38,14 @@ RUN yum clean all && rm -rf /var/cache/yum/* \
  && yum clean all \
  && rm -rf /var/cache/yum
 
-COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
-
-COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator ${OPERATOR}
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator /usr/local/bin/ansible-operator
 COPY release/ansible/bin /usr/local/bin
 
-RUN /usr/local/bin/user_setup
+COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
+
 
 # Ensure directory permissions are properly set
+RUN /usr/local/bin/user_setup
 RUN mkdir -p ${HOME}/.ansible/tmp \
  && chown -R ${USER_UID}:0 ${HOME} \
  && chmod -R ug+rwx ${HOME}
@@ -52,6 +54,6 @@ RUN TINIARCH=$(case $(arch) in x86_64) echo -n amd64 ;; ppc64le) echo -n ppc64el
   && curl -L -o /usr/local/bin/tini https://github.com/krallin/tini/releases/latest/download/tini-$TINIARCH \
   && chmod +x /usr/local/bin/tini
 
-ENTRYPOINT ["/usr/local/bin/tini", "--", "/usr/local/bin/entrypoint"]
-
+WORKDIR ${HOME}
 USER ${USER_UID}
+ENTRYPOINT ["/usr/local/bin/tini", "--", "/usr/local/bin/ansible-operator", "run", "--watches-file=./watches.yaml"]

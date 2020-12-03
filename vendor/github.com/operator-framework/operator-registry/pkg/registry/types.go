@@ -12,6 +12,13 @@ import (
 var (
 	// ErrPackageNotInDatabase is an error that describes a package not found error when querying the registry
 	ErrPackageNotInDatabase = errors.New("Package not in database")
+
+	// ErrBundleImageNotInDatabase is an error that describes a bundle image not found when querying the registry
+	ErrBundleImageNotInDatabase = errors.New("Bundle Image not in database")
+
+	// ErrRemovingDefaultChannelDuringDeprecation is an error that describes a bundle deprecation causing the deletion
+	// of the default channel
+	ErrRemovingDefaultChannelDuringDeprecation = errors.New("Bundle deprecation causing default channel removal")
 )
 
 // BundleImageAlreadyAddedErr is an error that describes a bundle is already added
@@ -32,9 +39,21 @@ func (e PackageVersionAlreadyAddedErr) Error() string {
 	return e.ErrorString
 }
 
+// OverwritesErr is an error that describes that an error with the add request with --force enabled.
+type OverwriteErr struct {
+	ErrorString string
+}
+
+func (e OverwriteErr) Error() string {
+	return e.ErrorString
+}
+
 const (
-	GVKType     = "olm.gvk"
-	PackageType = "olm.package"
+	GVKType        = "olm.gvk"
+	PackageType    = "olm.package"
+	DeprecatedType = "olm.deprecated"
+	LabelType      = "olm.label"
+	PropertyKey    = "olm.properties"
 )
 
 // APIKey stores GroupVersionKind for use as map keys
@@ -163,7 +182,7 @@ type Property struct {
 	Type string `json:"type" yaml:"type"`
 
 	// The serialized value of the propertuy
-	Value string `json:"value" yaml:"value"`
+	Value json.RawMessage `json:"value" yaml:"value"`
 }
 
 type GVKDependency struct {
@@ -185,6 +204,11 @@ type PackageDependency struct {
 	Version string `json:"version" yaml:"version"`
 }
 
+type LabelDependency struct {
+	// The version range of dependency in semver range format
+	Label string `json:"label" yaml:"label"`
+}
+
 type GVKProperty struct {
 	// The group of GVK based property
 	Group string `json:"group" yaml:"group"`
@@ -204,6 +228,15 @@ type PackageProperty struct {
 	Version string `json:"version" yaml:"version"`
 }
 
+type DeprecatedProperty struct {
+	// Whether the bundle is deprecated
+}
+
+type LabelProperty struct {
+	// The version range of dependency in semver range format
+	Label string `json:"label" yaml:"label"`
+}
+
 // Validate will validate GVK dependency type and return error(s)
 func (gd *GVKDependency) Validate() []error {
 	errs := []error{}
@@ -215,6 +248,15 @@ func (gd *GVKDependency) Validate() []error {
 	}
 	if gd.Kind == "" {
 		errs = append(errs, fmt.Errorf("API Kind is empty"))
+	}
+	return errs
+}
+
+// Validate will validate GVK dependency type and return error(s)
+func (ld *LabelDependency) Validate() []error {
+	errs := []error{}
+	if *ld == (LabelDependency{}) {
+		errs = append(errs, fmt.Errorf("Label information is missing"))
 	}
 	return errs
 }
@@ -269,6 +311,13 @@ func (e *Dependency) GetTypeValue() interface{} {
 			return nil
 		}
 		return dep
+	case LabelType:
+		dep := LabelDependency{}
+		err := json.Unmarshal([]byte(e.GetValue()), &dep)
+		if err != nil {
+			return nil
+		}
+		return dep
 	}
 	return nil
 }
@@ -293,12 +342,5 @@ func (a *AnnotationsFile) GetChannels() []string {
 
 // GetDefaultChannelName returns the name of the default channel
 func (a *AnnotationsFile) GetDefaultChannelName() string {
-	if a.Annotations.DefaultChannelName != "" {
-		return a.Annotations.DefaultChannelName
-	}
-	channels := a.GetChannels()
-	if len(channels) == 1 {
-		return channels[0]
-	}
-	return ""
+	return a.Annotations.DefaultChannelName
 }
