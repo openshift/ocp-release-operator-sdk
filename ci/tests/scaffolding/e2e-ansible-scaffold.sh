@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+#
+# This script is used by the ansible-e2e.Dockerfile to create an operator
+# image using the upstream sample operator.
+#
 source hack/lib/test_lib.sh
 
 set -eux
