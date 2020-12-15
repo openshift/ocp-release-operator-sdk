@@ -146,6 +146,11 @@ ls
 # ${KUSTOMIZE} edit set namespace default
 # popd
 
+# Give the serviceaccount cluster role to create statefulsets
+if oc api-versions | grep openshift; then
+    oc adm policy add-cluster-role-to-user cluster-admin -z default || :
+fi
+
 # deploy operator
 echo "running make deploy"
 make deploy IMG=$IMAGE
