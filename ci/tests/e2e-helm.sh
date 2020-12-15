@@ -77,6 +77,7 @@ test_operator() {
         echo "Failed to create CR"
         kubectl describe pods
         kubectl logs deployment/memcached-operator-controller-manager -c manager
+        kubectl describe statefulsets
         exit 1
     fi
 
@@ -85,12 +86,13 @@ test_operator() {
     # release_name=$(kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}")
     # memcached_deployment=$(kubectl get deployment -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
 
-    if ! timeout 1m kubectl rollout status statefulset/memcached-sample;
+    if ! timeout 600s kubectl rollout status statefulset/memcached-sample;
     then
         echo FAIL: to rollout status statefulset
         kubectl describe pods
         kubectl describe deployments
         kubectl logs deployment/memcached-operator-controller-manager -c manager
+        kubectl describe statefulsets
         exit 1
     fi
 
