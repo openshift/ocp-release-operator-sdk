@@ -155,7 +155,7 @@ kubectl delete clusterrolebinding memcached-operator-metrics-reader-rolebinding
 
 # remove operator
 echo "running make undeploy"
-trap_add 'make undeploy' EXIT
+make undeploy
 
 # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
 echo "waiting for controller-manager pod to go away"
