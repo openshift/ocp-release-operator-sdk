@@ -34,9 +34,12 @@ var _ = Describe("Running ansible projects", func() {
 	var fooSampleFile string
 	var memfinSampleFile string
 	var memcachedDeployment string
+	var metricsClusterRoleBindingName string
 
 	Context("built with operator-sdk", func() {
 		BeforeEach(func() {
+			metricsClusterRoleBindingName = fmt.Sprintf("%s-metrics-reader", tc.ProjectName)
+
 			By("checking samples")
 			memcachedSampleFile = filepath.Join(tc.Dir, "config", "samples",
 				fmt.Sprintf("%s_%s_%s.yaml", tc.Group, tc.Version, strings.ToLower(tc.Kind)))
@@ -44,11 +47,6 @@ var _ = Describe("Running ansible projects", func() {
 				fmt.Sprintf("%s_%s_foo.yaml", tc.Group, tc.Version))
 			memfinSampleFile = filepath.Join(tc.Dir, "config", "samples",
 				fmt.Sprintf("%s_%s_memfin.yaml", tc.Group, tc.Version))
-
-			By("enabling Prometheus via the kustomization.yaml")
-			Expect(kbtestutils.UncommentCode(
-				filepath.Join(tc.Dir, "config", "default", "kustomization.yaml"),
-				"#- ../prometheus", "#")).To(Succeed())
 
 			By("deploying project on the cluster")
 			err := tc.Make("deploy", "IMG="+tc.ImageName)
@@ -65,7 +63,7 @@ var _ = Describe("Running ansible projects", func() {
 
 			By("cleaning up permissions")
 			_, _ = tc.Kubectl.Command("delete", "clusterrolebinding",
-				fmt.Sprintf("metrics-%s", tc.TestSuffix))
+				metricsClusterRoleBindingName)
 
 			By("undeploy project")
 			_ = tc.Make("undeploy")
@@ -90,19 +88,27 @@ var _ = Describe("Running ansible projects", func() {
 					"pods", "-l", "control-plane=controller-manager",
 					"-o", "go-template={{ range .items }}{{ if not .metadata.deletionTimestamp }}{{ .metadata.name }}"+
 						"{{ \"\\n\" }}{{ end }}{{ end }}")
-				Expect(err).NotTo(HaveOccurred())
+				if err != nil {
+					return fmt.Errorf("could not get pods: %v", err)
+				}
 
 				By("ensuring the created controller-manager Pod")
 				podNames := kbtestutils.GetNonEmptyLines(podOutput)
-				Expect(podNames).To(HaveLen(1))
+				if len(podNames) != 1 {
+					return fmt.Errorf("expecting 1 pod, have %d", len(podNames))
+				}
 				controllerPodName = podNames[0]
-				Expect(controllerPodName).Should(ContainSubstring("controller-manager"))
+				if !strings.Contains(controllerPodName, "controller-manager") {
+					return fmt.Errorf("expecting pod name %q to contain %q", controllerPodName, "controller-manager")
+				}
 
 				By("checking the controller-manager Pod is running")
 				status, err := tc.Kubectl.Get(
 					true,
 					"pods", controllerPodName, "-o", "jsonpath={.status.phase}")
-				Expect(err).NotTo(HaveOccurred())
+				if err != nil {
+					return fmt.Errorf("failed to get pod stauts for %q: %v", controllerPodName, err)
+				}
 				if status != "Running" {
 					return fmt.Errorf("controller pod in %s status", status)
 				}
@@ -114,14 +120,14 @@ var _ = Describe("Running ansible projects", func() {
 			_, err := tc.Kubectl.Get(
 				true,
 				"ServiceMonitor",
-				fmt.Sprintf("e2e-%s-controller-manager-metrics-monitor", tc.TestSuffix))
+				fmt.Sprintf("%s-controller-manager-metrics-monitor", tc.ProjectName))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("ensuring the created metrics Service for the manager")
 			_, err = tc.Kubectl.Get(
 				true,
 				"Service",
-				fmt.Sprintf("e2e-%s-controller-manager-metrics-service", tc.TestSuffix))
+				fmt.Sprintf("%s-controller-manager-metrics-service", tc.ProjectName))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("create custom resource (Memcached CR)")
@@ -255,9 +261,8 @@ var _ = Describe("Running ansible projects", func() {
 			By("granting permissions to access the metrics and read the token")
 			_, err = tc.Kubectl.Command(
 				"create",
-				"clusterrolebinding",
-				fmt.Sprintf("metrics-%s", tc.TestSuffix),
-				fmt.Sprintf("--clusterrole=e2e-%s-metrics-reader", tc.TestSuffix),
+				"clusterrolebinding", metricsClusterRoleBindingName,
+				fmt.Sprintf("--clusterrole=%s-metrics-reader", tc.ProjectName),
 				fmt.Sprintf("--serviceaccount=%s:default", tc.Kubectl.Namespace))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -278,8 +283,8 @@ var _ = Describe("Running ansible projects", func() {
 			cmdOpts := []string{
 				"run", "--generator=run-pod/v1", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure", "--",
 				"curl", "-v", "-k", "-H", fmt.Sprintf(`Authorization: Bearer %s`, token),
-				fmt.Sprintf("https://e2e-%v-controller-manager-metrics-service.e2e-%v-system.svc:8443/metrics",
-					tc.TestSuffix, tc.TestSuffix),
+				fmt.Sprintf("https://%s-controller-manager-metrics-service.%s.svc:8443/metrics",
+					tc.ProjectName, tc.Kubectl.Namespace),
 			}
 			_, err = tc.Kubectl.CommandInNamespace(cmdOpts...)
 			Expect(err).NotTo(HaveOccurred())

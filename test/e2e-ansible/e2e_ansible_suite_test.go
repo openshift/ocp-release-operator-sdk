@@ -16,10 +16,12 @@ package e2e_ansible_test
 
 import (
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
+
+	kbtestutils "sigs.k8s.io/kubebuilder/test/e2e/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,81 +40,35 @@ func TestE2EAnsible(t *testing.T) {
 
 var (
 	tc testutils.TestContext
-	// isPrometheusManagedBySuite is true when the suite tests is installing/uninstalling the Prometheus
-	isPrometheusManagedBySuite = true
-	// isOLMManagedBySuite is true when the suite tests is installing/uninstalling the OLM
-	isOLMManagedBySuite = true
-	// kubectx stores the k8s context from where the tests are running
-	kubectx string
 )
 
 // BeforeSuite run before any specs are run to perform the required actions for all e2e ansible tests.
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func() {
 	var err error
 
 	By("creating a new test context")
 	tc, err = testutils.NewTestContext(testutils.BinaryName, "GO111MODULE=on")
 	Expect(err).NotTo(HaveOccurred())
 
-	By("creating the repository")
-	Expect(tc.Prepare()).To(Succeed())
-
-	By("checking the cluster type")
-	kubectx, err = tc.Kubectl.Command("config", "current-context")
-	Expect(err).NotTo(HaveOccurred())
-
-	By("checking API resources applied on Cluster")
-	output, err := tc.Kubectl.Command("api-resources")
-	Expect(err).NotTo(HaveOccurred())
-	if strings.Contains(output, "servicemonitors") {
-		isPrometheusManagedBySuite = false
-	}
-	if strings.Contains(output, "clusterserviceversions") {
-		isOLMManagedBySuite = false
-	}
-
-	if isPrometheusManagedBySuite {
-		By("installing Prometheus")
-		Expect(tc.InstallPrometheusOperManager()).To(Succeed())
-
-		By("ensuring provisioned Prometheus Manager Service")
-		Eventually(func() error {
-			_, err := tc.Kubectl.Get(
-				false,
-				"Service", "prometheus-operator")
-			return err
-		}, 3*time.Minute, time.Second).Should(Succeed())
-	}
-
-	if isOLMManagedBySuite {
-		By("installing OLM")
-		Expect(tc.InstallOLMVersion(testutils.OlmVersionForTestSuite)).To(Succeed())
-	}
-
-	By("setting domain and GVK")
 	tc.Domain = "example.com"
 	tc.Version = "v1alpha1"
-	tc.Group = "ansible"
+	tc.Group = "cache"
 	tc.Kind = "Memcached"
+	tc.ProjectName = "memcached-operator"
+	tc.Kubectl.Namespace = fmt.Sprintf("%s-system", tc.ProjectName)
 
-	By("initializing a ansible project")
-	err = tc.Init(
-		"--plugins", "ansible",
-		"--project-version", "3-alpha",
-		"--domain", tc.Domain)
+	By("copying sample to a temporary e2e directory")
+	Expect(exec.Command("cp", "-r", "../../testdata/ansible/memcached-operator", tc.Dir).Run()).To(Succeed())
+
+	By("fetching the current-context")
+	tc.Kubectx, err = tc.Kubectl.Command("config", "current-context")
 	Expect(err).NotTo(HaveOccurred())
+
+	By("preparing the prerequisites on cluster")
+	tc.InstallPrerequisites()
 
 	By("using dev image for scorecard-test")
 	err = tc.ReplaceScorecardImagesForDev()
-	Expect(err).NotTo(HaveOccurred())
-
-	By("creating the Memcached API")
-	err = tc.CreateAPI(
-		"--group", tc.Group,
-		"--version", tc.Version,
-		"--kind", tc.Kind,
-		"--generate-playbook",
-		"--generate-role")
 	Expect(err).NotTo(HaveOccurred())
 
 	By("replacing project Dockerfile to use ansible base image with the dev tag")
@@ -120,19 +76,8 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(err).Should(Succeed())
 
 	By("adding Memcached mock task to the role")
-	err = testutils.ReplaceInFile(filepath.Join(tc.Dir, "roles", strings.ToLower(tc.Kind), "tasks", "main.yml"),
-		fmt.Sprintf("# tasks file for %s", tc.Kind), memcachedWithBlackListTask)
-	Expect(err).NotTo(HaveOccurred())
-
-	By("setting defaults to Memcached")
-	err = testutils.ReplaceInFile(filepath.Join(tc.Dir, "roles", strings.ToLower(tc.Kind), "defaults", "main.yml"),
-		fmt.Sprintf("# defaults file for %s", tc.Kind), "size: 1")
-	Expect(err).NotTo(HaveOccurred())
-
-	By("updating Memcached sample")
-	memcachedSampleFile := filepath.Join(tc.Dir, "config", "samples",
-		fmt.Sprintf("%s_%s_%s.yaml", tc.Group, tc.Version, strings.ToLower(tc.Kind)))
-	err = testutils.ReplaceInFile(memcachedSampleFile, "foo: bar", "size: 1")
+	err = kbtestutils.InsertCode(filepath.Join(tc.Dir, "roles", strings.ToLower(tc.Kind), "tasks", "main.yml"),
+		"periodSeconds: 3", memcachedWithBlackListTask)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("creating an API definition to add a task to delete the config map")
@@ -166,92 +111,35 @@ var _ = BeforeSuite(func(done Done) {
 		"# +kubebuilder:scaffold:rules", rolesForBaseOperator)
 	Expect(err).NotTo(HaveOccurred())
 
-	By("turning off interactive prompts for all generation tasks.")
-	replace := "operator-sdk generate kustomize manifests"
-	err = testutils.ReplaceInFile(filepath.Join(tc.Dir, "Makefile"), replace, replace+" --interactive=false")
-	Expect(err).NotTo(HaveOccurred())
-
-	By("checking the kustomize setup")
-	err = tc.Make("kustomize")
-	Expect(err).NotTo(HaveOccurred())
-
 	By("building the project image")
 	err = tc.Make("docker-build", "IMG="+tc.ImageName)
 	Expect(err).NotTo(HaveOccurred())
 
-	if isRunningOnKind() {
-		By("loading the project image into Kind cluster")
-		err = tc.LoadImageToKindCluster()
-		Expect(err).NotTo(HaveOccurred())
+	if tc.IsRunningOnKind() {
+		By("loading the required images into Kind cluster")
+		Expect(tc.LoadImageToKindCluster()).To(Succeed())
+		Expect(tc.LoadImageToKindClusterWithName("quay.io/operator-framework/scorecard-test:dev")).To(Succeed())
 	}
 
 	By("building the bundle")
 	err = tc.Make("bundle", "IMG="+tc.ImageName)
 	Expect(err).NotTo(HaveOccurred())
-
-	close(done)
-}, 360)
+})
 
 // AfterSuite run after all the specs have run, regardless of whether any tests have failed to ensures that
 // all be cleaned up
 var _ = AfterSuite(func() {
-	if isPrometheusManagedBySuite {
-		By("uninstalling Prometheus")
-		tc.UninstallPrometheusOperManager()
-	}
-	if isOLMManagedBySuite {
-		By("uninstalling OLM")
-		tc.UninstallOLM()
-	}
+	By("uninstalling prerequisites")
+	tc.UninstallPrerequisites()
 
 	By("destroying container image and work dir")
 	tc.Destroy()
 })
 
-// isRunningOnKind returns true when the tests are executed in a Kind Cluster
-func isRunningOnKind() bool {
-	return strings.Contains(kubectx, "kind")
-}
-
-const memcachedWithBlackListTask = `- name: start memcached
-  community.kubernetes.k8s:
-    definition:
-      kind: Deployment
-      apiVersion: apps/v1
-      metadata:
-        name: '{{ ansible_operator_meta.name }}-memcached'
-        namespace: '{{ ansible_operator_meta.namespace }}'
-        labels:
-          app: memcached
-      spec:
-        replicas: "{{size}}"
-        selector:
-          matchLabels:
-            app: memcached
-        template:
-          metadata:
-            labels:
-              app: memcached
-          spec:
-            containers:
-            - name: memcached
-              command:
-              - memcached
-              - -m=64
-              - -o
-              - modern
-              - -v
-              image: "docker.io/memcached:1.4.36-alpine"
-              ports:
-                - containerPort: 11211
-              readinessProbe:
-                tcpSocket:
-                  port: 11211
-                initialDelaySeconds: 3
-                periodSeconds: 3
+const memcachedWithBlackListTask = `
 
 - operator_sdk.util.k8s_status:
-    api_version: ansible.example.com/v1alpha1
+    api_version: cache.example.com/v1alpha1
     kind: Memcached
     name: "{{ ansible_operator_meta.name }}"
     namespace: "{{ ansible_operator_meta.namespace }}"
@@ -302,7 +190,7 @@ const taskToDeleteConfigMap = `- name: delete configmap for test
 
 const memcachedWatchCustomizations = `playbook: playbooks/memcached.yml
   finalizer:
-    name: finalizer.ansible.example.com
+    name: finalizer.cache.example.com
     role: memfin
   blacklist:
     - group: ""

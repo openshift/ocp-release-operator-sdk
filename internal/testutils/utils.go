@@ -24,8 +24,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	kbtestutils "sigs.k8s.io/kubebuilder/test/e2e/utils"
 )
 
@@ -34,8 +36,16 @@ const BinaryName = "operator-sdk"
 // TestContext wraps kubebuilder's e2e TestContext.
 type TestContext struct {
 	*kbtestutils.TestContext
+	// BundleImageName store the image to use to build the bundle
 	BundleImageName string
-	ProjectName     string
+	// ProjectName store the project name
+	ProjectName string
+	// Kubectx stores the k8s context from where the tests are running
+	Kubectx string
+	// isPrometheusManagedBySuite is true when the suite tests is installing/uninstalling the Prometheus
+	isPrometheusManagedBySuite bool
+	// isOLMManagedBySuite is true when the suite tests is installing/uninstalling the OLM
+	isOLMManagedBySuite bool
 }
 
 // NewTestContext returns a TestContext containing a new kubebuilder TestContext.
@@ -44,13 +54,9 @@ func NewTestContext(binary string, env ...string) (tc TestContext, err error) {
 	tc.ProjectName = strings.ToLower(filepath.Base(tc.Dir))
 	tc.ImageName = fmt.Sprintf("quay.io/example/%s:v0.0.1", tc.ProjectName)
 	tc.BundleImageName = fmt.Sprintf("quay.io/example/%s-bundle:v0.0.1", tc.ProjectName)
+	tc.isOLMManagedBySuite = true
+	tc.isPrometheusManagedBySuite = true
 	return tc, err
-}
-
-// InstallOLM runs 'operator-sdk olm install' and returns any errors emitted by that command.
-func (tc TestContext) InstallOLM() error {
-	err := tc.InstallOLMVersion("latest")
-	return err
 }
 
 // InstallOLM runs 'operator-sdk olm install' for specific version
@@ -123,9 +129,13 @@ func ReplaceRegexInFile(path, match, replace string) error {
 	return nil
 }
 
-// LoadImageToKindCluster loads a local docker image with the name informed to the kind cluster
+// LoadImageToKindClusterWithName loads a local docker image with the name informed to the kind cluster
 func (tc TestContext) LoadImageToKindClusterWithName(image string) error {
-	kindOptions := []string{"load", "docker-image", image}
+	cluster := "kind"
+	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
+		cluster = v
+	}
+	kindOptions := []string{"load", "docker-image", "--name", cluster, image}
 	cmd := exec.Command("kind", kindOptions...)
 	_, err := tc.Run(cmd)
 	return err
@@ -169,4 +179,73 @@ func UncommentCode(filename, target, prefix string) error {
 	// false positive
 	// nolint:gosec
 	return ioutil.WriteFile(filename, out.Bytes(), 0644)
+}
+
+// InstallPrerequisites will install OLM and Prometheus
+// when the cluster kind is Kind and when they are not present on the Cluster
+func (tc TestContext) InstallPrerequisites() {
+	By("checking API resources applied on Cluster")
+	output, err := tc.Kubectl.Command("api-resources")
+	Expect(err).NotTo(HaveOccurred())
+	if strings.Contains(output, "servicemonitors") {
+		tc.isPrometheusManagedBySuite = false
+	}
+	if strings.Contains(output, "clusterserviceversions") {
+		tc.isOLMManagedBySuite = false
+	}
+
+	if tc.isPrometheusManagedBySuite {
+		By("installing Prometheus")
+		Expect(tc.InstallPrometheusOperManager()).To(Succeed())
+
+		By("ensuring provisioned Prometheus Manager Service")
+		Eventually(func() error {
+			_, err := tc.Kubectl.Get(
+				false,
+				"Service", "prometheus-operator")
+			return err
+		}, 3*time.Minute, time.Second).Should(Succeed())
+	}
+
+	if tc.isOLMManagedBySuite {
+		By("installing OLM")
+		Expect(tc.InstallOLMVersion(OlmVersionForTestSuite)).To(Succeed())
+	}
+}
+
+// IsRunningOnKind returns true when the tests are executed in a Kind Cluster
+func (tc TestContext) IsRunningOnKind() bool {
+	return strings.Contains(tc.Kubectx, "kind")
+}
+
+// UninstallPrerequisites will uninstall all prerequisites installed via InstallPrerequisites()
+func (tc TestContext) UninstallPrerequisites() {
+	if tc.isPrometheusManagedBySuite {
+		By("uninstalling Prometheus")
+		tc.UninstallPrometheusOperManager()
+	}
+	if tc.isOLMManagedBySuite {
+		By("uninstalling OLM")
+		tc.UninstallOLM()
+	}
+}
+
+// AllowProjectBeMultiGroup will update the PROJECT file with the information to allow we scaffold
+// apis with different groups.
+// todo(camilamacedo86) : remove this helper when the edit plugin via the bin
+// be available. See the Pr: https://github.com/kubernetes-sigs/kubebuilder/pull/1691
+func (tc TestContext) AllowProjectBeMultiGroup() error {
+	const multiGroup = `multigroup: true
+`
+	projectBytes, err := ioutil.ReadFile(filepath.Join(tc.Dir, "PROJECT"))
+	if err != nil {
+		return err
+	}
+
+	projectBytes = append([]byte(multiGroup), projectBytes...)
+	err = ioutil.WriteFile(filepath.Join(tc.Dir, "PROJECT"), projectBytes, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
