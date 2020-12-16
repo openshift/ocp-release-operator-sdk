@@ -1,0 +1,24 @@
+diff -up ./testdata/helm/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml.disable-security-context ./testdata/helm/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml
+--- ./testdata/helm/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml.disable-security-context	2020-12-15 21:59:53.693999854 -0500
++++ ./testdata/helm/memcached-operator/config/samples/cache_v1alpha1_memcached.yaml	2020-12-15 22:00:08.067198685 -0500
+@@ -31,7 +31,7 @@ spec:
+       cpu: 50m
+       memory: 64Mi
+   securityContext:
+-    enabled: true
++    enabled: false
+     fsGroup: 1001
+     runAsUser: 1001
+   serviceAnnotations: {}
+diff -up ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml.disable-security-context ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml
+--- ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml.disable-security-context	2020-12-15 21:58:00.595435374 -0500
++++ ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml	2020-12-15 21:58:14.871632854 -0500
+@@ -70,7 +70,7 @@ affinity: {}
+ ## Memcached pod Security Context
+ ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+ securityContext:
+-  enabled: true
++  enabled: false
+   fsGroup: 1001
+   runAsUser: 1001
+ 
