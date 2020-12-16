@@ -1,6 +1,6 @@
 FROM osdk-builder as builder
 
-# RUN ci/tests/scaffolding/e2e-helm-scaffold.sh
+# multi-stage so we can get the samples from the builder
 
 FROM osdk-helm
 
