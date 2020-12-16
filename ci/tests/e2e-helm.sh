@@ -4,8 +4,6 @@ source hack/lib/test_lib.sh
 
 set -eux
 
-# # REMOVE THIS LINE FOR OPENSHIFT CI
-# IMAGE_FORMAT="quay.io/jesusr/osdk-helm-e2e:test"
 component="osdk-helm-e2e"
 eval IMAGE=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
@@ -82,10 +80,6 @@ test_operator() {
     fi
 
     # wait until the statefulset rollout successfully
-
-    # release_name=$(kubectl get memcachedes.helm.example.com example-memcached -o jsonpath="{..status.deployedRelease.name}")
-    # memcached_deployment=$(kubectl get deployment -l "app.kubernetes.io/instance=${release_name}" -o jsonpath="{..metadata.name}")
-
     if ! timeout 600s kubectl rollout status statefulset/memcached-sample;
     then
         echo FAIL: to rollout status statefulset
@@ -134,20 +128,6 @@ test_operator() {
 pushd $ROOTDIR/testdata/helm/memcached-operator
 ls
 
-# trap_add 'remove_operator' EXIT
-
-# # deploy_operator
-# echo "running make kustomize"
-# make kustomize
-# if [ -f ./bin/kustomize ] ; then
-#   KUSTOMIZE="$(realpath ./bin/kustomize)"
-# else
-#   KUSTOMIZE="$(which kustomize)"
-# fi
-# pushd config/default
-# ${KUSTOMIZE} edit set namespace default
-# popd
-
 # Give the serviceaccount cluster role to create statefulsets
 if oc api-versions | grep openshift; then
     oc adm policy add-cluster-role-to-user cluster-admin -z default || :
@@ -159,11 +139,6 @@ make deploy IMG=$IMAGE
 
 # create clusterrolebinding for metrics
 kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding --clusterrole=memcached-operator-metrics-reader --serviceaccount=memcached-operator-system:default
-
-# DEBUG: set the context upstream; this is here for debug purposes
-# when testing against kind, uncomment the following line. Then comment out the
-# oc project line below.
-# kubectl config set-context --current --namespace=memcached-operator-system
 
 # switch to the "memcached-operator-system" namespace
 oc project memcached-operator-system

@@ -4,8 +4,6 @@ source hack/lib/test_lib.sh
 
 set -eux
 
-# # REMOVE THIS LINE FOR OPENSHIFT CI
-# IMAGE_FORMAT="quay.io/jesusr/osdk-ansible-e2e:test"
 component="osdk-ansible-e2e"
 eval IMAGE=$IMAGE_FORMAT
 ROOTDIR="$(pwd)"
@@ -137,11 +135,6 @@ make deploy IMG=$IMAGE
 
 # create clusterrolebinding for metrics
 kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding --clusterrole=memcached-operator-metrics-reader --serviceaccount=memcached-operator-system:default
-
-# DEBUG: set the context upstream; this is here for debug purposes
-# when testing against kind, uncomment the following line. Then comment out the
-# oc project line below.
-# kubectl config set-context --current --namespace=memcached-operator-system
 
 # switch to the "memcached-operator-system" namespace
 oc project memcached-operator-system
