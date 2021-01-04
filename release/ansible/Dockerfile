@@ -5,7 +5,7 @@ ENV GO111MODULE=on \
 
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make build/ansible-operator VERSION=$(git describe --tags --always)
+ && make build/ansible-operator
 
 FROM registry.access.redhat.com/ubi8/ubi
 

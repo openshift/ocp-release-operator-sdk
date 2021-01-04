@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/operator-framework/api/pkg/operators/v1"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"github.com/operator-framework/operator-registry/pkg/lib/bundle"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -51,6 +52,14 @@ func NewUninstall(cfg *Configuration) *Uninstall {
 	}
 }
 
+type ErrPackageNotFound struct {
+	PackageName string
+}
+
+func (e ErrPackageNotFound) Error() string {
+	return fmt.Sprintf("package %q not found", e.PackageName)
+}
+
 func (u *Uninstall) Run(ctx context.Context) error {
 	if u.DeleteAll {
 		u.DeleteCRDs = true
@@ -70,54 +79,56 @@ func (u *Uninstall) Run(ctx context.Context) error {
 			break
 		}
 	}
-	if sub == nil {
-		return fmt.Errorf("operator package %q not found", u.Package)
-	}
 
-	catsrcKey := types.NamespacedName{
-		Namespace: sub.Spec.CatalogSourceNamespace,
-		Name:      sub.Spec.CatalogSource,
-	}
 	catsrc := &v1alpha1.CatalogSource{}
-	if err := u.config.Client.Get(ctx, catsrcKey, catsrc); err != nil {
-		return fmt.Errorf("get catalog source: %v", err)
-	}
 	catsrc.SetGroupVersionKind(v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CatalogSourceKind))
-
-	// Since the install plan is owned by the subscription, we need to
-	// read all of the resource references from the install plan before
-	// deleting the subscription.
-	var crds, csvs, others []controllerutil.Object
-	if sub.Status.InstallPlanRef != nil {
-		ipKey := types.NamespacedName{
-			Namespace: sub.Status.InstallPlanRef.Namespace,
-			Name:      sub.Status.InstallPlanRef.Name,
+	if sub != nil {
+		catsrcKey := types.NamespacedName{
+			Namespace: sub.Spec.CatalogSourceNamespace,
+			Name:      sub.Spec.CatalogSource,
 		}
-		var err error
-		crds, csvs, others, err = u.getInstallPlanResources(ctx, ipKey)
-		if err != nil {
-			return fmt.Errorf("get install plan resources: %v", err)
+		if err := u.config.Client.Get(ctx, catsrcKey, catsrc); err != nil {
+			return fmt.Errorf("get catalog source: %v", err)
 		}
-	}
 
-	// Delete the subscription first, so that no further installs or upgrades
-	// of the operator occur while we're cleaning up.
-	if err := u.deleteObjects(ctx, false, sub); err != nil {
-		return err
-	}
+		// Since the install plan is owned by the subscription, we need to
+		// read all of the resource references from the install plan before
+		// deleting the subscription.
+		var crds, csvs, others []controllerutil.Object
+		if sub.Status.InstallPlanRef != nil {
+			ipKey := types.NamespacedName{
+				Namespace: sub.Status.InstallPlanRef.Namespace,
+				Name:      sub.Status.InstallPlanRef.Name,
+			}
+			var err error
+			crds, csvs, others, err = u.getInstallPlanResources(ctx, ipKey)
+			if err != nil {
+				return fmt.Errorf("get install plan resources: %v", err)
+			}
+		}
 
-	if u.DeleteCRDs {
-		// Ensure CustomResourceDefinitions are deleted next, so that the operator
-		// has a chance to handle CRs that have finalizers.
-		if err := u.deleteObjects(ctx, true, crds...); err != nil {
+		// Delete the subscription first, so that no further installs or upgrades
+		// of the operator occur while we're cleaning up.
+		if err := u.deleteObjects(ctx, false, sub); err != nil {
 			return err
 		}
-	}
 
-	// Delete CSVs and all other objects created by the install plan.
-	objects := append(csvs, others...)
-	if err := u.deleteObjects(ctx, true, objects...); err != nil {
-		return err
+		if u.DeleteCRDs {
+			// Ensure CustomResourceDefinitions are deleted next, so that the operator
+			// has a chance to handle CRs that have finalizers.
+			if err := u.deleteObjects(ctx, true, crds...); err != nil {
+				return err
+			}
+		}
+
+		// Delete CSVs and all other objects created by the install plan.
+		objects := append(csvs, others...)
+		if err := u.deleteObjects(ctx, true, objects...); err != nil {
+			return err
+		}
+	} else {
+		catsrc.SetNamespace(u.config.Namespace)
+		catsrc.SetName(CatalogNameForPackage(u.Package))
 	}
 
 	// Delete the catalog source. This assumes that all underlying resources related
@@ -147,6 +158,9 @@ func (u *Uninstall) Run(ctx context.Context) error {
 				}
 			}
 		}
+	}
+	if sub == nil {
+		return &ErrPackageNotFound{u.Package}
 	}
 	return nil
 }
@@ -198,13 +212,12 @@ func (u *Uninstall) getInstallPlanResources(ctx context.Context, installPlanKey 
 			Kind:    step.Resource.Kind,
 		})
 
-		// TODO(joelanford): This seems necessary for service accounts tied to
-		//    cluster roles and cluster role bindings because the SA namespace
-		//    is not set in the manifest in this case.
+		// TODO(joelanford): This seems necessary for namespaced resources
 		//    See: https://github.com/operator-framework/operator-lifecycle-manager/blob/c9405d035bc50d9aa290220cb8d75b0402e72707/pkg/controller/registry/resolver/rbac.go#L133
-		if step.Resource.Kind == "ServiceAccount" && obj.GetNamespace() == "" {
+		if supported, namespaced := bundle.IsSupported(step.Resource.Kind); supported && bool(namespaced) {
 			obj.SetNamespace(installPlanKey.Namespace)
 		}
+
 		switch step.Resource.Kind {
 		case "CustomResourceDefinition":
 			crds = append(crds, obj)

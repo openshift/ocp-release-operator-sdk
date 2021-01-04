@@ -39,3 +39,5 @@ ci-images:
 	docker build -f release/ansible/upstream.Dockerfile -t osdk-ansible .
 	docker build -f test/ansible/build/Dockerfile -t osdk-ansible-full-e2e test/ansible/
 	docker build -f ci/dockerfiles/ansible-molecule.Dockerfile -t osdk-ansible-molecule .
+
+.PHONY: patch build test-e2e-go test-e2e-ansible test-e2e-helm patch test-subcommand ci-images

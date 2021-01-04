@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.0.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.1.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
   name: memcached-operator.v0.0.1
   namespace: placeholder
@@ -62,6 +62,12 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - cache.example.com
+          resources:
+          - memcacheds/finalizers
+          verbs:
+          - update
         - apiGroups:
           - cache.example.com
           resources:
@@ -199,6 +205,7 @@ spec:
   webhookdefinitions:
   - admissionReviewVersions:
     - v1beta1
+    containerPort: 443
     deploymentName: memcached-operator-controller-manager
     failurePolicy: Fail
     generateName: vmemcached.kb.io
@@ -213,10 +220,12 @@ spec:
       resources:
       - memcacheds
     sideEffects: None
+    targetPort: 9443
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-cache-example-com-v1alpha1-memcached
   - admissionReviewVersions:
     - v1beta1
+    containerPort: 443
     deploymentName: memcached-operator-controller-manager
     failurePolicy: Fail
     generateName: mmemcached.kb.io
@@ -231,5 +240,6 @@ spec:
       resources:
       - memcacheds
     sideEffects: None
+    targetPort: 9443
     type: MutatingAdmissionWebhook
     webhookPath: /mutate-cache-example-com-v1alpha1-memcached

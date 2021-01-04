@@ -4,7 +4,7 @@
 # This script is used by the ansible-e2e.Dockerfile to create an operator
 # image using the upstream sample operator.
 #
-source hack/lib/test_lib.sh
+source hack/lib/common.sh
 
 set -eux
 

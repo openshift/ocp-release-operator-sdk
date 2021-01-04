@@ -64,9 +64,6 @@ func (mh *MemcachedGoWithWebhooks) Run() {
 		mh.ctx.Domain)
 	pkg.CheckError("creating the project", err)
 
-	err = mh.ctx.Make("kustomize")
-	pkg.CheckError("error to scaffold api", err)
-
 	err = mh.ctx.CreateAPI(
 		"--group", mh.ctx.Group,
 		"--version", mh.ctx.Version,
@@ -260,6 +257,7 @@ func GenerateMemcachedGoWithWebhooksSample(samplesPath string) {
 }
 
 const rbacFragment = `
+// +kubebuilder:rbac:groups=cache.example.com,resources=memcacheds/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;`
 

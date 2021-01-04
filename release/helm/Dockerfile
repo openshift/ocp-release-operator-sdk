@@ -5,7 +5,7 @@ ENV GO111MODULE=on \
 
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make build/helm-operator VERSION=$(git describe --tags --always)
+ && make build/helm-operator
 
 FROM registry.svc.ci.openshift.org/ocp/4.7:base
 
