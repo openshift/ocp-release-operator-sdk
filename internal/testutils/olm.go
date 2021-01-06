@@ -20,11 +20,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"sigs.k8s.io/kubebuilder/pkg/model/config"
+	"sigs.k8s.io/kubebuilder/v2/pkg/model/config"
 )
 
 const (
-	OlmVersionForTestSuite = "0.15.1"
+	OlmVersionForTestSuite = "0.17.0"
 )
 
 var makefilePackagemanifestsFragment = `
@@ -38,7 +38,7 @@ endif
 ifeq ($(IS_CHANNEL_DEFAULT), 1)
 PKG_IS_DEFAULT_CHANNEL := --default-channel
 endif
-PKG_MAN_OPTS ?= $(FROM_VERSION) $(PKG_CHANNELS) $(PKG_IS_DEFAULT_CHANNEL)
+PKG_MAN_OPTS ?= $(PKG_FROM_VERSION) $(PKG_CHANNELS) $(PKG_IS_DEFAULT_CHANNEL)
 
 # Generate package manifests.
 packagemanifests: kustomize %s
@@ -82,10 +82,23 @@ func (tc TestContext) AddPackagemanifestsTarget() error {
 }
 
 // DisableOLMBundleInterativeMode will update the Makefile to disable the interactive mode
-func (tc TestContext) DisableOLMBundleInteractiveMode() error {
+func (tc TestContext) DisableManifestsInteractiveMode() error {
 	// Todo: check if we cannot improve it since the replace/content will exists in the
 	// pkgmanifest target if it be scaffolded before this call
 	content := "operator-sdk generate kustomize manifests"
 	replace := content + " --interactive=false"
 	return ReplaceInFile(filepath.Join(tc.Dir, "Makefile"), content, replace)
+}
+
+// GenerateBundle runs all commands to create an operator bundle.
+func (tc TestContext) GenerateBundle() error {
+	if err := tc.DisableManifestsInteractiveMode(); err != nil {
+		return err
+	}
+
+	if err := tc.Make("bundle", "IMG="+tc.ImageName); err != nil {
+		return err
+	}
+
+	return nil
 }

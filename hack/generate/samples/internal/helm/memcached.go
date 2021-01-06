@@ -17,7 +17,6 @@ package helm
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -55,12 +54,6 @@ func (mh *MemcachedHelm) Prepare() {
 
 // Run runs the steps to generate the sample
 func (mh *MemcachedHelm) Run() {
-	current, err := os.Getwd()
-	if err != nil {
-		log.Error(err)
-		os.Exit(1)
-	}
-
 	// When operator-sdk scaffolds Helm projects, it tries to use the discovery API of a Kubernetes
 	// cluster to intelligently build the RBAC rules that the operator will require based on the
 	// content of the helm chart.
@@ -73,15 +66,12 @@ func (mh *MemcachedHelm) Run() {
 	os.Setenv("KUBECONFIG", "broken_so_we_generate_static_default_rules")
 
 	log.Infof("creating the project")
-	err = mh.ctx.Init(
+	err := mh.ctx.Init(
 		"--plugins", "helm",
 		"--domain", mh.ctx.Domain)
 	pkg.CheckError("creating the project", err)
 
-	log.Infof("handling work path to get helm chart mock data")
-	projectPath := strings.Split(current, "operator-sdk/")[0]
-	projectPath = strings.Replace(projectPath, "operator-sdk", "", 1)
-	helmChartPath := filepath.Join(projectPath, "operator-sdk/hack/generate/samples/internal/helm/testdata/memcached-0.0.1.tgz")
+	helmChartPath := "../../../hack/generate/samples/internal/helm/testdata/memcached-0.0.1.tgz"
 	log.Infof("using the helm chart in: (%v)", helmChartPath)
 
 	err = mh.ctx.CreateAPI(
@@ -103,7 +93,13 @@ func (mh *MemcachedHelm) Run() {
 		"# +kubebuilder:scaffold:rules", policyRolesFragment)
 	pkg.CheckError("adding customized roles", err)
 
-	pkg.RunOlmIntegration(mh.ctx)
+	log.Infof("creating the bundle")
+	err = mh.ctx.GenerateBundle()
+	pkg.CheckError("creating the bundle", err)
+
+	log.Infof("striping bundle annotations")
+	err = mh.ctx.StripBundleAnnotations()
+	pkg.CheckError("striping bundle annotations", err)
 }
 
 // GenerateMemcachedHelmSample will call all actions to create the directory and generate the sample

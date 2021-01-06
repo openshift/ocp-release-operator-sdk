@@ -61,16 +61,15 @@ Read the [operator scope][operator_scope] documentation on how to run your opera
 
 ### Multi-Group APIs
 
-Before creating an API and controller, consider if your operator's API requires multiple [groups][API-groups].
-If yes then add the line `multigroup: true` in the `PROJECT` file which should look like the following:
+Before creating an API and controller, consider if your operator requires multiple API [groups][api-groups]. Then to change the layout of your project to support multi-group run the command `operator-sdk edit --multigroup=true`. It will update the `PROJECT` file which should look like the following:
 
 ```YAML
 domain: example.com
-layout: go.kubebuilder.io/v2
+layout: go.kubebuilder.io/v3
 multigroup: true
 ...
 ```
-For multi-group projects, the API Go type files are created under `apis/<group>/<version>/` and the controllers under `controllers/<group>/`.
+For multi-group projects, the API Go type files are created under `apis/<group>/<version>/` and the controllers under `controllers/<group>/` and then, the Dockerfile will be updated accordingly. For further information see the [multi-group migration doc][multigroup-kubebuilder-doc]
 
 This guide will cover the default case of a single group API.
 
@@ -174,6 +173,12 @@ The next two subsections explain how the controller watches resources and how th
 The `SetupWithManager()` function in `controllers/memcached_controller.go` specifies how the controller is built to watch a CR and other resources that are owned and managed by that controller.
 
 ```Go
+import (
+	...
+	appsv1 "k8s.io/api/apps/v1"
+	...
+)
+
 func (r *MemcachedReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cachev1alpha1.Memcached{}).
@@ -220,7 +225,7 @@ import (
 	...
 )
 
-func (r *MemcachedReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
   // Lookup the Memcached instance for this reconcile request
   memcached := &cachev1alpha1.Memcached{}
   err := r.Get(ctx, req.NamespacedName, memcached)
@@ -262,7 +267,9 @@ The controller needs certain RBAC permissions to interact with the resources it 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
 
-func (r *MemcachedReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+  ...
+}
 ```
 
 The `ClusterRole` manifest at `config/rbac/role.yaml` is generated from the above markers via controller-gen with the following command:
@@ -330,11 +337,7 @@ The name and tag of the image (`IMG=<some-registry>/<project-name>:tag`) in both
 
 #### Deploy the operator
 
-For this example we will run the operator in the `default` namespace which can be specified for all resources in `config/default/kustomization.yaml`:
-
-```sh
-$ cd config/default/ && kustomize edit set namespace "default" && cd ../..
-```
+By default, a new namespace is created with name `<project-name>-system`, i.e. memcached-operator-system and will be used for the deployment.
 
 Run the following to deploy the operator. This will also install the RBAC manifests from `config/rbac`.
 
@@ -348,7 +351,7 @@ in the cluster or `make deploy` will fail when creating the cert-manager resourc
 Verify that the memcached-operator is up and running:
 
 ```console
-$ kubectl get deployment
+$ kubectl get deployment -n memcached-operator-system
 NAME                                    READY   UP-TO-DATE   AVAILABLE   AGE
 memcached-operator-controller-manager   1/1     1            1           8m
 ```
@@ -436,12 +439,19 @@ memcached-sample                        5/5     5            5           3m
 
 ### Cleanup
 
-```sh
-$ kubectl delete -f config/samples/cache_v1alpha1_memcached.yaml
-$ kubectl delete deployments,service -l control-plane=controller-manager
-$ kubectl delete role,rolebinding --all
+A new target can be added into the Makefile for cleaning up the resources that have been created along this tutorial:
+
+```make
+# Undeploy controller from the configured Kubernetes cluster
+undeploy:
+	$(KUSTOMIZE) build config/default | kubectl delete -f -
 ```
 
+Once that's done the simple command below will delete all the resources:
+
+```sh
+$ make undeploy
+```
 
 ## Further steps
 
@@ -451,7 +461,7 @@ The following guides build off the operator created in this example, adding adva
 
 Also see the [advanced topics][advanced_topics] doc for more use cases and under the hood details.
 
-
+[operator_install]: https://sdk.operatorframework.io/docs/installation/install-operator-sdk/
 [go_tool]:https://golang.org/dl/
 [docker_tool]:https://docs.docker.com/install/
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
@@ -485,7 +495,7 @@ Also see the [advanced topics][advanced_topics] doc for more use cases and under
 [markers]: https://book.kubebuilder.io/reference/markers.html
 [crd-markers]: https://book.kubebuilder.io/reference/markers/crd-validation.html
 [rbac-markers]: https://book.kubebuilder.io/reference/markers/rbac.html
-[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/master/testdata/go/memcached-operator/controllers/memcached_controller.go
+[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/v1.2.0/testdata/go/memcached-operator/controllers/memcached_controller.go
 [builder_godocs]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/builder#example-Builder
 [legacy_quickstart_doc]:https://v0-19-x.sdk.operatorframework.io/docs/golang/legacy/quickstart/
 [activate_modules]: https://github.com/golang/go/wiki/Modules#how-to-install-and-activate-module-support
@@ -497,3 +507,4 @@ Also see the [advanced topics][advanced_topics] doc for more use cases and under
 [legacy_CLI]:https://v0-19-x.sdk.operatorframework.io/docs/cli/
 [env-test-setup]: /docs/building-operators/golang/references/envtest-setup
 [role-based-access-control]: https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap
+[multigroup-kubebuilder-doc]: https://book.kubebuilder.io/migration/multi-group.html

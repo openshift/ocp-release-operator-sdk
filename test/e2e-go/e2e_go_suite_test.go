@@ -16,14 +16,11 @@ package e2e_go_test
 
 import (
 	"fmt"
-	"path"
-	"path/filepath"
-	"strings"
+	"os/exec"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	kbtestutils "sigs.k8s.io/kubebuilder/test/e2e/utils"
 
 	"github.com/operator-framework/operator-sdk/internal/testutils"
 )
@@ -49,8 +46,16 @@ var _ = BeforeSuite(func() {
 	tc, err = testutils.NewTestContext(testutils.BinaryName, "GO111MODULE=on")
 	Expect(err).NotTo(HaveOccurred())
 
-	By("creating a new directory")
-	Expect(tc.Prepare()).To(Succeed())
+	tc.Domain = "example.com"
+	tc.Group = "cache"
+	tc.Version = "v1alpha1"
+	tc.Kind = "Memcached"
+	tc.Resources = "memcacheds"
+	tc.ProjectName = "memcached-operator"
+	tc.Kubectl.Namespace = fmt.Sprintf("%s-system", tc.ProjectName)
+
+	By("copying sample to a temporary e2e directory")
+	Expect(exec.Command("cp", "-r", "../../testdata/go/v3/memcached-operator", tc.Dir).Run()).To(Succeed())
 
 	By("fetching the current-context")
 	tc.Kubectx, err = tc.Kubectl.Command("config", "current-context")
@@ -59,53 +64,12 @@ var _ = BeforeSuite(func() {
 	By("preparing the prerequisites on cluster")
 	tc.InstallPrerequisites()
 
-	By("initializing a project")
-	err = tc.Init(
-		"--project-version", "3-alpha",
-		"--repo", path.Join("github.com", "example", tc.ProjectName),
-		"--domain", tc.Domain,
-		"--fetch-deps=false")
-	Expect(err).NotTo(HaveOccurred())
-
 	By("by adding scorecard custom patch file")
 	err = tc.AddScorecardCustomPatchFile()
 	Expect(err).NotTo(HaveOccurred())
 
 	By("using dev image for scorecard-test")
 	err = tc.ReplaceScorecardImagesForDev()
-	Expect(err).NotTo(HaveOccurred())
-
-	By("creating an API definition")
-	err = tc.CreateAPI(
-		"--group", tc.Group,
-		"--version", tc.Version,
-		"--kind", tc.Kind,
-		"--namespaced",
-		"--resource",
-		"--controller",
-		"--make=false")
-	Expect(err).NotTo(HaveOccurred())
-
-	By("implementing the API")
-	Expect(kbtestutils.InsertCode(
-		filepath.Join(tc.Dir, "api", tc.Version, fmt.Sprintf("%s_types.go", strings.ToLower(tc.Kind))),
-		fmt.Sprintf(`type %sSpec struct {
-`, tc.Kind),
-		`	// +optional
-	Count int `+"`"+`json:"count,omitempty"`+"`"+`
-`)).Should(Succeed())
-
-	By("enabling Prometheus via the kustomization.yaml")
-	Expect(kbtestutils.UncommentCode(
-		filepath.Join(tc.Dir, "config", "default", "kustomization.yaml"),
-		"#- ../prometheus", "#")).To(Succeed())
-
-	By("turning off interactive prompts for all generation tasks.")
-	err = tc.DisableOLMBundleInteractiveMode()
-	Expect(err).NotTo(HaveOccurred())
-
-	By("checking the kustomize setup")
-	err = tc.Make("kustomize")
 	Expect(err).NotTo(HaveOccurred())
 
 	By("building the project image")
@@ -119,14 +83,20 @@ var _ = BeforeSuite(func() {
 		Expect(tc.LoadImageToKindClusterWithName("quay.io/operator-framework/custom-scorecard-tests:dev")).To(Succeed())
 	}
 
-	By("generating the operator bundle")
-	err = tc.Make("bundle", "IMG="+tc.ImageName)
+	By("creating bundle image")
+	err = tc.GenerateBundle()
 	Expect(err).NotTo(HaveOccurred())
+
+	By("installing cert manager bundle")
+	Expect(tc.InstallCertManager(false)).To(Succeed())
 })
 
 // AfterSuite run after all the specs have run, regardless of whether any tests have failed to ensures that
 // all be cleaned up
 var _ = AfterSuite(func() {
+	By("uninstall cert manager bundle")
+	tc.UninstallCertManager(false)
+
 	By("uninstalling prerequisites")
 	tc.UninstallPrerequisites()
 
