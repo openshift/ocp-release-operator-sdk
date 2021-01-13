@@ -13,6 +13,7 @@ patch:
 	for i in ./patches/*.patch; do patch -p0 < $$i; done
 
 build:
+	@echo "building sdk"
 	$(MAKE) -f Makefile build/operator-sdk
 
 test-e2e-go:

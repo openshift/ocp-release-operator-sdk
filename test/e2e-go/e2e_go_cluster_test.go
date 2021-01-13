@@ -18,6 +18,8 @@ package e2e_go_test
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -25,49 +27,36 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	kbtestutils "sigs.k8s.io/kubebuilder/test/e2e/utils"
+	kbtestutils "sigs.k8s.io/kubebuilder/v2/test/e2e/utils"
+
+	"github.com/operator-framework/operator-sdk/internal/testutils"
 )
 
 var _ = Describe("operator-sdk", func() {
-	var controllerPodName string
+	var controllerPodName, metricsClusterRoleBindingName string
 
 	Context("built with operator-sdk", func() {
+
 		BeforeEach(func() {
-			By("enabling Prometheus via the kustomization.yaml")
-			Expect(kbtestutils.UncommentCode(
-				filepath.Join(tc.Dir, "config", "default", "kustomization.yaml"),
-				"#- ../prometheus", "#")).To(Succeed())
+			metricsClusterRoleBindingName = fmt.Sprintf("%s-metrics-reader", tc.ProjectName)
 
 			By("deploying project on the cluster")
-			err := tc.Make("deploy", "IMG="+tc.ImageName)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(tc.Make("deploy", "IMG="+tc.ImageName)).To(Succeed())
 		})
-		AfterEach(func() {
-			By("cleaning up the operator and resources")
-			defaultOutput, err := tc.KustomizeBuild(filepath.Join("config", "default"))
-			Expect(err).NotTo(HaveOccurred())
-			_, err = tc.Kubectl.WithInput(string(defaultOutput)).Command("delete", "-f", "-")
-			Expect(err).NotTo(HaveOccurred())
 
-			By("deleting Curl Pod created")
-			_, _ = tc.Kubectl.Delete(true, "pod", "curl")
+		AfterEach(func() {
+			By("deleting curl pod")
+			testutils.WrapWarnOutput(tc.Kubectl.Delete(false, "pod", "curl"))
 
 			By("cleaning up permissions")
-			_, _ = tc.Kubectl.Command("delete", "clusterrolebinding",
-				fmt.Sprintf("metrics-%s", tc.TestSuffix))
+			testutils.WrapWarnOutput(tc.Kubectl.Command("delete", "clusterrolebinding", metricsClusterRoleBindingName))
 
-			By("undeploy project")
-			_ = tc.Make("undeploy")
+			By("cleaning up created API objects during test process")
+			// TODO(estroz): go/v2 does not have this target, so generalize once tests are refactored.
+			testutils.WrapWarn(tc.Make("undeploy"))
 
 			By("ensuring that the namespace was deleted")
-			verifyNamespaceDeleted := func() error {
-				_, err := tc.Kubectl.Command("get", "namespace", tc.Kubectl.Namespace)
-				if strings.Contains(err.Error(), "(NotFound): namespaces") {
-					return err
-				}
-				return nil
-			}
-			Eventually(verifyNamespaceDeleted, 2*time.Minute, time.Second).ShouldNot(Succeed())
+			testutils.WrapWarnOutput(tc.Kubectl.Wait(false, "namespace", "foo", "--for", "delete", "--timeout", "2m"))
 		})
 
 		It("should run correctly in a cluster", func() {
@@ -98,7 +87,7 @@ var _ = Describe("operator-sdk", func() {
 					true,
 					"pods", controllerPodName, "-o", "jsonpath={.status.phase}")
 				if err != nil {
-					return fmt.Errorf("failed to get pod stauts for %q: %v", controllerPodName, err)
+					return fmt.Errorf("failed to get pod status for %q: %v", controllerPodName, err)
 				}
 				if status != "Running" {
 					return fmt.Errorf("controller pod in %s status", status)
@@ -111,14 +100,14 @@ var _ = Describe("operator-sdk", func() {
 			_, err := tc.Kubectl.Get(
 				true,
 				"ServiceMonitor",
-				fmt.Sprintf("e2e-%s-controller-manager-metrics-monitor", tc.TestSuffix))
+				fmt.Sprintf("%s-controller-manager-metrics-monitor", tc.ProjectName))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("ensuring the created metrics Service for the manager")
 			_, err = tc.Kubectl.Get(
 				true,
 				"Service",
-				fmt.Sprintf("e2e-%s-controller-manager-metrics-service", tc.TestSuffix))
+				fmt.Sprintf("%s-controller-manager-metrics-service", tc.ProjectName))
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating an instance of CR")
@@ -131,24 +120,15 @@ var _ = Describe("operator-sdk", func() {
 				return err
 			}, time.Minute, time.Second).Should(Succeed())
 
-			By("ensuring the created resource object gets reconciled in controller")
-			managerContainerLogs := func() string {
-				logOutput, err := tc.Kubectl.Logs(controllerPodName, "-c", "manager")
-				Expect(err).NotTo(HaveOccurred())
-				return logOutput
-			}
-			Eventually(managerContainerLogs, time.Minute, time.Second).Should(ContainSubstring("Successfully Reconciled"))
-
 			By("granting permissions to access the metrics and read the token")
 			_, err = tc.Kubectl.Command(
 				"create",
-				"clusterrolebinding",
-				fmt.Sprintf("metrics-%s", tc.TestSuffix),
-				fmt.Sprintf("--clusterrole=e2e-%s-metrics-reader", tc.TestSuffix),
+				"clusterrolebinding", metricsClusterRoleBindingName,
+				fmt.Sprintf("--clusterrole=%s-metrics-reader", tc.ProjectName),
 				fmt.Sprintf("--serviceaccount=%s:default", tc.Kubectl.Namespace))
 			Expect(err).NotTo(HaveOccurred())
 
-			By("getting the token")
+			By("reading the token")
 			b64Token, err := tc.Kubectl.Get(
 				true,
 				"secrets",
@@ -156,42 +136,58 @@ var _ = Describe("operator-sdk", func() {
 			Expect(err).NotTo(HaveOccurred())
 			token, err := base64.StdEncoding.DecodeString(strings.TrimSpace(b64Token))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(token).NotTo(HaveLen(0))
+			Expect(len(token)).To(BeNumerically(">", 0))
 
-			By("creating a pod with curl image")
-			// todo: the flag --generator=run-pod/v1 is deprecated, however, shows that besides
+			By("creating a curl pod")
+			// TODO: the flag --generator=run-pod/v1 is deprecated, however, shows that besides
 			// it should not make any difference and work locally successfully when the flag is removed
-			// travis has been failing and the curl pod is not found when the flag is not used
+			// the test will fail and the curl pod is not found when the flag is not used
 			cmdOpts := []string{
 				"run", "--generator=run-pod/v1", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure", "--",
 				"curl", "-v", "-k", "-H", fmt.Sprintf(`Authorization: Bearer %s`, token),
-				fmt.Sprintf("https://e2e-%v-controller-manager-metrics-service.e2e-%v-system.svc:8443/metrics",
-					tc.TestSuffix, tc.TestSuffix),
+				fmt.Sprintf("https://%s-controller-manager-metrics-service.%s.svc:8443/metrics", tc.ProjectName, tc.Kubectl.Namespace),
 			}
 			_, err = tc.Kubectl.CommandInNamespace(cmdOpts...)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("validating the curl pod running as expected")
+			By("validating that the curl pod is running as expected")
 			verifyCurlUp := func() error {
 				// Validate pod status
 				status, err := tc.Kubectl.Get(
 					true,
 					"pods", "curl", "-o", "jsonpath={.status.phase}")
-				Expect(err).NotTo(HaveOccurred())
+				ExpectWithOffset(1, err).NotTo(HaveOccurred())
 				if status != "Completed" && status != "Succeeded" {
 					return fmt.Errorf("curl pod in %s status", status)
 				}
 				return nil
 			}
-			Eventually(verifyCurlUp, 4*time.Minute, time.Second).Should(Succeed())
+			Eventually(verifyCurlUp, 2*time.Minute, time.Second).Should(Succeed())
 
-			By("checking metrics endpoint serving as expected")
+			By("validating that the metrics endpoint is serving as expected")
+			var metricsOutput string
 			getCurlLogs := func() string {
-				logOutput, err := tc.Kubectl.Logs("curl")
-				Expect(err).NotTo(HaveOccurred())
-				return logOutput
+				metricsOutput, err = tc.Kubectl.Logs("curl")
+				ExpectWithOffset(1, err).NotTo(HaveOccurred())
+				return metricsOutput
 			}
 			Eventually(getCurlLogs, time.Minute, time.Second).Should(ContainSubstring("< HTTP/2 200"))
+
+			// The controller updates memcacheds' status.nodes with a list of pods it is replicated across
+			// on a successful reconcile.
+			By("validating that the created resource object gets reconciled in the controller")
+			var status string
+			getStatus := func() error {
+				status, err = tc.Kubectl.Get(true, "memcacheds", "memcached-sample", "-o", "jsonpath={.status.nodes}")
+				if err == nil && strings.TrimSpace(status) == "" {
+					err = errors.New("empty status, continue")
+				}
+				return err
+			}
+			Eventually(getStatus, 1*time.Minute, time.Second).Should(Succeed())
+			var nodes []string
+			Expect(json.Unmarshal([]byte(status), &nodes)).To(Succeed())
+			Expect(len(nodes)).To(BeNumerically(">", 0))
 		})
 	})
 })

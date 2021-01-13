@@ -70,10 +70,11 @@ operator-sdk [flags]
 * [operator-sdk cleanup](../operator-sdk_cleanup)	 - Clean up an Operator deployed with the 'run' subcommand
 * [operator-sdk completion](../operator-sdk_completion)	 - Generators for shell completions
 * [operator-sdk create](../operator-sdk_create)	 - Scaffold a Kubernetes API or webhook
+* [operator-sdk edit](../operator-sdk_edit)	 - This command will edit the project configuration
 * [operator-sdk generate](../operator-sdk_generate)	 - Invokes a specific generator
 * [operator-sdk init](../operator-sdk_init)	 - Initialize a new project
 * [operator-sdk olm](../operator-sdk_olm)	 - Manage the Operator Lifecycle Manager installation in your cluster
 * [operator-sdk run](../operator-sdk_run)	 - Run an Operator in a variety of environments
 * [operator-sdk scorecard](../operator-sdk_scorecard)	 - Runs scorecard
-* [operator-sdk version](../operator-sdk_version)	 - Prints the version of operator-sdk
+* [operator-sdk version](../operator-sdk_version)	 - Print the operator-sdk version
 

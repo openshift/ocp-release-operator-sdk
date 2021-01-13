@@ -4,18 +4,18 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.2.0
+export IMAGE_VERSION = v1.3.0
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
 export GIT_COMMIT = $(shell git rev-parse HEAD)
-export K8S_VERSION = 1.18.8
+export K8S_VERSION = 1.19.4
 
 # Build settings
+export TOOLS_DIR = tools/bin
+export SCRIPTS_DIR = tools/scripts
 REPO = $(shell go list -m)
 BUILD_DIR = build
-TOOLS_DIR = tools/bin
-SCRIPTS_DIR = tools/scripts
 GO_ASMFLAGS = -asmflags "all=-trimpath=$(shell dirname $(PWD))"
 GO_GCFLAGS = -gcflags "all=-trimpath=$(shell dirname $(PWD))"
 GO_BUILD_ARGS = \
@@ -41,9 +41,9 @@ generate: build # Generate CLI docs and samples
 	go run ./hack/generate/samples/generate_testdata.go
 
 .PHONY: bindata
-OLM_VERSION=0.15.1
+OLM_VERSIONS = 0.16.1 0.15.1 0.17.0
 bindata: ## Update project bindata
-	./hack/generate/olm_bindata.sh $(OLM_VERSION)
+	./hack/generate/olm_bindata.sh $(OLM_VERSIONS)
 
 .PHONY: fix
 fix: ## Fixup files in the repo.
@@ -73,7 +73,7 @@ build/scorecard-test build/scorecard-test-kuttl build/custom-scorecard-tests:
 build/operator-sdk build/ansible-operator build/helm-operator:
 	go build $(GO_BUILD_ARGS) -o $(BUILD_DIR)/$(@F) ./cmd/$(@F)
 
-##@ Dev images
+##@ Dev image build
 
 # Convenience wrapper for building all remotely hosted images.
 .PHONY: image-build
@@ -89,6 +89,23 @@ image/%: build/%
 	mkdir -p ./images/$*/bin && mv $(BUILD_DIR)/$* ./images/$*/bin
 	docker build -t $(BUILD_IMAGE_REPO)/$*:dev -f ./images/$*/Dockerfile ./images/$*
 	rm -rf $(BUILD_DIR)
+
+##@ Release
+
+.PHONY: release
+release: ## Release target. See 'make -f release/Makefile help' for more information.
+	$(MAKE) -f release/Makefile $@
+
+.PHONY: prerelease
+prerelease: ## Write release commit changes. See 'make -f release/Makefile help' for more information.
+ifneq ($(RELEASE_VERSION),$(IMAGE_VERSION))
+	$(error "IMAGE_VERSION "$(IMAGE_VERSION)" must be updated to match RELEASE_VERSION "$(RELEASE_VERSION)" prior to creating a release commit")
+endif
+	$(MAKE) -f release/Makefile $@
+
+.PHONY: tag
+tag: ## Tag a release commit. See 'make -f release/Makefile help' for more information.
+	$(MAKE) -f release/Makefile $@
 
 ##@ Test
 
@@ -124,7 +141,6 @@ e2e_targets := test-e2e $(e2e_tests)
 
 .PHONY: test-e2e-setup
 export KIND_CLUSTER := operator-sdk-e2e
-export KUBECONFIG := $(HOME)/.kube/kind-$(KIND_CLUSTER).config
 export KUBEBUILDER_ASSETS := $(PWD)/$(TOOLS_DIR)
 test-e2e-setup: build
 	$(SCRIPTS_DIR)/fetch kind 0.9.0
@@ -153,18 +169,8 @@ test-e2e-ansible-molecule:: image/ansible-operator ## Run molecule-based Ansible
 test-e2e-helm:: image/helm-operator ## Run Helm e2e tests
 	go test ./test/e2e-helm -v -ginkgo.v
 test-e2e-integration:: ## Run integration tests
-	./hack/tests/integration.sh
+	go test ./test/integration -v -ginkgo.v
 	./hack/tests/subcommand-olm-install.sh
-
-# TODO(estroz): remove changelog/release when goreleaser is added as release tool (they shouldn't be exposed as dev targets).
-
-.PHONY: changelog
-changelog: ## Generate CHANGELOG.md and migration guide updates
-	$(MAKE) -f release/Makefile changelog
-
-.PHONY: release
-release: clean ## Release the Operator SDK
-	$(MAKE) -f release/Makefile GO_BUILD_ARGS='$(GO_BUILD_ARGS)'
 
 .DEFAULT_GOAL := help
 .PHONY: help

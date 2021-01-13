@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	kbtestutils "sigs.k8s.io/kubebuilder/test/e2e/utils"
+	kbtestutils "sigs.k8s.io/kubebuilder/v2/test/e2e/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -121,8 +121,8 @@ var _ = BeforeSuite(func() {
 		Expect(tc.LoadImageToKindClusterWithName("quay.io/operator-framework/scorecard-test:dev")).To(Succeed())
 	}
 
-	By("building the bundle")
-	err = tc.Make("bundle", "IMG="+tc.ImageName)
+	By("creating bundle image")
+	err = tc.GenerateBundle()
 	Expect(err).NotTo(HaveOccurred())
 })
 

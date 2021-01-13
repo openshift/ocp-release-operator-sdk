@@ -248,7 +248,7 @@ func reconcileRelease(_ context.Context, kubeClient kube.Interface, expectedMani
 		}
 
 		helper := resource.NewHelper(expected.Client, expected.Mapping)
-		existing, err := helper.Get(expected.Namespace, expected.Name, expected.Export)
+		existing, err := helper.Get(expected.Namespace, expected.Name)
 		if apierrors.IsNotFound(err) {
 			if _, err := helper.Create(expected.Namespace, true, expected.Object); err != nil {
 				return fmt.Errorf("create error: %s", err)
@@ -370,5 +370,8 @@ func (m manager) UninstallRelease(ctx context.Context, opts ...UninstallOption) 
 		}
 	}
 	uninstallResponse, err := uninstall.Run(m.releaseName)
+	if uninstallResponse == nil {
+		return nil, err
+	}
 	return uninstallResponse.Release, err
 }
