@@ -5,7 +5,7 @@ ENV GO111MODULE=on \
 
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make build/operator-sdk
+ && make -f ci/prow.Makefile patch build
 
 FROM registry.svc.ci.openshift.org/ocp/4.7:base
 
