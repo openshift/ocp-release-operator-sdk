@@ -3,9 +3,10 @@ FROM registry.svc.ci.openshift.org/ocp/builder:rhel-8-golang-1.15-openshift-4.7 
 ENV GO111MODULE=on \
     GOFLAGS=-mod=vendor
 
+# we need to patch the Makefile prior to building
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make build/ansible-operator
+ && make -f ci/prow.Makefile patch build
 
 FROM registry.svc.ci.openshift.org/ocp/4.7:base
 
