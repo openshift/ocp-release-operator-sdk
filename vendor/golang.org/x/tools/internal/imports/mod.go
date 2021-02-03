@@ -1,3 +1,7 @@
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package imports
 
 import (
@@ -59,6 +63,8 @@ func (r *ModuleResolver) init() error {
 	}
 	inv := gocommand.Invocation{
 		BuildFlags: r.env.BuildFlags,
+		ModFlag:    r.env.ModFlag,
+		ModFile:    r.env.ModFile,
 		Env:        r.env.env(),
 		Logf:       r.env.Logf,
 		WorkingDir: r.env.WorkingDir,
@@ -86,7 +92,11 @@ func (r *ModuleResolver) init() error {
 	if gmc := r.env.Env["GOMODCACHE"]; gmc != "" {
 		r.moduleCacheDir = gmc
 	} else {
-		r.moduleCacheDir = filepath.Join(filepath.SplitList(goenv["GOPATH"])[0], "/pkg/mod")
+		gopaths := filepath.SplitList(goenv["GOPATH"])
+		if len(gopaths) == 0 {
+			return fmt.Errorf("empty GOPATH")
+		}
+		r.moduleCacheDir = filepath.Join(gopaths[0], "/pkg/mod")
 	}
 
 	sort.Slice(r.modsByModPath, func(i, j int) bool {
@@ -345,10 +355,11 @@ func (r *ModuleResolver) modInfo(dir string) (modDir string, modName string) {
 	}
 
 	if r.dirInModuleCache(dir) {
-		matches := modCacheRegexp.FindStringSubmatch(dir)
-		index := strings.Index(dir, matches[1]+"@"+matches[2])
-		modDir := filepath.Join(dir[:index], matches[1]+"@"+matches[2])
-		return modDir, readModName(filepath.Join(modDir, "go.mod"))
+		if matches := modCacheRegexp.FindStringSubmatch(dir); len(matches) == 3 {
+			index := strings.Index(dir, matches[1]+"@"+matches[2])
+			modDir := filepath.Join(dir[:index], matches[1]+"@"+matches[2])
+			return modDir, readModName(filepath.Join(modDir, "go.mod"))
+		}
 	}
 	for {
 		if info, ok := r.cacheLoad(dir); ok {
