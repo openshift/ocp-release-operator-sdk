@@ -14,8 +14,9 @@ DOCUMENTATION = '''
     short_description: Kubernetes (K8s) inventory source
 
     description:
-      - Fetch containers and services for one or more clusters
-      - Groups by cluster name, namespace, namespace_services, namespace_pods, and labels
+      - Fetch containers and services for one or more clusters.
+      - Groups by cluster name, namespace, namespace_services, namespace_pods, and labels.
+      - Uses the kubectl connection plugin to access the Kubernetes cluster.
       - Uses k8s.(yml|yaml) YAML configuration file to set parameter values.
 
     options:
@@ -143,6 +144,7 @@ class K8sInventoryException(Exception):
 class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable, K8sAnsibleMixin):
     NAME = 'community.kubernetes.k8s'
 
+    connection_plugin = 'community.kubernetes.kubectl'
     transport = 'kubectl'
 
     def parse(self, inventory, loader, path, cache=True):
@@ -276,7 +278,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable, K8sAnsibleM
                     self.inventory.set_variable(container_name, 'container_state', 'Waiting')
                 self.inventory.set_variable(container_name, 'container_ready', container.ready)
                 self.inventory.set_variable(container_name, 'ansible_remote_tmp', '/tmp/')
-                self.inventory.set_variable(container_name, 'ansible_connection', self.transport)
+                self.inventory.set_variable(container_name, 'ansible_connection', self.connection_plugin)
                 self.inventory.set_variable(container_name, 'ansible_{0}_pod'.format(self.transport),
                                             pod_name)
                 self.inventory.set_variable(container_name, 'ansible_{0}_container'.format(self.transport),

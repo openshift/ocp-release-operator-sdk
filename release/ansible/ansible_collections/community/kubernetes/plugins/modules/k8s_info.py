@@ -25,31 +25,15 @@ description:
   - This module was called C(k8s_facts) before Ansible 2.9. The usage did not change.
 
 options:
-  api_version:
-    description:
-    - Use to specify the API version. in conjunction with I(kind), I(name), and I(namespace) to identify a
-      specific object.
-    default: v1
-    aliases:
-    - api
-    - version
-    type: str
   kind:
     description:
-    - Use to specify an object model. Use in conjunction with I(api_version), I(name), and I(namespace) to identify a
-      specific object.
-    required: yes
+    - Use to specify an object model.
+    - Use to create, delete, or discover an object without providing a full resource definition.
+    - Use in conjunction with I(api_version), I(name), and I(namespace) to identify a specific object.
+    - If I(resource definition) is provided, the I(kind) value from the I(resource_definition)
+      will override this option.
     type: str
-  name:
-    description:
-    - Use to specify an object name.  Use in conjunction with I(api_version), I(kind) and I(namespace) to identify a
-      specific object.
-    type: str
-  namespace:
-    description:
-    - Use to specify an object namespace. Use in conjunction with I(api_version), I(kind), and I(name)
-      to identify a specific object.
-    type: str
+    required: True
   label_selectors:
     description: List of label selectors to use to filter results
     type: list
@@ -61,6 +45,8 @@ options:
 
 extends_documentation_fragment:
   - community.kubernetes.k8s_auth_options
+  - community.kubernetes.k8s_name_options
+  - community.kubernetes.k8s_wait_options
 
 requirements:
   - "python >= 2.7"
@@ -96,11 +82,33 @@ EXAMPLES = r'''
       - app = web
       - tier in (dev, test)
 
+- name: Using vars while using label_selectors
+  community.kubernetes.k8s_info:
+    kind: Pod
+    label_selectors:
+      - "app = {{ app_label_web }}"
+  vars:
+    app_label_web: web
+
 - name: Search for all running pods
   community.kubernetes.k8s_info:
     kind: Pod
     field_selectors:
       - status.phase=Running
+
+- name: List custom objects created using CRD
+  community.kubernetes.k8s_info:
+    kind: MyCustomObject
+    api_version: "stable.example.com/v1"
+
+- name: Wait till the Object is created
+  community.kubernetes.k8s_info:
+    kind: Pod
+    wait: yes
+    name: pod-not-yet-created
+    namespace: default
+    wait_sleep: 10
+    wait_timeout: 360
 '''
 
 RETURN = r'''
@@ -132,17 +140,25 @@ resources:
       type: dict
 '''
 
-
-from ansible_collections.community.kubernetes.plugins.module_utils.common import KubernetesAnsibleModule, AUTH_ARG_SPEC
 import copy
 
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.kubernetes.plugins.module_utils.common import (
+    K8sAnsibleMixin, AUTH_ARG_SPEC, WAIT_ARG_SPEC)
 
-class KubernetesInfoModule(KubernetesAnsibleModule):
+
+class KubernetesInfoModule(K8sAnsibleMixin):
 
     def __init__(self, *args, **kwargs):
-        KubernetesAnsibleModule.__init__(self, *args,
-                                         supports_check_mode=True,
-                                         **kwargs)
+        module = AnsibleModule(
+            argument_spec=self.argspec,
+            supports_check_mode=True,
+        )
+        self.module = module
+        self.params = self.module.params
+        self.fail_json = self.module.fail_json
+        self.exit_json = self.module.exit_json
+        super(KubernetesInfoModule, self).__init__()
 
     def execute_module(self):
         self.client = self.get_api_client()
@@ -150,14 +166,19 @@ class KubernetesInfoModule(KubernetesAnsibleModule):
         self.exit_json(changed=False,
                        **self.kubernetes_facts(self.params['kind'],
                                                self.params['api_version'],
-                                               self.params['name'],
-                                               self.params['namespace'],
-                                               self.params['label_selectors'],
-                                               self.params['field_selectors']))
+                                               name=self.params['name'],
+                                               namespace=self.params['namespace'],
+                                               label_selectors=self.params['label_selectors'],
+                                               field_selectors=self.params['field_selectors'],
+                                               wait=self.params['wait'],
+                                               wait_sleep=self.params['wait_sleep'],
+                                               wait_timeout=self.params['wait_timeout'],
+                                               condition=self.params['wait_condition']))
 
     @property
     def argspec(self):
         args = copy.deepcopy(AUTH_ARG_SPEC)
+        args.update(WAIT_ARG_SPEC)
         args.update(
             dict(
                 kind=dict(required=True),

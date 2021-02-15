@@ -26,11 +26,6 @@ description:
   -  Get information (values, states, ...) from Helm package deployed inside the cluster.
 
 options:
-  binary_path:
-    description:
-      - The path of a helm binary to use.
-    required: false
-    type: path
   release_name:
     description:
       - Release name to manage.
@@ -43,17 +38,8 @@ options:
     required: true
     type: str
     aliases: [ namespace ]
-
-#Helm options
-  kube_context:
-    description:
-      - Helm option to specify which kubeconfig context to use.
-    type: str
-  kubeconfig_path:
-    description:
-      - Helm option to specify kubeconfig path to use.
-    type: path
-    aliases: [ kubeconfig ]
+extends_documentation_fragment:
+  - community.kubernetes.helm_common_options
 '''
 
 EXAMPLES = r'''
@@ -112,7 +98,7 @@ except ImportError:
     IMP_YAML_ERR = traceback.format_exc()
     IMP_YAML = False
 
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
+from ansible.module_utils.basic import AnsibleModule, missing_required_lib, env_fallback
 
 module = None
 
@@ -177,8 +163,8 @@ def main():
             release_namespace=dict(type='str', required=True, aliases=['namespace']),
 
             # Helm options
-            kube_context=dict(type='str'),
-            kubeconfig_path=dict(type='path', aliases=['kubeconfig']),
+            kube_context=dict(type='str', aliases=['context'], fallback=(env_fallback, ['K8S_AUTH_CONTEXT'])),
+            kubeconfig_path=dict(type='path', aliases=['kubeconfig'], fallback=(env_fallback, ['K8S_AUTH_KUBECONFIG'])),
         ),
         supports_check_mode=True,
     )
