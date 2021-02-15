@@ -53,7 +53,7 @@ git merge --no-commit tags/"$version"
 
 # preserve our version of these files
 # git checkout HEAD -- OWNERS Makefile .gitignore
-git checkout HEAD -- OWNERS_ALIASES
+git checkout HEAD -- OWNERS_ALIASES README.md
 
 # unmerged files are overwritten with the upstream copy
 unmerged_files=$(git diff --name-only --diff-filter=U --exit-code)
@@ -110,6 +110,10 @@ git add vendor
 # git show tags/"$version":Makefile > Makefile.sc
 # git add --patch --interactive Makefile.sc
 # git checkout Makefile.sc
+
+# update upstream README.md changes
+git show tags/"$version":README.md > README-sdk.md
+git add README-sdk.md
 
 # bump UPSTREAM-VERSION file
 echo "$version" > UPSTREAM-VERSION
