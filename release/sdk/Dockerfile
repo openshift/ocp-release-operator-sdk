@@ -21,6 +21,8 @@ ENV USER_UID=1001 \
 
 # install operator binary
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/operator-sdk /usr/local/bin/operator-sdk
+# copy the mac binary to the image
+COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/darwin_amd64/operator-sdk /usr/share/operator-sdk/mac/operator-sdk
 COPY release/sdk/bin /usr/local/bin
 RUN /usr/local/bin/user_setup
 

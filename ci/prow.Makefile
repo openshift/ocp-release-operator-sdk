@@ -13,7 +13,7 @@ patch:
 	for i in ./patches/*.patch; do patch -p0 < $$i; done
 
 build:
-	$(MAKE) -f Makefile build/operator-sdk build/ansible-operator build/helm-operator
+	$(MAKE) -f Makefile build/operator-sdk build/ansible-operator build/helm-operator build-darwin
 
 test-e2e-go:
 	./ci/tests/e2e-go.sh $(ARGS)
