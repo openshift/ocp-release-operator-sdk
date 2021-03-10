@@ -26,11 +26,11 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 
-sdk_repo=$(git remote get-url "$upstream_remote")
-if [[ $sdk_repo != "https://github.com/operator-framework/operator-sdk.git" ]]; then
-  echo "Upstream remote url should be set to kubernetes-sigs repo."
-  exit 1
-fi
+# sdk_repo=$(git remote get-url "$upstream_remote")
+# if [[ $sdk_repo != "https://github.com/operator-framework/operator-sdk.git" ]]; then
+#  echo "Upstream remote url should be set to kubernetes-sigs repo."
+#  exit 1
+# fi
 
 # check state of working directory
 git diff-index --quiet HEAD || { printf "!! Git status not clean, aborting !!\\n\\n%s" "$(git status)"; exit 1; }
