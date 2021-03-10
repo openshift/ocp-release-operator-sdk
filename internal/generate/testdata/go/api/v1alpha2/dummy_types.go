@@ -15,7 +15,11 @@
 package v1alpha2
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	// Has the same name as a different import in memcached_types.go to test duplicate package names.
+	foo "github.com/operator-framework/operator-sdk/internal/generate/testdata/go/api/shared"
 )
 
 // +k8s:deepcopy-gen=false
@@ -47,6 +51,10 @@ type DummySpec struct {
 	// Should be in spec, but should not have array index in path
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Wheels",xDescriptors="urn:alm:descriptor:com.tectonic.ui:text"
 	Wheels []Wheel `json:"wheels"`
+	// A useful shared type.
+	Useful foo.UsefulType `json:"useful"`
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	SideCar v1.Container `json:"sideCar"`
 }
 
 // +k8s:deepcopy-gen=false
@@ -58,72 +66,6 @@ type DummyStatus struct {
 	Nodes []string `json:"nodes"`
 	// Not included in status but children should be
 	Boss Hog `json:"hog"`
-}
-
-// +k8s:deepcopy-gen=false
-// +k8s:openapi-gen=false
-type Hog struct {
-	// Should be in status but not spec, since Hog isn't in DummySpec
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="boss-hog-engine"
-	Engine Engine `json:"engine"`
-	// Not in spec or status, no boolean annotation
-	// +operator-sdk:csv:customresourcedefinitions:displayName="doesnt-matter"
-	Brand string `json:"brand"`
-	// Not in spec or status
-	Helmet string `json:"helmet"`
-	// Fields should be inlined
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	Inlined InlinedComponent `json:",inline"`
-	// Fields should be inlined
-	InlinedComponent `json:",inline"`
-	// Should be ignored
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	Ignored IgnoredComponent `json:"-"`
-	// Should be ignored, but exported children should not be
-	notExported `json:",inline"`
-}
-
-type notExported struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	Public string `json:"foo"`
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	private string `json:"-"`
-}
-
-// +k8s:deepcopy-gen=false
-// +k8s:openapi-gen=false
-type Engine struct {
-	// Should not be included, no annotations.
-	Pistons []string `json:"pistons"`
-}
-
-// +k8s:deepcopy-gen=false
-// +k8s:openapi-gen=false
-type Wheel struct {
-	// Type should be in spec with path equal to wheels[0].type
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Wheel Type",xDescriptors="urn:alm:descriptor:com.tectonic.ui:arrayFieldGroup:wheels" ; "urn:alm:descriptor:com.tectonic.ui:text"
-	Type string `json:"type"`
-}
-
-// +k8s:deepcopy-gen=false
-// +k8s:openapi-gen=false
-type InlinedComponent struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	SeatMaterial string `json:"seatMaterial"`
-}
-
-// +k8s:deepcopy-gen=false
-// +k8s:openapi-gen=false
-type IgnoredComponent struct {
-	// +operator-sdk:csv:customresourcedefinitions:type=spec
-	// +operator-sdk:csv:customresourcedefinitions:type=status
-	TrunkSpace string `json:"trunkSpace"`
 }
 
 // +k8s:deepcopy-gen=false

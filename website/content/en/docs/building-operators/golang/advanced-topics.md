@@ -6,7 +6,7 @@ weight: 80
 
 ### Manage CR status conditions
 
-An often-used pattern is to include `Conditions` in the status of custom resources. Conditions represent the latest available observations of an object's state (see the [Kubernetes API conventions documentation][typical-status-properties] for more information).
+An often-used pattern is to include `Conditions` in the status of custom resources. A [`Condition`][apimachinery_condition] represents the latest available observations of an object's state (see the [Kubernetes API conventions documentation][typical-status-properties] for more information).
 
 The `Conditions` field added to the `MemcachedStatus` struct simplifies the management of your CR's conditions. It:
 - Enables callers to add and remove conditions.
@@ -19,22 +19,16 @@ To use conditions in your custom resource, add a Conditions field to the Status 
 
 ```Go
 import (
-    "github.com/operator-framework/operator-lib/status"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type MyAppStatus struct {
     // Conditions represent the latest available observations of an object's state
-    Conditions status.Conditions `json:"conditions"`
+    Conditions []metav1.Condition `json:"conditions"`
 }
 ```
 
-Then, in your controller, you can use [`Conditions`][godoc-conditions] methods to make it easier to set and remove conditions or check their current values.
-
-**NOTE:** The `status` package was removed in operator-lib `v0.2.0` in deference to the upstream [`metav1.Condition`][apimachinery_condition] type, so your project must depend on version [`v0.1.0`][operator-lib-0.1.0] to use `status.Conditions`:
-
-```sh
-go get github.com/operator-framework/operator-lib@v0.1.0
-```
+Then, in your controller, you can use [`Conditions`][helpers-conditions] methods to make it easier to set and remove conditions or check their current values.
 
 ### Adding 3rd Party Resources To Your Operator
 
@@ -43,7 +37,7 @@ The operator's Manager supports the core Kubernetes resource types as found in t
 
 ```Go
 import (
-    cachev1alpha1 "github.com/example-inc/memcached-operator/api/v1alpha1
+    cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1
     ...
 )
 
@@ -132,15 +126,16 @@ deleted until you remove the finalizer (ie, after your cleanup logic has success
 
 **Example:**
 
-The following is a snippet from the controller file under `pkg/controller/memcached/memcached_controller.go`
+The following is a snippet from a theoretical controller file `controllers/memcached_controller.go`
+that implements a finalizer handler:
 
-```Go
+```go
 import (
     ...
     "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-const memcachedFinalizer = "finalizer.cache.example.com"
+const memcachedFinalizer = "cache.example.com/finalizer"
 
 func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
     reqLogger := r.log.WithValues("memcached", req.NamespacedName)
@@ -168,7 +163,7 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
     // indicated by the deletion timestamp being set.
     isMemcachedMarkedToBeDeleted := memcached.GetDeletionTimestamp() != nil
     if isMemcachedMarkedToBeDeleted {
-        if contains(memcached.GetFinalizers(), memcachedFinalizer) {
+        if controllerutil.ContainsFinalizer(memcached, memcachedFinalizer) {
             // Run finalization logic for memcachedFinalizer. If the
             // finalization logic fails, don't remove the finalizer so
             // that we can retry during the next reconciliation.
@@ -188,8 +183,10 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
     }
 
     // Add finalizer for this CR
-    if !contains(memcached.GetFinalizers(), memcachedFinalizer) {
-        if err := r.addFinalizer(reqLogger, memcached); err != nil {
+    if !controllerutil.ContainsFinalizer(memcached, memcachedFinalizer) {
+        controllerutil.AddFinalizer(memcached, memcachedFinalizer)
+        err = r.Update(ctx, memcached)
+        if err != nil {
             return ctrl.Result{}, err
         }
     }
@@ -206,28 +203,6 @@ func (r *MemcachedReconciler) finalizeMemcached(reqLogger logr.Logger, m *cachev
     // resources that are not owned by this CR, like a PVC.
     reqLogger.Info("Successfully finalized memcached")
     return nil
-}
-
-func (r *MemcachedReconciler) addFinalizer(reqLogger logr.Logger, m *cachev1alpha1.Memcached) error {
-    reqLogger.Info("Adding Finalizer for the Memcached")
-    controllerutil.AddFinalizer(m, memcachedFinalizer)
-
-    // Update CR
-    err := r.Update(context.TODO(), m)
-    if err != nil {
-        reqLogger.Error(err, "Failed to update Memcached with finalizer")
-        return err
-    }
-    return nil
-}
-
-func contains(list []string, s string) bool {
-    for _, v := range list {
-        if v == s {
-            return true
-        }
-    }
-    return false
 }
 ```
 
@@ -292,7 +267,6 @@ func main() {
 When the operator is not running in a cluster, the Manager will return an error on starting since it can't detect the operator's namespace in order to create the configmap for leader election. You can override this namespace by setting the Manager's `LeaderElectionNamespace` option.
 
 [typical-status-properties]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-[godoc-conditions]: https://pkg.go.dev/github.com/operator-framework/operator-lib@v0.1.0/status#Conditions
 [scheme_package]:https://github.com/kubernetes/client-go/blob/master/kubernetes/scheme/register.go
 [deployments_register]: https://github.com/kubernetes/api/blob/master/apps/v1/register.go#L41
 [runtime_package]: https://godoc.org/k8s.io/apimachinery/pkg/runtime
@@ -304,4 +278,4 @@ When the operator is not running in a cluster, the Manager will return an error 
 [pod_eviction_timeout]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-controller-manager/#options
 [manager_options]: https://godoc.org/github.com/kubernetes-sigs/controller-runtime/pkg/manager#Options
 [apimachinery_condition]: https://github.com/kubernetes/apimachinery/blob/d4f471b82f0a17cda946aeba446770563f92114d/pkg/apis/meta/v1/types.go#L1368
-[operator-lib-0.1.0]: https://github.com/operator-framework/operator-lib/releases/tag/v0.1.0
+[helpers-conditions]: https://github.com/kubernetes/apimachinery/blob/master/pkg/api/meta/conditions.go

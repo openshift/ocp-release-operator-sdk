@@ -1,19 +1,25 @@
 ---
-title: Tutorial for Helm-based Operators
+title: Helm Operator Tutorial
 linkTitle: Tutorial
 weight: 200
-description: An in-depth walkthough that demonstrates how to build and run a Helm-based operator.
+description: An in-depth walkthough of building and running a Helm-based operator.
 ---
 
-## Overview
-
-This guide walks through an example of building a simple nginx-operator powered by [Helm][helm-official] using tools and libraries provided by the Operator SDK.
+**NOTE:** If your project was created with an `operator-sdk` version prior to `v1.0.0`
+please [migrate][migration-guide], or consult the [legacy docs][legacy-quickstart-doc].
 
 ## Prerequisites
 
-- [Install `operator-sdk`][operator_install] and its prequisites.
-- Access to a Kubernetes v1.16.0+ cluster.
+- Go through the [installation guide][install-guide].
 - User authorized with `cluster-admin` permissions.
+
+## Overview
+
+We will create a sample project to let you know how it works and this sample will:
+
+- Create a Memcached Deployment if it doesn't exist
+- Ensure that the Deployment size is the same as specified by the Memcached CR spec
+- Update the Memcached CR status using the status writer with the names of the memcached pods
 
 ## Create a new project
 
@@ -22,11 +28,11 @@ Use the CLI to create a new Helm-based nginx-operator project:
 ```sh
 mkdir nginx-operator
 cd nginx-operator
-operator-sdk init --plugins=helm --domain=com --group=example --version=v1alpha1 --kind=Nginx
+operator-sdk init --plugins helm --domain example.com --group demo --version v1alpha1 --kind Nginx
 ```
 
 This creates the nginx-operator project specifically for watching the
-Nginx resource with APIVersion `example.com/v1alpha1` and Kind
+Nginx resource with APIVersion `demo.example.com/v1alpha1` and Kind
 `Nginx`.
 
 For Helm-based projects, `operator-sdk init` also generates the RBAC rules
@@ -50,7 +56,7 @@ If `--helm-chart` is specified, the `--group`, `--version`, and `--kind` flags b
 | kind |  deduce from the specified chart |
 | version | v1alpha1 |
 
-If `--helm-chart` is a local chart archive (e.g `example-chart-1.2.0.tgz`) or directory, 
+If `--helm-chart` is a local chart archive (e.g `example-chart-1.2.0.tgz`) or directory,
 it will be validated and unpacked or copied into the project.
 
 Otherwise, the SDK will attempt to fetch the specified helm chart from a remote repository.
@@ -71,11 +77,12 @@ If a custom repository URL is specified by `--helm-chart-repo`, the only support
 
 If `--helm-chart-version` is not set, the SDK will fetch the latest available version of the helm chart. Otherwise, it will fetch the specified version. The option `--helm-chart-version` is not used when `--helm-chart` itself refers to a specific version, for example when it is a local path or a URL.
 
-**Note:** For more details and examples run `operator-sdk init --plugins=helm --help`.
+**Note:** For more details and examples run `operator-sdk init --plugins helm --help`.
 
-### Operator scope
-
-Read the [operator scope][operator-scope] documentation on how to run your operator as namespace-scoped vs cluster-scoped.
+<!--
+todo(camilamacedo86): Create an Ansible operator scope document.
+https://github.com/operator-framework/operator-sdk/issues/3447
+-->
 
 
 ## Customize the operator logic
@@ -95,7 +102,7 @@ in `watches.yaml` and executes Helm releases using the specified chart:
 
 ```yaml
 # Use the 'create api' subcommand to add watches to this file.
-- group: example.com
+- group: demo
   version: v1alpha1
   kind: Nginx
   chart: helm-charts/nginx
@@ -128,10 +135,10 @@ value called `replicaCount` and it is set to `1` by default. If we want to have
 2 nginx instances in our deployment, we would need to make sure our CR spec
 contained `replicaCount: 2`.
 
-Update `config/samples/example_v1alpha1_nginx.yaml` to look like the following:
+Update `config/samples/demo_v1alpha1_nginx.yaml` to look like the following:
 
 ```yaml
-apiVersion: example.com/v1alpha1
+apiVersion: demo.example.com/v1alpha1
 kind: Nginx
 metadata:
   name: nginx-sample
@@ -140,11 +147,11 @@ spec:
 ```
 
 Similarly, we see that the default service port is set to `80`, but we would
-like to use `8080`, so we'll again update `config/samples/example_v1alpha1_nginx.yaml`
+like to use `8080`, so we'll again update `config/samples/demo_v1alpha1_nginx.yaml`
 by adding the service port override:
 
 ```yaml
-apiVersion: example.com/v1alpha1
+apiVersion: demo.example.com/v1alpha1
 kind: Nginx
 metadata:
   name: nginx-sample
@@ -158,73 +165,92 @@ As you may have noticed, the Helm operator simply applies the entire spec as if
 it was the contents of a values file, just like `helm install -f ./overrides.yaml`
 works.
 
-## Build and run the operator
+## Run the operator
 
-Before running the operator, Kubernetes needs to know about the new custom
-resource definition the operator will be watching.
+There are three ways to run the operator:
 
-Deploy the CRD:
+- As Go program outside a cluster
+- As a Deployment inside a Kubernetes cluster
+- Managed by the [Operator Lifecycle Manager (OLM)][doc-olm] in [bundle][quickstart-bundle] format
+
+### 1. Run locally outside the cluster
+
+Execute the following command, which install your CRDs and run the manager locally:
 
 ```sh
-make install
+make install run
 ```
 
-Once this is done, there are two ways to run the operator:
+### 2. Run as a Deployment inside the cluster
 
-- As a pod inside a Kubernetes cluster
-- As a go program outside the cluster using `operator-sdk`
+#### Build and push the image
 
-### 1. Run as a pod inside a Kubernetes cluster
-
-Running as a pod inside a Kubernetes cluster is preferred for production use.
-
-Build the nginx-operator image and push it to a registry:
+Build and push the image:
 
 ```sh
-export IMG=quay.io/example/nginx-operator:v0.0.1
-make docker-build docker-push IMG=$IMG
+export USERNAME=<quay-namespace>
+make docker-build docker-push IMG=quay.io/$USERNAME/nginx-operator:v0.0.1
 ```
 
-**Note:** Kubernetes deployment manifests are generated in `config/manager/manager.yaml`.
+**Note**: The name and tag of the image (`IMG=<some-registry>/<project-name>:tag`) in both the commands can also be set in the Makefile.
+Modify the line which has `IMG ?= controller:latest` to set your desired default image name.
 
-Deploy the nginx-operator:
+#### Deploy the operator
+
+By default, a new namespace is created with name `<project-name>-system`, i.e. nginx-operator-system and will be used for the deployment.
+
+Run the following to deploy the operator. This will also install the RBAC manifests from `config/rbac`.
 
 ```sh
-make deploy IMG=$IMG
+make deploy IMG=quay.io/$USERNAME/nginx-operator:v0.0.1
 ```
 
 Verify that the nginx-operator is up and running:
 
-```sh
+```console
 $ kubectl get deployment -n nginx-operator-system
-NAME                                DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
-nginx-operator-controller-manager   1/1       1         1            1           77s
+NAME                                    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-operator-controller-manager   1/1     1            1           8m
 ```
 
-### 2. Run outside the cluster
+### 3. Deploy your Operator with OLM
 
-This method is preferred during the development cycle to speed up deployment and testing.
+First, install [OLM][doc-olm]:
 
-Run the operator locally with the default Kubernetes config file present at
-`$HOME/.kube/config` via the Makefile target `make run`.
+```sh
+operator-sdk olm install
+```
 
-### 3. Deploy your Operator with the Operator Lifecycle Manager (OLM)
+Then bundle your operator and push the bundle image:
 
-OLM will manage creation of most if not all resources required to run your operator,
-using a bit of setup from other `operator-sdk` commands. Check out the OLM integration
-[user guide][quickstart-bundle] for more information.
+```sh
+make bundle IMG=$OPERATOR_IMG
+# Note the "-bundle" component in the image name below.
+export BUNDLE_IMG="quay.io/$USERNAME/nginx-operator-bundle:v0.0.1"
+make bundle-build BUNDLE_IMG=$BUNDLE_IMG
+make docker-push IMG=$BUNDLE_IMG
+```
+
+Finally, run your bundle:
+
+```sh
+operator-sdk run bundle $BUNDLE_IMG
+```
+
+Check out the [docs][quickstart-bundle] for a deep dive into `operator-sdk`'s OLM integration.
+
 
 ## Deploy the Nginx custom resource
 
 Apply the nginx CR that we modified earlier:
 
 ```sh
-kubectl apply -f config/samples/example_v1alpha1_nginx.yaml
+kubectl apply -f config/samples/demo_v1alpha1_nginx.yaml
 ```
 
 Ensure that the nginx-operator creates the deployment for the CR:
 
-```sh
+```console
 $ kubectl get deployment
 NAME           READY   UP-TO-DATE   AVAILABLE   AGE
 nginx-sample   2/2     2            2           2m13s
@@ -232,15 +258,16 @@ nginx-sample   2/2     2            2           2m13s
 
 Check the pods to confirm 2 replicas were created:
 
-```sh
+```console
 $ kubectl get pods
 NAME                                                   READY   STATUS    RESTARTS   AGE
 nginx-sample-c786bfdcf-4g6md                           1/1     Running   0          81s
 nginx-sample-c786bfdcf-6bhmx                           1/1     Running   0          81s
+```
 
 Check that the service port is set to `8080`:
 
-```sh
+```console
 $ kubectl get service
 NAME                                      TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
 nginx-sample                              ClusterIP   10.96.26.3   <none>        8080/TCP   1m
@@ -251,9 +278,9 @@ nginx-sample                              ClusterIP   10.96.26.3   <none>       
 Change the `spec.replicaCount` field from 2 to 3, remove the `spec.service`
 field:
 
-```sh
-$ cat config/samples/example_v1alpha1_nginx.yaml
-apiVersion: example.com/v1alpha1
+```console
+$ cat config/samples/demo_v1alpha1_nginx.yaml
+apiVersion: demo.example.com/v1alpha1
 kind: Nginx
 metadata:
   name: nginx-sample
@@ -264,12 +291,12 @@ spec:
 And apply the change:
 
 ```sh
-kubectl apply -f config/samples/example_v1alpha1_nginx.yaml
+kubectl apply -f config/samples/demo_v1alpha1_nginx.yaml
 ```
 
 Confirm that the operator changes the deployment size:
 
-```sh
+```console
 $ kubectl get deployment
 NAME                                           DESIRED   CURRENT   UP-TO-DATE     AGE
 nginx-sample                                   3/3       3            3           7m29s
@@ -277,7 +304,7 @@ nginx-sample                                   3/3       3            3         
 
 Check that the service port is set to the default (`80`):
 
-```sh
+```console
 $ kubectl get service
 NAME                                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)  AGE
 nginx-sample                              ClusterIP   10.96.152.76    <none>        80/TCP   7m54s
@@ -294,7 +321,7 @@ kubectl logs deployment.apps/nginx-operator-controller-manager  -n nginx-operato
 Use the following command to check the CR status and events.
 
 ```sh
-kubectl describe nginxes.example.com 
+kubectl describe nginxes.demo.example.com
 ```
 
 ### Cleanup
@@ -302,17 +329,24 @@ kubectl describe nginxes.example.com
 Clean up the resources:
 
 ```sh
-kubectl delete -f config/samples/example_v1alpha1_nginx.yaml
+kubectl delete -f config/samples/demo_v1alpha1_nginx.yaml
+```
+
+**Note:** Make sure the above custom resource has been deleted before proceeding to
+run `make undeploy`, as helm-operator's controller adds finalizers to the custom resources.
+Otherwise your cluster may have dangling custom resource objects that cannot be deleted.
+
+```sh
 make undeploy
 ```
-**NOTE** Additional CR/CRD's can be added to the project by running, for example, the command :`operator-sdk create api --group=example --version=v1alpha1 --kind=AppService`
 
-<!--
-todo(camilamacedo86): https://github.com/operator-framework/operator-sdk/issues/3447 
--->
-[operator-scope]: /docs/building-operators/golang/operator-scope
+
+[legacy-quickstart-doc]:https://v0-19-x.sdk.operatorframework.io/docs/helm/quickstart/
+[migration-guide]:/docs/building-operators/helm/migration
+[install-guide]:/docs/building-operators/helm/installation
 [layout-doc]: /docs/building-operators/helm/reference/project_layout/
 [helm-charts]:https://helm.sh/docs/topics/charts/
 [helm-values]:https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing
 [helm-official]:https://helm.sh/docs/
-[operator_install]: /docs/installation/
+[quickstart-bundle]:/docs/olm-integration/quickstart-bundle
+[doc-olm]:/docs/olm-integration/quickstart-bundle/#enabling-olm

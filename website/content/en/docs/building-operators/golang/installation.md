@@ -1,10 +1,12 @@
 ---
-title: Golang Based Operator SDK Installation
+title: Installation Guide
 linkTitle: Installation
 weight: 1
 ---
 
-Follow the steps in the [installation guide][install-guide] to learn how to install the Operator SDK CLI tool.
+## Install `operator-sdk`
+
+Follow the steps in the [installation guide][install-guide] to learn how to install the `operator-sdk` CLI tool.
 
 ## Additional Prerequisites
 
@@ -15,10 +17,10 @@ Follow the steps in the [installation guide][install-guide] to learn how to inst
 - [kubectl][kubectl_tool] version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster (v1.16.0+ if using `apiextensions.k8s.io/v1` CRDs).
 
+
+[install-guide]:/docs/installation/
 [git_tool]:https://git-scm.com/downloads
 [go_tool]:https://golang.org/dl/
 [docker_tool]:https://docs.docker.com/install/
 [mercurial_tool]:https://www.mercurial-scm.org/downloads
 [kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[install-guide]: /docs/installation/
-[quay-link]:https://quay.io

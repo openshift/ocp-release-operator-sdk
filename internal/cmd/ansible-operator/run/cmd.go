@@ -41,15 +41,12 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/ansible/proxy/controllermap"
 	"github.com/operator-framework/operator-sdk/internal/ansible/runner"
 	"github.com/operator-framework/operator-sdk/internal/ansible/watches"
+	"github.com/operator-framework/operator-sdk/internal/clientbuilder"
 	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/internal/version"
 )
 
-var (
-	metricsHost           = "0.0.0.0"
-	log                   = logf.Log.WithName("cmd")
-	healthProbePort int32 = 6789
-)
+var log = logf.Log.WithName("cmd")
 
 func printVersion() {
 	log.Info("Version",
@@ -105,13 +102,13 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	// Set default manager options
 	// TODO: probably should expose the host & port as an environment variables
 	options := manager.Options{
-		HealthProbeBindAddress:     fmt.Sprintf("%s:%d", metricsHost, healthProbePort),
 		MetricsBindAddress:         f.MetricsAddress,
+		HealthProbeBindAddress:     f.ProbeAddr,
 		LeaderElection:             f.EnableLeaderElection,
 		LeaderElectionID:           f.LeaderElectionID,
 		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock,
 		LeaderElectionNamespace:    f.LeaderElectionNamespace,
-		ClientBuilder:              manager.NewClientBuilder(),
+		ClientBuilder:              clientbuilder.NewUnstructedCached(),
 	}
 
 	namespace, found := os.LookupEnv(k8sutil.WatchNamespaceEnvVar)
@@ -145,6 +142,15 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "Failed to create a new manager.")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up ready check")
 		os.Exit(1)
 	}
 
@@ -183,6 +189,7 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		}, w.Blacklist)
 	}
 
+	// todo: remove when a upper version be bumped
 	err = mgr.AddHealthzCheck("ping", healthz.Ping)
 	if err != nil {
 		log.Error(err, "Failed to add Healthz check.")

@@ -16,6 +16,7 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -108,6 +109,11 @@ func (o OperatorInstaller) UpgradeOperator(ctx context.Context) (*v1alpha1.Clust
 		return nil, fmt.Errorf("error getting list of subscriptions: %v", err)
 	}
 
+	// If there are no subscriptions found, then the previous operator version doesn't exist, so return error
+	if len(subList.Items) == 0 {
+		return nil, errors.New("no existing operator found in the cluster to upgrade")
+	}
+
 	var subscription *v1alpha1.Subscription
 	for i := range subList.Items {
 		s := subList.Items[i]
@@ -117,20 +123,11 @@ func (o OperatorInstaller) UpgradeOperator(ctx context.Context) (*v1alpha1.Clust
 		}
 	}
 
-	log.Infof("Found existing subscription with name %s and namespace %s", subscription.Name, subscription.Namespace)
-
-	// todo: attempt #1 to trigger install plan for the subscription and
-	// to make it detect catalog changes, as per OLM suggestion
-	if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-		// set the startingCSV to empty
-		subscription.Spec.StartingCSV = ""
-		if err := o.cfg.Client.Update(ctx, subscription); err != nil {
-			return fmt.Errorf("error updating subscription: %v", err)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
+	if subscription == nil {
+		return nil, fmt.Errorf("subscription for package %q not found", o.PackageName)
 	}
+
+	log.Infof("Found existing subscription with name %s and namespace %s", subscription.Name, subscription.Namespace)
 
 	// Get existing catalog source from the subsription
 	catsrcKey := types.NamespacedName{

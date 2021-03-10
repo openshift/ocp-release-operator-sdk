@@ -26,12 +26,14 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	zapf "sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
+	"github.com/operator-framework/operator-sdk/internal/clientbuilder"
 	"github.com/operator-framework/operator-sdk/internal/helm/controller"
 	"github.com/operator-framework/operator-sdk/internal/helm/flags"
 	"github.com/operator-framework/operator-sdk/internal/helm/metrics"
@@ -96,11 +98,12 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	// Set default manager options
 	options := manager.Options{
 		MetricsBindAddress:         f.MetricsAddress,
+		HealthProbeBindAddress:     f.ProbeAddr,
 		LeaderElection:             f.EnableLeaderElection,
 		LeaderElectionID:           f.LeaderElectionID,
 		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock,
 		LeaderElectionNamespace:    f.LeaderElectionNamespace,
-		ClientBuilder:              manager.NewClientBuilder(),
+		ClientBuilder:              clientbuilder.NewUnstructedCached(),
 	}
 
 	namespace, found := os.LookupEnv(k8sutil.WatchNamespaceEnvVar)
@@ -127,6 +130,15 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "Failed to create a new manager.")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up ready check")
 		os.Exit(1)
 	}
 

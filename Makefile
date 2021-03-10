@@ -4,7 +4,7 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.3.0
+export IMAGE_VERSION = v1.4.2
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
@@ -39,6 +39,7 @@ generate: build # Generate CLI docs and samples
 	go run ./hack/generate/cncf-maintainers/main.go
 	go run ./hack/generate/cli-doc/gen-cli-doc.go
 	go run ./hack/generate/samples/generate_testdata.go
+	go generate ./...
 
 .PHONY: bindata
 OLM_VERSIONS = 0.16.1 0.15.1 0.17.0
@@ -144,7 +145,7 @@ export KIND_CLUSTER := operator-sdk-e2e
 export KUBEBUILDER_ASSETS := $(PWD)/$(TOOLS_DIR)
 test-e2e-setup: build
 	$(SCRIPTS_DIR)/fetch kind 0.9.0
-	$(SCRIPTS_DIR)/fetch envtest 0.6.3
+	$(SCRIPTS_DIR)/fetch envtest 0.7.0
 	$(SCRIPTS_DIR)/fetch kubectl $(K8S_VERSION) # Install kubectl AFTER envtest because envtest includes its own kubectl binary
 	[[ "`$(TOOLS_DIR)/kind get clusters`" =~ "$(KIND_CLUSTER)" ]] || $(TOOLS_DIR)/kind create cluster --image="kindest/node:v$(K8S_VERSION)" --name $(KIND_CLUSTER)
 
@@ -165,6 +166,7 @@ test-e2e-ansible:: image/ansible-operator ## Run Ansible e2e tests
 	go test -count=1 ./internal/ansible/proxy/...
 	go test ./test/e2e-ansible -v -ginkgo.v
 test-e2e-ansible-molecule:: image/ansible-operator ## Run molecule-based Ansible e2e tests
+	go run ./hack/generate/samples/molecule/generate.go
 	./hack/tests/e2e-ansible-molecule.sh
 test-e2e-helm:: image/helm-operator ## Run Helm e2e tests
 	go test ./test/e2e-helm -v -ginkgo.v

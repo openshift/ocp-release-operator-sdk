@@ -1,15 +1,32 @@
-# Current Operator version
+# VERSION defines the project version for the bundle. 
+# Update this value when you upgrade the version of your project.
+# To re-generate a bundle for another specific version without changing the standard setup, you can:
+# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
+# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.0.1
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
-# Options for 'bundle-build'
+
+# CHANNELS define the bundle channels used in the bundle. 
+# Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
+# To re-generate a bundle for other specific channels without changing the standard setup, you can:
+# - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=preview,fast,stable)
+# - use environment variables to overwrite this value (e.g export CHANNELS="preview,fast,stable")
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
+
+# DEFAULT_CHANNEL defines the default channel used in the bundle. 
+# Add a new line here if you would like to change its default config. (E.g DEFAULT_CHANNEL = "stable")
+# To re-generate a bundle for any other default channel without changing the default setup, you can:
+# - use the DEFAULT_CHANNEL as arg of the bundle target (e.g make bundle DEFAULT_CHANNEL=stable)
+# - use environment variables to overwrite this value (e.g export DEFAULT_CHANNEL="stable")
 ifneq ($(origin DEFAULT_CHANNEL), undefined)
 BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+
+# BUNDLE_IMG defines the image:tag used for the bundle. 
+# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
+BUNDLE_IMG ?= controller-bundle:$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
@@ -39,7 +56,7 @@ undeploy: kustomize
 
 # Build the docker image
 docker-build:
-	docker build . -t ${IMG}
+	docker build -t ${IMG} .
 
 # Push the docker image
 docker-push:
@@ -47,35 +64,41 @@ docker-push:
 
 PATH  := $(PATH):$(PWD)/bin
 SHELL := env PATH=$(PATH) /bin/sh
-OS    = $(shell uname -s | tr '[:upper:]' '[:lower:]')
-ARCH  = $(shell uname -m | sed 's/x86_64/amd64/')
-OSOPER   = $(shell uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/apple-darwin/' | sed 's/linux/linux-gnu/')
-ARCHOPER = $(shell uname -m )
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m | sed 's/x86_64/amd64/')
 
+# Download kustomize locally if necessary, preferring the $(pwd)/bin path over global if both exist.
+.PHONY: kustomize
+KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize:
-ifeq (, $(shell which kustomize 2>/dev/null))
+ifeq (,$(wildcard $(KUSTOMIZE)))
+ifeq (,$(shell which kustomize 2>/dev/null))
 	@{ \
 	set -e ;\
-	mkdir -p bin ;\
-	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_$(OS)_$(ARCH).tar.gz | tar xzf - -C bin/ ;\
+	mkdir -p $(dir $(KUSTOMIZE)) ;\
+	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_$(OS)_$(ARCH).tar.gz | \
+	tar xzf - -C bin/ ;\
 	}
-KUSTOMIZE=$(realpath ./bin/kustomize)
 else
-KUSTOMIZE=$(shell which kustomize)
+KUSTOMIZE = $(shell which kustomize)
+endif
 endif
 
+# Download helm-operator locally if necessary, preferring the $(pwd)/bin path over global if both exist.
+.PHONY: helm-operator
+HELM_OPERATOR = $(shell pwd)/bin/helm-operator
 helm-operator:
-ifeq (, $(shell which helm-operator 2>/dev/null))
+ifeq (,$(wildcard $(HELM_OPERATOR)))
+ifeq (,$(shell which helm-operator 2>/dev/null))
 	@{ \
 	set -e ;\
-	mkdir -p bin ;\
-	curl -LO https://github.com/operator-framework/operator-sdk/releases/download/v1.3.0/helm-operator-v1.3.0-$(ARCHOPER)-$(OSOPER) ;\
-	mv helm-operator-v1.3.0-$(ARCHOPER)-$(OSOPER) ./bin/helm-operator ;\
-	chmod +x ./bin/helm-operator ;\
+	mkdir -p $(dir $(HELM_OPERATOR)) ;\
+	curl -sSLo $(HELM_OPERATOR) https://github.com/operator-framework/operator-sdk/releases/download/v1.4.2/helm-operator_$(OS)_$(ARCH) ;\
+	chmod +x $(HELM_OPERATOR) ;\
 	}
-HELM_OPERATOR=$(realpath ./bin/helm-operator)
 else
-HELM_OPERATOR=$(shell which helm-operator)
+HELM_OPERATOR = $(shell which helm-operator)
+endif
 endif
 
 # Generate bundle manifests and metadata, then validate generated files.

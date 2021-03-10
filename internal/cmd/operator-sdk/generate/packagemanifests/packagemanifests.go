@@ -26,7 +26,6 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/generate/clusterserviceversion/bases"
 	"github.com/operator-framework/operator-sdk/internal/generate/collector"
 	genpkg "github.com/operator-framework/operator-sdk/internal/generate/packagemanifest"
-	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 )
 
 const (
@@ -78,21 +77,9 @@ https://github.com/operator-framework/operator-registry/#manifest-format
 const defaultRootDir = "packagemanifests"
 
 // setDefaults sets command defaults.
-func (c *packagemanifestsCmd) setDefaults() error {
-	if projutil.HasProjectFile() {
-		cfg, err := projutil.ReadConfig()
-		if err != nil {
-			return err
-		}
-		if c.packageName == "" {
-			c.packageName = cfg.ProjectName
-		}
-		c.layout = projutil.GetProjectLayout(cfg)
-	} else {
-		if c.packageName == "" {
-			return fmt.Errorf("package name is required if PROJECT config file is not present")
-		}
-		c.layout = "unknown"
+func (c *packagemanifestsCmd) setDefaults() (err error) {
+	if c.packageName, c.layout, err = genutil.GetPackageNameAndLayout(c.packageName); err != nil {
+		return err
 	}
 
 	if c.inputDir == "" {
@@ -103,6 +90,8 @@ func (c *packagemanifestsCmd) setDefaults() error {
 			c.outputDir = defaultRootDir
 		}
 	}
+	c.generator = genpkg.NewGenerator()
+
 	return nil
 }
 
@@ -228,17 +217,19 @@ func (c packagemanifestsCmd) run() error {
 }
 
 func (c packagemanifestsCmd) generatePackageManifest() error {
-	pkgGen := genpkg.Generator{
-		OperatorName:     c.packageName,
-		Version:          c.version,
+	//copy of genpkg withfilewriter()
+	//move out of internal util pkg?
+	if err := os.MkdirAll(c.outputDir, 0755); err != nil {
+		return err
+	}
+
+	opts := genpkg.Options{
+		BaseDir:          c.inputDir,
 		ChannelName:      c.channelName,
 		IsDefaultChannel: c.isDefaultChannel,
 	}
-	opts := []genpkg.Option{
-		genpkg.WithBase(c.inputDir),
-		genpkg.WithFileWriter(c.outputDir),
-	}
-	if err := pkgGen.Generate(opts...); err != nil {
+
+	if err := c.generator.Generate(c.packageName, c.version, c.outputDir, opts); err != nil {
 		return err
 	}
 	return nil
