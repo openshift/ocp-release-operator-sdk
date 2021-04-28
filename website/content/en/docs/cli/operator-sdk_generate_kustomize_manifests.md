@@ -59,7 +59,8 @@ operator-sdk generate kustomize manifests [flags]
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

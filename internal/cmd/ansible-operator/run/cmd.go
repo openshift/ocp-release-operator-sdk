@@ -15,6 +15,7 @@
 package run
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -24,7 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -41,15 +42,12 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/ansible/proxy/controllermap"
 	"github.com/operator-framework/operator-sdk/internal/ansible/runner"
 	"github.com/operator-framework/operator-sdk/internal/ansible/watches"
+	"github.com/operator-framework/operator-sdk/internal/clientbuilder"
 	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/internal/version"
 )
 
-var (
-	metricsHost           = "0.0.0.0"
-	log                   = logf.Log.WithName("cmd")
-	healthProbePort int32 = 6789
-)
+var log = logf.Log.WithName("cmd")
 
 func printVersion() {
 	log.Info("Version",
@@ -84,39 +82,64 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	printVersion()
 	metrics.RegisterBuildInfo(crmetrics.Registry)
 
+	// Load config options from the config at f.ManagerConfigPath.
+	// These options will not override those set by flags.
+	var (
+		options manager.Options
+		err     error
+	)
+	if f.ManagerConfigPath != "" {
+		cfgLoader := ctrl.ConfigFile().AtPath(f.ManagerConfigPath)
+		if options, err = options.AndFrom(cfgLoader); err != nil {
+			log.Error(err, "Unable to load the manager config file")
+			os.Exit(1)
+		}
+	}
+	exitIfUnsupported(options)
+
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "Failed to get config.")
 		os.Exit(1)
 	}
 
+	// TODO(2.0.0): remove
 	// Deprecated: OPERATOR_NAME environment variable is an artifact of the
 	// legacy operator-sdk project scaffolding. Flag `--leader-election-id`
 	// should be used instead.
 	if operatorName, found := os.LookupEnv("OPERATOR_NAME"); found {
 		log.Info("Environment variable OPERATOR_NAME has been deprecated, use --leader-election-id instead.")
-		if cmd.Flags().Lookup("leader-election-id").Changed {
+		if cmd.Flags().Changed("leader-election-id") {
 			log.Info("Ignoring OPERATOR_NAME environment variable since --leader-election-id is set")
-		} else {
-			f.LeaderElectionID = operatorName
+		} else if options.LeaderElectionID == "" {
+			// Only set leader election ID using OPERATOR_NAME if unset everywhere else,
+			// since this env var is deprecated.
+			options.LeaderElectionID = operatorName
 		}
+	}
+
+	//TODO(2.0.0): remove the following checks. they are required just because of the flags deprecation
+	if cmd.Flags().Changed("leader-elect") && cmd.Flags().Changed("enable-leader-election") {
+		log.Error(errors.New("only one of --leader-elect and --enable-leader-election may be set"), "invalid flags usage")
+		os.Exit(1)
+	}
+
+	if cmd.Flags().Changed("metrics-addr") && cmd.Flags().Changed("metrics-bind-address") {
+		log.Error(errors.New("only one of --metrics-addr and --metrics-bind-address may be set"), "invalid flags usage")
+		os.Exit(1)
 	}
 
 	// Set default manager options
 	// TODO: probably should expose the host & port as an environment variables
-	options := manager.Options{
-		HealthProbeBindAddress:     fmt.Sprintf("%s:%d", metricsHost, healthProbePort),
-		MetricsBindAddress:         f.MetricsAddress,
-		LeaderElection:             f.EnableLeaderElection,
-		LeaderElectionID:           f.LeaderElectionID,
-		LeaderElectionResourceLock: resourcelock.ConfigMapsResourceLock,
-		LeaderElectionNamespace:    f.LeaderElectionNamespace,
-		ClientBuilder:              manager.NewClientBuilder(),
+	options = f.ToManagerOptions(options)
+	if options.ClientBuilder == nil {
+		options.ClientBuilder = clientbuilder.NewUnstructedCached()
 	}
 
 	namespace, found := os.LookupEnv(k8sutil.WatchNamespaceEnvVar)
 	log = log.WithValues("Namespace", namespace)
 	if found {
+		log.V(1).Info("Setting namespace with value in %s", k8sutil.WatchNamespaceEnvVar)
 		if namespace == metav1.NamespaceAll {
 			log.Info("Watching all namespaces.")
 			options.Namespace = metav1.NamespaceAll
@@ -129,9 +152,9 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 				options.Namespace = namespace
 			}
 		}
-	} else {
-		log.Info(fmt.Sprintf("%v environment variable not set. Watching all namespaces.",
-			k8sutil.WatchNamespaceEnvVar))
+	} else if options.Namespace == "" {
+		log.Info(fmt.Sprintf("Watch namespaces not configured by environment variable %s or file. "+
+			"Watching all namespaces.", k8sutil.WatchNamespaceEnvVar))
 		options.Namespace = metav1.NamespaceAll
 	}
 
@@ -145,6 +168,15 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "Failed to create a new manager.")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Error(err, "Unable to set up ready check")
 		os.Exit(1)
 	}
 
@@ -183,6 +215,7 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		}, w.Blacklist)
 	}
 
+	// TODO(2.0.0): remove
 	err = mgr.AddHealthzCheck("ping", healthz.Ping)
 	if err != nil {
 		log.Error(err, "Failed to add Healthz check.")
@@ -199,7 +232,7 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		RESTMapper:        mgr.GetRESTMapper(),
 		ControllerMap:     cMap,
 		OwnerInjection:    f.InjectOwnerRef,
-		WatchedNamespaces: []string{namespace},
+		WatchedNamespaces: strings.Split(namespace, ","),
 	})
 	if err != nil {
 		log.Error(err, "Error starting proxy.")
@@ -218,6 +251,27 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		os.Exit(1)
 	}
 	log.Info("Exiting.")
+}
+
+// exitIfUnsupported prints an error containing unsupported field names and exits
+// if any of those fields are not their default values.
+func exitIfUnsupported(options manager.Options) {
+	var keys []string
+	// The below options are webhook-specific, which is not supported by ansible.
+	if options.CertDir != "" {
+		keys = append(keys, "certDir")
+	}
+	if options.Host != "" {
+		keys = append(keys, "host")
+	}
+	if options.Port != 0 {
+		keys = append(keys, "port")
+	}
+
+	if len(keys) > 0 {
+		log.Error(fmt.Errorf("%s set in manager options", strings.Join(keys, ", ")), "unsupported fields")
+		os.Exit(1)
+	}
 }
 
 // getAnsibleDebugLog return the value from the ANSIBLE_DEBUG_LOGS it order to

@@ -1,8 +1,16 @@
 domain: example.com
-layout: ansible.sdk.operatorframework.io/v1
+layout:
+- ansible.sdk.operatorframework.io/v1
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
 projectName: memcached-operator
 resources:
-- group: cache
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: example.com
+  group: cache
   kind: Memcached
   version: v1alpha1
-version: 3-alpha
+version: "3"

@@ -22,6 +22,7 @@ import (
 
 	"github.com/operator-framework/operator-sdk/hack/generate/samples/internal/pkg"
 	"github.com/operator-framework/operator-sdk/internal/testutils"
+	"github.com/operator-framework/operator-sdk/internal/util"
 )
 
 // MemcachedHelm defines the Memcached Sample in Helm
@@ -65,23 +66,23 @@ func (mh *MemcachedHelm) Run() {
 	// role and cause sanity testing to fail.
 	os.Setenv("KUBECONFIG", "broken_so_we_generate_static_default_rules")
 
-	log.Infof("creating the project")
+	helmChartPath := "../../../hack/generate/samples/internal/helm/testdata/memcached-0.0.1.tgz"
+	log.Infof("creating the project using the helm chart in: (%v)", helmChartPath)
 	err := mh.ctx.Init(
 		"--plugins", "helm",
-		"--domain", mh.ctx.Domain)
-	pkg.CheckError("creating the project", err)
-
-	helmChartPath := "../../../hack/generate/samples/internal/helm/testdata/memcached-0.0.1.tgz"
-	log.Infof("using the helm chart in: (%v)", helmChartPath)
-
-	err = mh.ctx.CreateAPI(
+		"--domain", mh.ctx.Domain,
 		"--group", mh.ctx.Group,
 		"--version", mh.ctx.Version,
 		"--kind", mh.ctx.Kind,
 		"--helm-chart", helmChartPath)
-	pkg.CheckError("scaffolding apis", err)
+	pkg.CheckError("creating the project", err)
 
 	log.Infof("customizing the sample")
+	err = util.ReplaceInFile(
+		filepath.Join(mh.ctx.Dir, "config", "samples", "cache_v1alpha1_memcached.yaml"),
+		"securityContext:\n    enabled: true", "securityContext:\n    enabled: false")
+	pkg.CheckError("customizing the sample", err)
+
 	log.Infof("enabling prometheus metrics")
 	err = testutils.UncommentCode(
 		filepath.Join(mh.ctx.Dir, "config", "default", "kustomization.yaml"),
@@ -89,8 +90,8 @@ func (mh *MemcachedHelm) Run() {
 	pkg.CheckError("enabling prometheus metrics", err)
 
 	log.Infof("adding customized roles")
-	err = testutils.ReplaceInFile(filepath.Join(mh.ctx.Dir, "config", "rbac", "role.yaml"),
-		"# +kubebuilder:scaffold:rules", policyRolesFragment)
+	err = util.ReplaceInFile(filepath.Join(mh.ctx.Dir, "config", "rbac", "role.yaml"),
+		"#+kubebuilder:scaffold:rules", policyRolesFragment)
 	pkg.CheckError("adding customized roles", err)
 
 	log.Infof("creating the bundle")
@@ -146,5 +147,5 @@ const policyRolesFragment = `
   - update
   - watch
 
-# +kubebuilder:scaffold:rules
+#+kubebuilder:scaffold:rules
 `

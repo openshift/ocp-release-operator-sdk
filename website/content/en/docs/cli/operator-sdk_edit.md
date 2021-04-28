@@ -3,31 +3,45 @@ title: "operator-sdk edit"
 ---
 ## operator-sdk edit
 
-This command will edit the project configuration
+Update the project configuration
 
 ### Synopsis
 
-Edit the project configuration.
+This command will edit the project configuration.
+Features supported:
+  - Toggle between single or multi group projects.
 
-Note: unable to find configuration file, project must be initialized
 
 ```
 operator-sdk edit [flags]
 ```
 
+### Examples
+
+```
+  # Enable the multigroup layout
+  operator-sdk edit --multigroup
+
+  # Disable the multigroup layout
+  operator-sdk edit --multigroup=false
+
+```
+
 ### Options
 
 ```
-  -h, --help   help for edit
+  -h, --help         help for edit
+      --multigroup   enable or disable multigroup layout
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - Development kit for building Kubernetes extensions and tools.
+* [operator-sdk](../operator-sdk)	 - 
 

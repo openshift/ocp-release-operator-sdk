@@ -1,5 +1,5 @@
 /*
-Copyright 2020.
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
+	"time"
 
 	"context"
 
@@ -41,11 +42,11 @@ type MemcachedReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=cache.example.com,resources=memcacheds,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cache.example.com,resources=memcacheds/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=cache.example.com,resources=memcacheds/finalizers,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;
+//+kubebuilder:rbac:groups=cache.example.com,resources=memcacheds,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cache.example.com,resources=memcacheds/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=cache.example.com,resources=memcacheds/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -55,7 +56,7 @@ type MemcachedReconciler struct {
 // the user.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.2/pkg/reconcile
 func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("memcached", req.NamespacedName)
 
@@ -103,8 +104,10 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update Deployment", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
 			return ctrl.Result{}, err
 		}
-		// Spec updated - return and requeue
-		return ctrl.Result{Requeue: true}, nil
+		// Ask to requeue after 1 minute in order to give enough time for the
+		// pods be created on the cluster side and the operand be able
+		// to do the next update step accurately.
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
 	}
 
 	// Update the Memcached status with the pod names

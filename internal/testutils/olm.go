@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 
-	"sigs.k8s.io/kubebuilder/v2/pkg/model/config"
+	_ "sigs.k8s.io/kubebuilder/v3/pkg/config/v2" // Register config/v2 for `config.New`
+	_ "sigs.k8s.io/kubebuilder/v3/pkg/config/v3" // Register config/v3 for `config.New`
+
+	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 )
 
 const (
@@ -50,24 +52,15 @@ packagemanifests: kustomize %s
 // AddPackagemanifestsTarget will append the packagemanifests target to the makefile
 // in order to test the steps described in the docs.
 // More info:  https://v1-0-x.sdk.operatorframework.io/docs/olm-integration/generation/#package-manifests-formats
-func (tc TestContext) AddPackagemanifestsTarget() error {
+func (tc TestContext) AddPackagemanifestsTarget(operatorType projutil.OperatorType) error {
 	makefileBytes, err := ioutil.ReadFile(filepath.Join(tc.Dir, "Makefile"))
 	if err != nil {
 		return err
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(tc.Dir, "PROJECT"))
-	if err != nil {
-		return err
-	}
-	c := &config.Config{}
-	if err = c.Unmarshal(b); err != nil {
-		return err
-	}
-
 	// add the manifests target when is a Go project.
 	replaceTarget := ""
-	if strings.HasPrefix(c.Layout, "go") {
+	if operatorType == projutil.OperatorTypeGo {
 		replaceTarget = "manifests"
 	}
 	makefilePackagemanifestsFragment = fmt.Sprintf(makefilePackagemanifestsFragment, replaceTarget)

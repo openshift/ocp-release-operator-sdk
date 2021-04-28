@@ -6,10 +6,16 @@
   reconcilePeriod: 2s
 - version: v1alpha1
   group: app.example.com
+  kind: WithUnsafeMarked
+  playbook: {{ .ValidPlaybook }}
+  reconcilePeriod: 2s
+  markUnsafe: True
+- version: v1alpha1
+  group: app.example.com
   kind: Playbook
   playbook: {{ .ValidPlaybook }}
   finalizer:
-    name: finalizer.app.example.com
+    name: app.example.com/finalizer
     role: {{ .ValidRole }}
     vars:
       sentinel: finalizer_running
@@ -43,7 +49,7 @@
   kind: Role
   role: {{ .ValidRole }}
   finalizer:
-    name: finalizer.app.example.com
+    name: app.example.com/finalizer
     playbook: {{ .ValidPlaybook }}
     vars:
       sentinel: finalizer_running
@@ -52,7 +58,7 @@
   kind: FinalizerRole
   role: {{ .ValidRole }}
   finalizer:
-    name: finalizer.app.example.com
+    name: app.example.com/finalizer
     vars:
       sentinel: finalizer_running
 - version: v1alpha1

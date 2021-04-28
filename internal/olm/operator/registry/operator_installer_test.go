@@ -55,8 +55,8 @@ var _ = Describe("OperatorInstaller", func() {
 			cfg.Client = fake.NewClientBuilder().WithScheme(sch).Build()
 
 			oi = NewOperatorInstaller(cfg)
-			oi.StartingCSV = "fakeName"
-			oi.cfg.Namespace = "fakeNS"
+			oi.StartingCSV = "testname"
+			oi.cfg.Namespace = "testns"
 		})
 
 		It("should create the subscription with the fake client", func() {
@@ -82,6 +82,66 @@ var _ = Describe("OperatorInstaller", func() {
 			_, err := oi.createSubscription(context.TODO(), "duplicate")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("error creating subscription"))
+		})
+	})
+
+	Describe("getInstalledCSV", func() {
+		var (
+			cfg *operator.Configuration
+			oi  *OperatorInstaller
+			sch *runtime.Scheme
+		)
+		BeforeEach(func() {
+			// Setup and fake client
+			cfg = &operator.Configuration{}
+			sch = runtime.NewScheme()
+			Expect(v1.AddToScheme(sch)).To(Succeed())
+			Expect(v1alpha1.AddToScheme(sch)).To(Succeed())
+
+			oi = NewOperatorInstaller(cfg)
+			oi.StartingCSV = "somename"
+			oi.cfg.Namespace = "somenamespace"
+		})
+		It("should return installed CSV with no error", func() {
+			cfg.Client = fake.NewClientBuilder().WithScheme(sch).WithObjects(
+				&v1alpha1.ClusterServiceVersion{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "somename",
+						Namespace: "somenamespace",
+					},
+					Status: v1alpha1.ClusterServiceVersionStatus{
+						Phase: v1alpha1.CSVPhaseSucceeded,
+					},
+				},
+			).Build()
+
+			csv, err := oi.getInstalledCSV(context.TODO())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(csv).ToNot(BeNil())
+			Expect(csv.Name).To(Equal("somename"))
+			Expect(csv.Namespace).To(Equal("somenamespace"))
+			Expect(csv.Status.Phase).To(Equal(v1alpha1.CSVPhaseSucceeded))
+		})
+		It("should return an error when CSV fails", func() {
+			cfg.Client = fake.NewClientBuilder().WithScheme(sch).WithObjects(
+				&v1alpha1.ClusterServiceVersion{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "somename",
+						Namespace: "somenamespace",
+					},
+					Status: v1alpha1.ClusterServiceVersionStatus{
+						Phase:   v1alpha1.CSVPhaseFailed,
+						Reason:  v1alpha1.CSVReasonInstallCheckFailed,
+						Message: "test message",
+					},
+				},
+			).Build()
+
+			csv, err := oi.getInstalledCSV(context.TODO())
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("error waiting for CSV to install"))
+			Expect(err.Error()).Should(ContainSubstring("test message"))
+			Expect(csv).To(BeNil())
 		})
 	})
 
@@ -224,6 +284,10 @@ var _ = Describe("OperatorInstaller", func() {
 					Supported: true,
 				},
 				{
+					Type:      v1alpha1.InstallModeTypeMultiNamespace,
+					Supported: true,
+				},
+				{
 					Type:      v1alpha1.InstallModeTypeAllNamespaces,
 					Supported: true,
 				},
@@ -278,6 +342,22 @@ var _ = Describe("OperatorInstaller", func() {
 					Expect(og.Name).To(Equal("operator-sdk-og"))
 					Expect(og.Namespace).To(Equal("testns"))
 					Expect(len(og.Spec.TargetNamespaces)).To(Equal(1))
+				})
+			})
+			Context("given MultiNamespaces", func() {
+				It("should create one with the given target namespaces", func() {
+					_ = oi.InstallMode.Set(string(v1alpha1.InstallModeTypeMultiNamespace))
+					oi.InstallMode.TargetNamespaces = []string{"anotherns1", "anotherns2"}
+					err := oi.ensureOperatorGroup(context.TODO())
+					Expect(err).To(BeNil())
+
+					og, found, err := oi.getOperatorGroup(context.TODO())
+					Expect(err).To(BeNil())
+					Expect(found).To(BeTrue())
+					Expect(og).ToNot(BeNil())
+					Expect(og.Name).To(Equal("operator-sdk-og"))
+					Expect(og.Namespace).To(Equal("testns"))
+					Expect(og.Spec.TargetNamespaces).To(Equal([]string{"anotherns1", "anotherns2"}))
 				})
 			})
 			Context("given AllNamespaces", func() {
@@ -538,6 +618,19 @@ var _ = Describe("OperatorInstaller", func() {
 			target, err := oi.getTargetNamespaces(supported)
 			Expect(len(target)).To(Equal(1))
 			Expect(target[0]).To(Equal("test-ns"))
+			Expect(err).To(BeNil())
+		})
+		It("should return configured namespace when MultiNamespace is passed in", func() {
+
+			oi.InstallMode = operator.InstallMode{
+				InstallModeType:  v1alpha1.InstallModeTypeMultiNamespace,
+				TargetNamespaces: []string{"test-ns1", "test-ns2"},
+			}
+
+			supported.Insert(string(v1alpha1.InstallModeTypeMultiNamespace))
+			target, err := oi.getTargetNamespaces(supported)
+			Expect(len(target)).To(Equal(2))
+			Expect(target).To(Equal([]string{"test-ns1", "test-ns2"}))
 			Expect(err).To(BeNil())
 		})
 	})

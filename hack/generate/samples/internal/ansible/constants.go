@@ -355,7 +355,7 @@ const taskToDeleteConfigMap = `- name: delete configmap for test
 
 const memcachedWatchCustomizations = `playbook: playbooks/memcached.yml
   finalizer:
-    name: finalizer.cache.example.com
+    name: cache.example.com/finalizer
     role: memfin
   blacklist:
     - group: ""
@@ -379,5 +379,5 @@ const rolesForBaseOperator = `
       - patch
       - update
       - watch
-# +kubebuilder:scaffold:rules
+#+kubebuilder:scaffold:rules
 `

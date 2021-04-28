@@ -81,6 +81,7 @@ spec:
           verbs:
           - get
           - list
+          - watch
         - apiGroups:
           - authentication.k8s.io
           resources:
@@ -93,7 +94,7 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        serviceAccountName: default
+        serviceAccountName: memcached-operator-controller-manager
       deployments:
       - name: memcached-operator-controller-manager
         spec:
@@ -113,7 +114,7 @@ spec:
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
                 - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
                 name: kube-rbac-proxy
                 ports:
                 - containerPort: 8443
@@ -152,18 +153,10 @@ spec:
                     memory: 20Mi
                 securityContext:
                   allowPrivilegeEscalation: false
-                volumeMounts:
-                - mountPath: /tmp/k8s-webhook-server/serving-certs
-                  name: cert
-                  readOnly: true
               securityContext:
-                runAsUser: 65532
+                runAsNonRoot: true
+              serviceAccountName: memcached-operator-controller-manager
               terminationGracePeriodSeconds: 10
-              volumes:
-              - name: cert
-                secret:
-                  defaultMode: 420
-                  secretName: webhook-server-cert
       permissions:
       - rules:
         - apiGroups:
@@ -187,7 +180,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: default
+        serviceAccountName: memcached-operator-controller-manager
     strategy: deployment
   installModes:
   - supported: false

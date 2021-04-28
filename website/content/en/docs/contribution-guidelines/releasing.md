@@ -7,18 +7,25 @@ weight: 30
 These steps describe how to conduct a release of the operator-sdk repo using example versions.
 Replace these versions with the current and new version you are releasing, respectively.
 
+Table of contents:
+
+- [Major and minor releases](#major-and-minor-releases)
+- [Patch releases](#patch-releases)
+- [`scorecard-test-kuttl` image releases](#scorecard-test-kuttl-image-releases)
+- [Release tips](#helpful-tips-and-information)
+
 ## Prerequisites
 
-- [`git`][git]
-- [`gpg`][gpg] v2.0+ and a [GPG key][gpg-key-create].
-- Your GPG key is publicly available in a [public key server][gpg-upload], like https://keyserver.ubuntu.com/.
+- [`git`](https://git-scm.com/downloads)
+- [`make`](https://www.gnu.org/software/make/)
+- [`sed`](https://www.gnu.org/software/sed/)
 
 ##### MacOS users
 
-Install GNU `sed`, `make`, and `gpg` which may not be by default:
+Install GNU `sed` and `make` which may not be by default:
 
 ```sh
-brew install gnu-sed make gnupg
+brew install gnu-sed make
 ```
 
 ## Major and Minor releases
@@ -38,6 +45,7 @@ assuming the upstream SDK is the `upstream` remote repo:
   git checkout -b v1.3.x
   git push -u upstream v1.3.x
   ```
+1. Make sure that the list of supported OLM versions stated in the [Overview][overview] section of SDK docs is updated. If a new version of OLM needs to be officially supported, follow the steps in [updating OLM bindata](#updating-olm-bindata) section. 
 1. Create and merge a commit that updates the top-level [Makefile] variable `IMAGE_VERSION`
 to the upcoming release tag `v1.3.0`. This variable ensures sample projects have been tagged
 correctly prior to the release commit.
@@ -54,15 +62,16 @@ correctly prior to the release commit.
 Create a new branch to push the release commit:
 
 ```sh
+export RELEASE_VERSION=v1.3.0
 git checkout master
 git pull
-git checkout -b release-v1.3.0
+git checkout -b release-$RELEASE_VERSION
 ```
 
 Run the pre-release `make` target:
 
 ```sh
-make prerelease RELEASE_VERSION=v1.3.0
+make prerelease
 ```
 
 The following changes should be present:
@@ -76,8 +85,8 @@ Commit these changes and push:
 
 ```sh
 git add --all
-git commit -m "Release v1.3.0"
-git push -u origin release-v1.3.0
+git commit -m "Release $RELEASE_VERSION"
+git push -u origin release-$RELEASE_VERSION
 ```
 
 ### 2. Create and merge a new PR
@@ -92,8 +101,8 @@ Unlock the branch by changing the number of required approving reviewers in the 
 ### 4. Create and push a release tag
 
 ```sh
-make tag RELEASE_VERSION=v1.3.0
-git push upstream v1.3.0
+make tag
+git push upstream refs/tags/$RELEASE_VERSION
 ```
 
 ### 5. Fast-forward the `latest` and release branches
@@ -103,7 +112,7 @@ Run the following commands to do so:
 
 ```sh
 git checkout latest
-git reset --hard tags/v1.3.0
+git reset --hard tags/$RELEASE_VERSION
 git push -f upstream latest
 ```
 
@@ -111,7 +120,7 @@ Similarly, to update the release branch, run:
 
 ```sh
 git checkout v1.3.x
-git reset --hard tags/v1.3.0
+git reset --hard tags/$RELEASE_VERSION
 git push -f upstream v1.3.x
 ```
 
@@ -145,15 +154,16 @@ Create a new branch from the release branch, which should already exist for the 
 to push the release commit to:
 
 ```sh
+export RELEASE_VERSION=v1.3.1
 git checkout v1.3.x
 git pull
-git checkout -b release-v1.3.1
+git checkout -b release-$RELEASE_VERSION
 ```
 
 Run the pre-release `make` target:
 
 ```sh
-make prerelease RELEASE_VERSION=v1.3.1
+make prerelease
 ```
 
 The following changes should be present:
@@ -165,8 +175,8 @@ Commit these changes and push:
 
 ```sh
 git add --all
-git commit -m "Release v1.3.1"
-git push -u origin release-v1.3.1
+git commit -m "Release $RELEASE_VERSION"
+git push -u origin release-$RELEASE_VERSION
 ```
 
 ### 2. Create and merge a new PR
@@ -181,8 +191,8 @@ Unlock the branch by changing the number of required approving reviewers in the 
 ### 4. Create and push a release tag
 
 ```sh
-make tag RELEASE_VERSION=v1.3.1
-git push upstream v1.3.1
+make tag
+git push upstream refs/tags/$RELEASE_VERSION
 ```
 
 ### 5. Fast-forward the `latest` branch
@@ -192,7 +202,7 @@ Run the following commands to do so:
 
 ```sh
 git checkout latest
-git reset --hard tags/v1.3.1
+git reset --hard tags/$RELEASE_VERSION
 git push -f upstream latest
 ```
 
@@ -202,8 +212,34 @@ git push -f upstream latest
 - Post to Kubernetes slack in #kubernetes-operators and #operator-sdk-dev.
 - In the [GitHub milestone][gh-milestones], bump any open issues to the following release.
 
+**Note**
+In case there are non-transient errors while building the release job, you must:
+1. Revert the release PR. To do so, create a PR which reverts step [2](#2-create-and-merge-a-new-pr).
+2. Fix what broke in the release branch.
+3. Re-run the release with an incremented minor version to avoid Go module errors (ex. if v1.3.1 broke, then re-run the release as v1.3.2). Patch versions are cheap so this is not a big deal.
 
-## Further reading
+## `scorecard-test-kuttl` image releases
+
+The `quay.io/operator-framework/scorecard-test-kuttl` image is released separately from other images because it
+contains the [`kudobuilder/kuttl`](https://hub.docker.com/r/kudobuilder/kuttl/tags) image, which is subject to breaking changes.
+
+Release tags of this image are of the form: `scorecard-kuttl/vX.Y.Z`, where `X.Y.Z` is _not_ the current operator-sdk version.
+For the latest version, query the [operator-sdk repo tags](https://github.com/operator-framework/operator-sdk/tags) for `scorecard-kuttl/v`.
+
+The only step required is to create and push a tag.
+This example uses version `v2.0.0`, the first independent release version of this image:
+
+```sh
+export RELEASE_VERSION=scorecard-kuttl/v2.0.0
+make tag
+git push upstream refs/tags/$RELEASE_VERSION
+```
+
+The [`deploy/image-scorecard-test-kuttl`](https://github.com/operator-framework/operator-sdk/actions/workflows/deploy.yml)
+Action workflow will build and push this image.
+
+
+## Helpful tips and information
 
 ### Binaries and signatures
 
@@ -232,11 +268,15 @@ Create and merge a PR from your branch to `v1.3.x`.
 
 GitHub releases live under the [`Releases` tab][release-page] in the operator-sdk repo.
 
+### Updating OLM bindata
 
-[git]:https://git-scm.com/downloads
-[gpg]:https://gnupg.org/download/
-[gpg-key-create]:https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/managing-commit-signature-verification
-[gpg-upload]:https://www.gnupg.org/gph/en/manual/x457.html
+Prior to an Operator SDK release, add bindata (if required) for a new OLM version by following these steps:
+
+1. Add the new version to the [`OLM_VERSIONS`][olm_version] variable in the Makefile. 
+2. Remove the *lowest* version from that variable, as `operator-sdk` only supports 3 versions at a time.
+3. Run `make bindata`.
+4. Update the list of supported OLM versions stated in the [`Overview`][overview] section of SDK documentation is updated.
+
 [netlify-deploy]:https://docs.netlify.com/site-deploys/overview/#deploy-summary
 [doc-owners]: https://github.com/operator-framework/operator-sdk/blob/master/OWNERS
 [release-page]:https://github.com/operator-framework/operator-sdk/releases
@@ -244,3 +284,5 @@ GitHub releases live under the [`Releases` tab][release-page] in the operator-sd
 [of-ggroup]:https://groups.google.com/g/operator-framework
 [gh-milestones]:https://github.com/operator-framework/operator-sdk/milestones
 [Makefile]:https://github.com/operator-framework/operator-sdk/blob/master/Makefile
+[olm_version]:https://github.com/operator-framework/operator-sdk/blob/6002c70fe770cdaba9ba99da72685e0e7b6b69e8/Makefile#L45
+[overview]: /docs/overview/#olm-version-compatibility

@@ -33,10 +33,11 @@ operator-sdk scorecard [flags]
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - Development kit for building Kubernetes extensions and tools.
+* [operator-sdk](../operator-sdk)	 - 
 

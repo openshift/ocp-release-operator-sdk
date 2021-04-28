@@ -5,10 +5,6 @@ title: "operator-sdk olm install"
 
 Install Operator Lifecycle Manager in your cluster
 
-### Synopsis
-
-Install Operator Lifecycle Manager in your cluster
-
 ```
 operator-sdk olm install [flags]
 ```
@@ -24,7 +20,8 @@ operator-sdk olm install [flags]
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

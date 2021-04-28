@@ -93,7 +93,7 @@ func TestNew(t *testing.T) {
 			},
 			playbook: validPlaybook,
 			finalizer: &watches.Finalizer{
-				Name:     "example.finalizer.com",
+				Name:     "operator.example.com/finalizer",
 				Playbook: validPlaybook,
 			},
 		},
@@ -106,7 +106,7 @@ func TestNew(t *testing.T) {
 			},
 			role: validRole,
 			finalizer: &watches.Finalizer{
-				Name: "example.finalizer.com",
+				Name: "operator.example.com/finalizer",
 				Role: validRole,
 			},
 		},
@@ -119,7 +119,7 @@ func TestNew(t *testing.T) {
 			},
 			playbook: validPlaybook,
 			finalizer: &watches.Finalizer{
-				Name: "example.finalizer.com",
+				Name: "operator.example.com/finalizer",
 				Vars: map[string]interface{}{
 					"state": "absent",
 				},
@@ -137,7 +137,7 @@ func TestNew(t *testing.T) {
 				"type": "this",
 			},
 			finalizer: &watches.Finalizer{
-				Name: "example.finalizer.com",
+				Name: "operator.example.com/finalizer",
 				Vars: map[string]interface{}{
 					"state": "absent",
 				},
@@ -241,6 +241,133 @@ func TestAnsibleVerbosityString(t *testing.T) {
 		gotString := ansibleVerbosityString(tc.verbosity)
 		if tc.expectedString != gotString {
 			t.Fatalf("Unexpected string %v for  expected %v from verbosity %v", gotString, tc.expectedString, tc.verbosity)
+		}
+	}
+}
+
+func TestMakeParameters(t *testing.T) {
+	var (
+		inputSpec string = "testKey"
+	)
+
+	testCases := []struct {
+		name               string
+		inputParams        unstructured.Unstructured
+		expectedSafeParams interface{}
+	}{
+		{
+			name: "should mark values passed as string unsafe",
+			inputParams: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"spec": map[string]interface{}{
+						inputSpec: "testVal",
+					},
+				},
+			},
+			expectedSafeParams: map[string]interface{}{
+				"__ansible_unsafe": "testVal",
+			},
+		},
+		{
+			name: "should not mark integers unsafe",
+			inputParams: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"spec": map[string]interface{}{
+						inputSpec: 3,
+					},
+				},
+			},
+			expectedSafeParams: 3,
+		},
+		{
+			name: "should recursively mark values in dictionary as unsafe",
+			inputParams: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"spec": map[string]interface{}{
+						inputSpec: map[string]interface{}{
+							"testsubKey1": "val1",
+							"testsubKey2": "val2",
+						},
+					},
+				},
+			},
+			expectedSafeParams: map[string]interface{}{
+				"testsubKey1": map[string]interface{}{
+					"__ansible_unsafe": "val1",
+				},
+				"testsubKey2": map[string]interface{}{
+					"__ansible_unsafe": "val2",
+				},
+			},
+		},
+		{
+			name: "should recursively mark values in list as unsafe",
+			inputParams: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"spec": map[string]interface{}{
+						inputSpec: []interface{}{
+							"testVal1",
+							"testVal2",
+						},
+					},
+				},
+			},
+			expectedSafeParams: []interface{}{
+				map[string]interface{}{
+					"__ansible_unsafe": "testVal1",
+				},
+				map[string]interface{}{
+					"__ansible_unsafe": "testVal2",
+				},
+			},
+		},
+		{
+			name: "should recursively mark values in list/dict as unsafe",
+			inputParams: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"spec": map[string]interface{}{
+						inputSpec: []interface{}{
+							"testVal1",
+							"testVal2",
+							map[string]interface{}{
+								"testVal3": 3,
+								"testVal4": "__^&{__)",
+							},
+						},
+					},
+				},
+			},
+			expectedSafeParams: []interface{}{
+				map[string]interface{}{
+					"__ansible_unsafe": "testVal1",
+				},
+				map[string]interface{}{
+					"__ansible_unsafe": "testVal2",
+				},
+				map[string]interface{}{
+					"testVal3": 3,
+					"testVal4": map[string]interface{}{
+						"__ansible_unsafe": "__^&{__)",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		testRunner := runner{
+			markUnsafe: true,
+		}
+		parameters := testRunner.makeParameters(&tc.inputParams)
+
+		val, ok := parameters[inputSpec]
+		if !ok {
+			t.Fatalf("Error occurred, value %s in spec is missing", inputSpec)
+		} else {
+			eq := reflect.DeepEqual(val, tc.expectedSafeParams)
+			if !eq {
+				t.Errorf("Error occurred, parameters %v are not marked unsafe", val)
+			}
 		}
 	}
 }
