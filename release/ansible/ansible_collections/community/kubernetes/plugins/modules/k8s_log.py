@@ -26,40 +26,25 @@ description:
   - Analogous to `kubectl logs` or `oc logs`
 extends_documentation_fragment:
   - community.kubernetes.k8s_auth_options
+  - community.kubernetes.k8s_name_options
 options:
-  api_version:
-    description:
-    - Use to specify the API version. in conjunction with I(kind), I(name), and I(namespace) to identify a
-      specific object.
-    - If using I(label_selector), cannot be overridden
-    default: v1
-    aliases:
-    - api
-    - version
-    type: str
   kind:
     description:
-    - Use to specify an object model. Use in conjunction with I(api_version), I(name), and I(namespace) to identify a
-      specific object.
-    - If using I(label_selector), cannot be overridden
-    required: no
+    - Use to specify an object model.
+    - Use in conjunction with I(api_version), I(name), and I(namespace) to identify a specific object.
+    - If using I(label_selectors), cannot be overridden.
+    type: str
     default: Pod
-    type: str
-  namespace:
-    description:
-    - Use to specify an object namespace. Use in conjunction with I(api_version), I(kind), and I(name)
-      to identify a specific object.
-    type: str
   name:
     description:
-    - Use to specify an object name.  Use in conjunction with I(api_version), I(kind) and I(namespace) to identify a
-      specific object.
-    - Only one of I(name) or I(label_selector) may be provided
+    - Use to specify an object name.
+    - Use in conjunction with I(api_version), I(kind) and I(namespace) to identify a specific object.
+    - Only one of I(name) or I(label_selectors) may be provided.
     type: str
   label_selectors:
     description:
     - List of label selectors to use to filter results
-    - Only one of I(name) or I(label_selector) may be provided
+    - Only one of I(name) or I(label_selectors) may be provided.
     type: list
     elements: str
   container:
@@ -126,28 +111,34 @@ log_lines:
 
 import copy
 
+from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import PY2
 
-from ansible_collections.community.kubernetes.plugins.module_utils.common import KubernetesAnsibleModule
-from ansible_collections.community.kubernetes.plugins.module_utils.common import AUTH_ARG_SPEC
+from ansible_collections.community.kubernetes.plugins.module_utils.common import (
+    K8sAnsibleMixin, AUTH_ARG_SPEC, NAME_ARG_SPEC)
 
 
-class KubernetesLogModule(KubernetesAnsibleModule):
+class KubernetesLogModule(K8sAnsibleMixin):
 
-    def __init__(self, *args, **kwargs):
-        KubernetesAnsibleModule.__init__(self, *args,
-                                         supports_check_mode=True,
-                                         **kwargs)
+    def __init__(self):
+        module = AnsibleModule(
+            argument_spec=self.argspec,
+            supports_check_mode=True,
+        )
+        self.module = module
+        self.params = self.module.params
+        self.fail_json = self.module.fail_json
+        self.fail = self.module.fail_json
+        self.exit_json = self.module.exit_json
+        super(KubernetesLogModule, self).__init__()
 
     @property
     def argspec(self):
         args = copy.deepcopy(AUTH_ARG_SPEC)
+        args.update(NAME_ARG_SPEC)
         args.update(
             dict(
-                kind=dict(default='Pod'),
-                api_version=dict(default='v1', aliases=['api', 'version']),
-                name=dict(),
-                namespace=dict(),
+                kind=dict(type='str', default='Pod'),
                 container=dict(),
                 label_selectors=dict(type='list', elements='str', default=[]),
             )
@@ -156,6 +147,7 @@ class KubernetesLogModule(KubernetesAnsibleModule):
 
     def execute_module(self):
         name = self.params.get('name')
+        namespace = self.params.get('namespace')
         label_selector = ','.join(self.params.get('label_selectors', {}))
         if name and label_selector:
             self.fail(msg='Only one of name or label_selectors can be provided')
@@ -165,16 +157,16 @@ class KubernetesLogModule(KubernetesAnsibleModule):
         v1_pods = self.find_resource('Pod', 'v1', fail=True)
 
         if 'log' not in resource.subresources:
-            if not self.params.get('name'):
+            if not name:
                 self.fail(msg='name must be provided for resources that do not support the log subresource')
-            instance = resource.get(name=self.params['name'], namespace=self.params.get('namespace'))
+            instance = resource.get(name=name, namespace=namespace)
             label_selector = ','.join(self.extract_selectors(instance))
             resource = v1_pods
 
         if label_selector:
-            instances = v1_pods.get(namespace=self.params['namespace'], label_selector=label_selector)
+            instances = v1_pods.get(namespace=namespace, label_selector=label_selector)
             if not instances.items:
-                self.fail(msg='No pods in namespace {0} matched selector {1}'.format(self.params['namespace'], label_selector))
+                self.fail(msg='No pods in namespace {0} matched selector {1}'.format(namespace, label_selector))
             # This matches the behavior of kubectl when logging pods via a selector
             name = instances.items[0].metadata.name
             resource = v1_pods
@@ -185,7 +177,7 @@ class KubernetesLogModule(KubernetesAnsibleModule):
 
         log = serialize_log(resource.log.get(
             name=name,
-            namespace=self.params.get('namespace'),
+            namespace=namespace,
             serialize=False,
             **kwargs
         ))
