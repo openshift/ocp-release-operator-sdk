@@ -90,7 +90,7 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        serviceAccountName: default
+        serviceAccountName: memcached-operator-controller-manager
       deployments:
       - name: memcached-operator-controller-manager
         spec:
@@ -110,29 +110,49 @@ spec:
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
                 - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
                 name: kube-rbac-proxy
                 ports:
                 - containerPort: 8443
                   name: https
                 resources: {}
               - args:
-                - --metrics-addr=127.0.0.1:8080
-                - --enable-leader-election
+                - --health-probe-bind-address=:6789
+                - --metrics-bind-address=127.0.0.1:8080
+                - --leader-elect
                 - --leader-election-id=memcached-operator
                 env:
                 - name: ANSIBLE_GATHERING
                   value: explicit
                 image: quay.io/example/memcached-operator:v0.0.1
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 6789
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
                 name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 6789
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
                 resources: {}
+                securityContext:
+                  allowPrivilegeEscalation: false
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: memcached-operator-controller-manager
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
         - apiGroups:
           - ""
+          - coordination.k8s.io
           resources:
           - configmaps
+          - leases
           verbs:
           - get
           - list
@@ -148,7 +168,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: default
+        serviceAccountName: memcached-operator-controller-manager
     strategy: deployment
   installModes:
   - supported: false

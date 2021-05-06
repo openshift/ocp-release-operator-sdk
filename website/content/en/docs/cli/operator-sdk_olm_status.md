@@ -5,10 +5,6 @@ title: "operator-sdk olm status"
 
 Get the status of the Operator Lifecycle Manager installation in your cluster
 
-### Synopsis
-
-Get the status of the Operator Lifecycle Manager installation in your cluster
-
 ```
 operator-sdk olm status [flags]
 ```
@@ -25,7 +21,8 @@ operator-sdk olm status [flags]
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

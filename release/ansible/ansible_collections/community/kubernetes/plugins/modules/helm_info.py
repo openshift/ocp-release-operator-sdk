@@ -26,11 +26,6 @@ description:
   -  Get information (values, states, ...) from Helm package deployed inside the cluster.
 
 options:
-  binary_path:
-    description:
-      - The path of a helm binary to use.
-    required: false
-    type: path
   release_name:
     description:
       - Release name to manage.
@@ -43,17 +38,8 @@ options:
     required: true
     type: str
     aliases: [ namespace ]
-
-#Helm options
-  kube_context:
-    description:
-      - Helm option to specify which kubeconfig context to use.
-    type: str
-  kubeconfig_path:
-    description:
-      - Helm option to specify kubeconfig path to use.
-    type: path
-    aliases: [ kubeconfig ]
+extends_documentation_fragment:
+  - community.kubernetes.helm_common_options
 '''
 
 EXAMPLES = r'''
@@ -112,28 +98,8 @@ except ImportError:
     IMP_YAML_ERR = traceback.format_exc()
     IMP_YAML = False
 
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
-
-module = None
-
-
-# Get Values from deployed release
-def get_values(command, release_name):
-    get_command = command + " get values --output=yaml " + release_name
-
-    rc, out, err = module.run_command(get_command)
-
-    if rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=get_command
-        )
-
-    # Helm 3 return "null" string when no values are set
-    if out.rstrip("\n") == "null":
-        return {}
-    else:
-        return yaml.safe_load(out)
+from ansible.module_utils.basic import AnsibleModule, missing_required_lib, env_fallback
+from ansible_collections.community.kubernetes.plugins.module_utils.helm import run_helm, get_values
 
 
 # Get Release from all deployed releases
@@ -146,10 +112,10 @@ def get_release(state, release_name):
 
 
 # Get Release state from deployed release
-def get_release_status(command, release_name):
+def get_release_status(module, command, release_name):
     list_command = command + " list --output=yaml --filter " + release_name
 
-    rc, out, err = module.run_command(list_command)
+    rc, out, err = run_helm(module, list_command)
 
     if rc != 0:
         module.fail_json(
@@ -162,7 +128,7 @@ def get_release_status(command, release_name):
     if release is None:  # not install
         return None
 
-    release['values'] = get_values(command, release_name)
+    release['values'] = get_values(module, command, release_name)
 
     return release
 
@@ -177,9 +143,21 @@ def main():
             release_namespace=dict(type='str', required=True, aliases=['namespace']),
 
             # Helm options
-            kube_context=dict(type='str'),
-            kubeconfig_path=dict(type='path', aliases=['kubeconfig']),
+            context=dict(type='str', aliases=['kube_context'], fallback=(env_fallback, ['K8S_AUTH_CONTEXT'])),
+            kubeconfig=dict(type='path', aliases=['kubeconfig_path'], fallback=(env_fallback, ['K8S_AUTH_KUBECONFIG'])),
+
+            # Generic auth key
+            host=dict(type='str', fallback=(env_fallback, ['K8S_AUTH_HOST'])),
+            ca_cert=dict(type='path', aliases=['ssl_ca_cert'], fallback=(env_fallback, ['K8S_AUTH_SSL_CA_CERT'])),
+            validate_certs=dict(type='bool', default=True, aliases=['verify_ssl'], fallback=(env_fallback, ['K8S_AUTH_VERIFY_SSL'])),
+            api_key=dict(type='str', no_log=True, fallback=(env_fallback, ['K8S_AUTH_API_KEY']))
         ),
+        mutually_exclusive=[
+            ("context", "ca_cert"),
+            ("context", "validate_certs"),
+            ("kubeconfig", "ca_cert"),
+            ("kubeconfig", "validate_certs")
+        ],
         supports_check_mode=True,
     )
 
@@ -188,26 +166,13 @@ def main():
 
     bin_path = module.params.get('binary_path')
     release_name = module.params.get('release_name')
-    release_namespace = module.params.get('release_namespace')
-
-    # Helm options
-    kube_context = module.params.get('kube_context')
-    kubeconfig_path = module.params.get('kubeconfig_path')
 
     if bin_path is not None:
         helm_cmd_common = bin_path
     else:
         helm_cmd_common = module.get_bin_path('helm', required=True)
 
-    if kube_context is not None:
-        helm_cmd_common += " --kube-context " + kube_context
-
-    if kubeconfig_path is not None:
-        helm_cmd_common += " --kubeconfig " + kubeconfig_path
-
-    helm_cmd_common += " --namespace=" + release_namespace
-
-    release_status = get_release_status(helm_cmd_common, release_name)
+    release_status = get_release_status(module, helm_cmd_common, release_name)
 
     if release_status is not None:
         module.exit_json(changed=False, status=release_status)

@@ -145,7 +145,7 @@ Make sure to have your `run` target to take `ARGS` as shown below in `Makefile`.
 
 ```makefile
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: manifests generate fmt vet
 	go run ./main.go $(ARGS)
 ```
 
@@ -175,8 +175,8 @@ spec:
           name: https
       - name: manager
         args:
-        - "--metrics-addr=127.0.0.1:8080"
-        - "--enable-leader-election"
+        - "--metrics-bind-address=127.0.0.1:8080"
+        - "--leader-elect"
         - "--zap-encoder=console"
         - "--zap-log-level=debug"
 ```

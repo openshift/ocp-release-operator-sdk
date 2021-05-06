@@ -5,6 +5,137 @@ Kubernetes Collection Release Notes
 .. contents:: Topics
 
 
+v1.2.1
+======
+
+Bugfixes
+--------
+
+- fix missing requirements.txt file in kubernetes.core (https://github.com/ansible-collections/community.kubernetes/pull/401).
+- pin molecule version to <3.3.0 to fix breaking changes (https://github.com/ansible-collections/community.kubernetes/pull/403).
+
+v1.2.0
+======
+
+Minor Changes
+-------------
+
+- Adjust the documentation to clarify the fact ``wait_condition.status`` is a string.
+- Adjust the name of parameters of ``helm`` and ``helm_info`` to match the documentation. No playbook change required.
+- The Helm modules (``helm``, ``helm_info``, ``helm_plugin``, ``helm_plugin_info``, ``helm_plugin_repository``) accept the K8S environment variables like the other modules of the collections.
+- helm - add a ``skip_crds`` option to skip the installation of CRDs when installing or upgrading a chart (https://github.com/ansible-collections/community.kubernetes/issues/296).
+- helm - add optional support for helm diff (https://github.com/ansible-collections/community.kubernetes/issues/248).
+- helm_template - add helm_template module to support template functionality (https://github.com/ansible-collections/community.kubernetes/issues/367).
+- k8s - add a ``delete_options`` parameter to control garbage collection behavior when deleting a resource (https://github.com/ansible-collections/community.kubernetes/issues/253).
+- k8s - add an example for downloading manifest file and applying (https://github.com/ansible-collections/community.kubernetes/issues/352).
+- k8s - check if kubeconfig file is located on remote node or on Ansible Controller (https://github.com/ansible-collections/community.kubernetes/issues/307).
+- k8s - check if src file is located on remote node or on Ansible Controller (https://github.com/ansible-collections/community.kubernetes/issues/307).
+- k8s_exec - add a note about required permissions for the module (https://github.com/ansible-collections/community.kubernetes/issues/339).
+- k8s_info - add information about api_version while returning facts (https://github.com/ansible-collections/community.kubernetes/pull/308).
+- runtime.yml - update minimum Ansible version required for Kubernetes collection (https://github.com/ansible-collections/community.kubernetes/issues/314).
+
+Bugfixes
+--------
+
+- helm - ``release_values`` makes ansible always show changed state (https://github.com/ansible-collections/community.kubernetes/issues/274)
+- helm - make helm-diff plugin detection more reliable by splitting by any whitespace instead of explicit whitespace (``\s``) (https://github.com/ansible-collections/community.kubernetes/pull/362).
+- helm - return values in check mode when release is not present (https://github.com/ansible-collections/community.kubernetes/issues/280).
+- helm_plugin - make unused ``release_namespace`` parameter as optional (https://github.com/ansible-collections/community.kubernetes/issues/357).
+- helm_plugin_info - make unused ``release_namespace`` parameter as optional (https://github.com/ansible-collections/community.kubernetes/issues/357).
+- k8s - fix check_mode always showing changes when using stringData on Secrets (https://github.com/ansible-collections/community.kubernetes/issues/282).
+- k8s - handle ValueError when namespace is not provided (https://github.com/ansible-collections/community.kubernetes/pull/330).
+- respect the ``wait_timeout`` parameter in the ``k8s`` and ``k8s_info`` modules when a resource does not exist (https://github.com/ansible-collections/community.kubernetes/issues/344).
+
+v1.1.1
+======
+
+Bugfixes
+--------
+
+- k8s - Fix sanity test 'compile' failing because of positional args (https://github.com/ansible-collections/community.kubernetes/issues/260).
+
+v1.1.0
+======
+
+Major Changes
+-------------
+
+- k8s - Add support for template parameter (https://github.com/ansible-collections/community.kubernetes/pull/230).
+- k8s_* - Add support for vaulted kubeconfig and src (https://github.com/ansible-collections/community.kubernetes/pull/193).
+
+Minor Changes
+-------------
+
+- Add Makefile and downstream build script for kubernetes.core (https://github.com/ansible-collections/community.kubernetes/pull/197).
+- Add execution environment metadata (https://github.com/ansible-collections/community.kubernetes/pull/211).
+- Add probot stale bot configuration to autoclose issues (https://github.com/ansible-collections/community.kubernetes/pull/196).
+- Added a contribution guide (https://github.com/ansible-collections/community.kubernetes/pull/192).
+- Refactor module_utils (https://github.com/ansible-collections/community.kubernetes/pull/223).
+- Replace KubernetesAnsibleModule class with dummy class (https://github.com/ansible-collections/community.kubernetes/pull/227).
+- Replace KubernetesRawModule class with K8sAnsibleMixin (https://github.com/ansible-collections/community.kubernetes/pull/231).
+- common - Do not mark task as changed when diff is irrelevant (https://github.com/ansible-collections/community.kubernetes/pull/228).
+- helm - Add appVersion idempotence check to Helm (https://github.com/ansible-collections/community.kubernetes/pull/246).
+- helm - Return status in check mode (https://github.com/ansible-collections/community.kubernetes/pull/192).
+- helm - Support for single or multiple values files (https://github.com/ansible-collections/community.kubernetes/pull/93).
+- helm_* - Support vaulted kubeconfig (https://github.com/ansible-collections/community.kubernetes/pull/229).
+- k8s - SelfSubjectAccessReviews supported when 405 response received (https://github.com/ansible-collections/community.kubernetes/pull/237).
+- k8s - add testcase for adding multiple resources using template parameter (https://github.com/ansible-collections/community.kubernetes/issues/243).
+- k8s_info - Add support for wait (https://github.com/ansible-collections/community.kubernetes/pull/235).
+- k8s_info - update custom resource example (https://github.com/ansible-collections/community.kubernetes/issues/202).
+- kubectl plugin - correct console log (https://github.com/ansible-collections/community.kubernetes/issues/200).
+- raw - Handle exception raised by underlying APIs (https://github.com/ansible-collections/community.kubernetes/pull/180).
+
+Bugfixes
+--------
+
+- common - handle exception raised due to DynamicClient (https://github.com/ansible-collections/community.kubernetes/pull/224).
+- helm - add replace parameter (https://github.com/ansible-collections/community.kubernetes/issues/106).
+- k8s (inventory) - Set the connection plugin and transport separately (https://github.com/ansible-collections/community.kubernetes/pull/208).
+- k8s (inventory) - Specify FQCN for k8s inventory plugin to fix use with Ansible 2.9 (https://github.com/ansible-collections/community.kubernetes/pull/250).
+- k8s_info - add wait functionality (https://github.com/ansible-collections/community.kubernetes/issues/18).
+
+v1.0.0
+======
+
+Major Changes
+-------------
+
+- helm_plugin - new module to manage Helm plugins (https://github.com/ansible-collections/community.kubernetes/pull/154).
+- helm_plugin_info - new modules to gather information about Helm plugins (https://github.com/ansible-collections/community.kubernetes/pull/154).
+- k8s_exec - Return rc for the command executed (https://github.com/ansible-collections/community.kubernetes/pull/158).
+
+Minor Changes
+-------------
+
+- Ensure check mode results are as expected (https://github.com/ansible-collections/community.kubernetes/pull/155).
+- Update base branch to 'main' (https://github.com/ansible-collections/community.kubernetes/issues/148).
+- helm - Add support for K8S_AUTH_CONTEXT, K8S_AUTH_KUBECONFIG env (https://github.com/ansible-collections/community.kubernetes/pull/141).
+- helm - Allow creating namespaces with Helm (https://github.com/ansible-collections/community.kubernetes/pull/157).
+- helm - add aliases context for kube_context (https://github.com/ansible-collections/community.kubernetes/pull/152).
+- helm - add support for K8S_AUTH_KUBECONFIG and K8S_AUTH_CONTEXT environment variable (https://github.com/ansible-collections/community.kubernetes/issues/140).
+- helm_info - add aliases context for kube_context (https://github.com/ansible-collections/community.kubernetes/pull/152).
+- helm_info - add support for K8S_AUTH_KUBECONFIG and K8S_AUTH_CONTEXT environment variable (https://github.com/ansible-collections/community.kubernetes/issues/140).
+- k8s_exec - return RC for the command executed (https://github.com/ansible-collections/community.kubernetes/issues/122).
+- k8s_info - Update example using vars (https://github.com/ansible-collections/community.kubernetes/pull/156).
+
+Security Fixes
+--------------
+
+- kubectl - connection plugin now redact kubectl_token and kubectl_password in console log (https://github.com/ansible-collections/community.kubernetes/issues/65).
+- kubectl - redacted token and password from console log (https://github.com/ansible-collections/community.kubernetes/pull/159).
+
+Bugfixes
+--------
+
+- Test against stable ansible branch so molecule tests work (https://github.com/ansible-collections/community.kubernetes/pull/168).
+- Update openshift requirements in k8s module doc (https://github.com/ansible-collections/community.kubernetes/pull/153).
+
+New Modules
+-----------
+
+- helm_plugin - Manage Helm plugins
+- helm_plugin_info - Gather information about Helm plugins
+
 v0.11.1
 =======
 

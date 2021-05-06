@@ -3,30 +3,11 @@ title: "operator-sdk"
 ---
 ## operator-sdk
 
-Development kit for building Kubernetes extensions and tools.
+
 
 ### Synopsis
 
-Development kit for building Kubernetes extensions and tools.
-
-Provides libraries and tools to create new projects, APIs and controllers.
-Includes tools for packaging artifacts into an installer container.
-
-Typical project lifecycle:
-
-- initialize a project:
-
-  operator-sdk init --domain example.com --license apache2 --owner "The Kubernetes authors"
-
-- create one or more a new resource APIs and add your code to them:
-
-  operator-sdk create api --group <group> --version <version> --kind <Kind>
-
-Create resource will prompt the user for if it should scaffold the Resource and / or Controller. To only
-scaffold a Controller for an existing Resource, select "n" for Resource. To only define
-the schema for a Resource without writing a Controller, select "n" for Controller.
-
-After the scaffold is written, api will run make on the project.
+CLI tool for building Kubernetes extensions and tools.
 
 
 ```
@@ -36,41 +17,47 @@ operator-sdk [flags]
 ### Examples
 
 ```
+The first step is to initialize your project:
+    operator-sdk init [--plugins=<PLUGIN KEYS> [--project-version=<PROJECT VERSION>]]
 
-  # Initialize your project
-  operator-sdk init --domain example.com --license apache2 --owner "The Kubernetes authors"
+<PLUGIN KEYS> is a comma-separated list of plugin keys from the following table
+and <PROJECT VERSION> a supported project version for these plugins.
 
-  # Create a frigates API with Group: ship, Version: v1beta1 and Kind: Frigate
-  operator-sdk create api --group ship --version v1beta1 --kind Frigate
+                         Plugin keys | Supported project versions
+-------------------------------------+----------------------------
+ ansible.sdk.operatorframework.io/v1 |                          3
+    declarative.go.kubebuilder.io/v1 |                       2, 3
+                go.kubebuilder.io/v2 |                       2, 3
+                go.kubebuilder.io/v3 |                          3
+    helm.sdk.operatorframework.io/v1 |                          3
+  kustomize.common.kubebuilder.io/v1 |                          3
 
-  # Edit the API Scheme
-  nano api/v1beta1/frigate_types.go
+For more specific help for the init command of a certain plugins and project version
+configuration please run:
+    operator-sdk init --help --plugins=<PLUGIN KEYS> [--project-version=<PROJECT VERSION>]
 
-  # Edit the Controller
-  nano controllers/frigate_controller.go
-
-  # Install CRDs into the Kubernetes cluster using kubectl apply
-  make install
-
-  # Regenerate code and run against the Kubernetes cluster configured by ~/.kube/config
-  make run
+Default plugin keys: "go.kubebuilder.io/v3"
+Default project version: "3"
 
 ```
 
 ### Options
 
 ```
-  -h, --help      help for operator-sdk
-      --verbose   Enable verbose logging
+  -h, --help                     help for operator-sdk
+      --plugins strings          plugin keys to be used for this subcommand execution
+      --project-version string   project version (default "3")
+      --verbose                  Enable verbose logging
 ```
 
 ### SEE ALSO
 
+* [operator-sdk alpha](../operator-sdk_alpha)	 - Alpha-stage subcommands
 * [operator-sdk bundle](../operator-sdk_bundle)	 - Manage operator bundle metadata
 * [operator-sdk cleanup](../operator-sdk_cleanup)	 - Clean up an Operator deployed with the 'run' subcommand
-* [operator-sdk completion](../operator-sdk_completion)	 - Generators for shell completions
+* [operator-sdk completion](../operator-sdk_completion)	 - Load completions for the specified shell
 * [operator-sdk create](../operator-sdk_create)	 - Scaffold a Kubernetes API or webhook
-* [operator-sdk edit](../operator-sdk_edit)	 - This command will edit the project configuration
+* [operator-sdk edit](../operator-sdk_edit)	 - Update the project configuration
 * [operator-sdk generate](../operator-sdk_generate)	 - Invokes a specific generator
 * [operator-sdk init](../operator-sdk_init)	 - Initialize a new project
 * [operator-sdk olm](../operator-sdk_olm)	 - Manage the Operator Lifecycle Manager installation in your cluster

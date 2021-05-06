@@ -29,23 +29,23 @@ brew install operator-sdk
 Set platform information:
 
 ```sh
-export ARCH=$(case $(arch) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(arch) ;; esac)
+export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
 export OS=$(uname | awk '{print tolower($0)}')
 ```
 
 Download the binary for your platform:
 
 ```sh
-export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/latest/download
+export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.6.2
 curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
 ```
 
 #### 2. Verify the downloaded binary
 
-Import the operator-sdk release GPG key:
+Import the operator-sdk release GPG key from `keyserver.ubuntu.com`:
 
 ```sh
-gpg --recv-keys 052996E2A20B5C7E
+gpg --keyserver keyserver.ubuntu.com --recv-keys 052996E2A20B5C7E
 ```
 
 Download the checksums file and its signature, then verify the signature:
@@ -88,9 +88,8 @@ chmod +x operator-sdk_${OS}_${ARCH} && sudo mv operator-sdk_${OS}_${ARCH} /usr/l
 #### Prerequisites
 
 - [git][git_tool]
-- [mercurial][mercurial_tool] version 3.9+
-- [bazaar][bazaar_tool] version 2.7.0+
-- [go][go_tool] version v1.15+.
+- [go][go_tool] version 1.15
+  - Ensure that your `GOPROXY` is set to `"https://proxy.golang.org|direct"`
 
 ```sh
 git clone https://github.com/operator-framework/operator-sdk
@@ -99,11 +98,6 @@ git checkout master
 make install
 ```
 
-**Note:** Ensure that your `GOPROXY` is set with its default value for Go
-versions 1.15+ which is `"https://proxy.golang.org|direct"`.
-
 [homebrew_tool]:https://brew.sh/
 [git_tool]:https://git-scm.com/downloads
-[mercurial_tool]:https://www.mercurial-scm.org/downloads
-[bazaar_tool]:http://wiki.bazaar.canonical.com/Download
 [go_tool]:https://golang.org/dl/

@@ -21,12 +21,11 @@ __metaclass__ = type
 
 import copy
 
-from ansible_collections.community.kubernetes.plugins.module_utils.common import AUTH_ARG_SPEC, COMMON_ARG_SPEC
-from ansible_collections.community.kubernetes.plugins.module_utils.common import KubernetesAnsibleModule
-from ansible.module_utils.six import string_types
+from ansible.module_utils.basic import AnsibleModule
+from ansible_collections.community.kubernetes.plugins.module_utils.common import (
+    AUTH_ARG_SPEC, RESOURCE_ARG_SPEC, NAME_ARG_SPEC, K8sAnsibleMixin)
 
 try:
-    import yaml
     from openshift.dynamic.exceptions import NotFoundError
 except ImportError:
     pass
@@ -41,7 +40,7 @@ SCALE_ARG_SPEC = {
 }
 
 
-class KubernetesAnsibleScaleModule(KubernetesAnsibleModule):
+class KubernetesAnsibleScaleModule(K8sAnsibleMixin):
 
     def __init__(self, k8s_kind=None, *args, **kwargs):
         self.client = None
@@ -51,39 +50,25 @@ class KubernetesAnsibleScaleModule(KubernetesAnsibleModule):
             ('resource_definition', 'src'),
         ]
 
-        KubernetesAnsibleModule.__init__(self, *args,
-                                         mutually_exclusive=mutually_exclusive,
-                                         supports_check_mode=True,
-                                         **kwargs)
+        module = AnsibleModule(
+            argument_spec=self.argspec,
+            mutually_exclusive=mutually_exclusive,
+            supports_check_mode=True,
+        )
+
+        self.module = module
+        self.params = self.module.params
+        self.check_mode = self.module.check_mode
+        self.fail_json = self.module.fail_json
+        self.fail = self.module.fail_json
+        self.exit_json = self.module.exit_json
+        super(KubernetesAnsibleScaleModule, self).__init__()
+
         self.kind = k8s_kind or self.params.get('kind')
         self.api_version = self.params.get('api_version')
         self.name = self.params.get('name')
         self.namespace = self.params.get('namespace')
-        resource_definition = self.params.get('resource_definition')
-
-        if resource_definition:
-            if isinstance(resource_definition, string_types):
-                try:
-                    self.resource_definitions = yaml.safe_load_all(resource_definition)
-                except (IOError, yaml.YAMLError) as exc:
-                    self.fail(msg="Error loading resource_definition: {0}".format(exc))
-            elif isinstance(resource_definition, list):
-                self.resource_definitions = resource_definition
-            else:
-                self.resource_definitions = [resource_definition]
-        src = self.params.get('src')
-        if src:
-            self.resource_definitions = self.load_resource_definitions(src)
-
-        if not resource_definition and not src:
-            implicit_definition = dict(
-                kind=self.kind,
-                apiVersion=self.api_version,
-                metadata=dict(name=self.name)
-            )
-            if self.namespace:
-                implicit_definition['metadata']['namespace'] = self.namespace
-            self.resource_definitions = [implicit_definition]
+        self.set_resource_definitions()
 
     def execute_module(self):
         definition = self.resource_definitions[0]
@@ -142,11 +127,10 @@ class KubernetesAnsibleScaleModule(KubernetesAnsibleModule):
 
     @property
     def argspec(self):
-        args = copy.deepcopy(COMMON_ARG_SPEC)
-        args.pop('state')
-        args.pop('force')
+        args = copy.deepcopy(SCALE_ARG_SPEC)
+        args.update(RESOURCE_ARG_SPEC)
+        args.update(NAME_ARG_SPEC)
         args.update(AUTH_ARG_SPEC)
-        args.update(SCALE_ARG_SPEC)
         return args
 
     def scale(self, resource, existing_object, replicas, wait, wait_time):

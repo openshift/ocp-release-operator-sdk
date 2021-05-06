@@ -6,7 +6,7 @@ description: >
     What is Operator SDK? Why should I use it?
 ---
 
-## What is Operator SDK and why should I use it? 
+## What is Operator SDK and why should I use it?
 
 This project is a component of the [Operator Framework][of-home], an open source toolkit to manage Kubernetes native applications, called Operators, in an effective, automated, and scalable way. Read more in the [introduction blog post][of-blog].
 
@@ -22,7 +22,7 @@ The Operator SDK is a framework that uses the [controller-runtime][controller_ru
 
 The SDK provides workflows to develop operators in Go, Ansible, or Helm.
 
-The following workflow is for a new [Golang operator][golang-guide]:
+The following workflow is for a new [Go operator][golang-guide]:
 
   1. Create a new operator project using the SDK Command Line Interface(CLI)
   2. Define new resource APIs by adding Custom Resource Definitions(CRD)
@@ -55,6 +55,66 @@ Note that each operator type has a different set of capabilities. When choosing 
 ![operator-capability-level](/operator-capability-level.png)
 
 Find more details about the various levels and the feature requirements for them in the [capability level documentation][capability_levels].
+
+## Kubernetes version compatibility
+
+Each `operator-sdk` release is tested with a specific version of Kubernetes. This version matches
+that of [kubernetes/kubernetes][k-k] or [client-go][client-go] that `operator-sdk` depends on directly,
+or that generated Operator projects depend on.
+
+In general, client-go's [compatibility matrix][client-go-compat] will determine whether
+a particular Kubernetes version is compatible with a particular `operator-sdk` version
+or generated Operator project. The following tables contains the canonical way per
+binary or project type to look up a Y-axis version to plug into the compatibility matrix.
+
+By binary:
+
+| Binary                  | Lookup strategy               |
+|-------------------------|-------------------------------|
+| `operator-sdk`          | `$ operator-sdk version`      |
+| `ansible-operator`      | `$ ansible-operator version`  |
+| `helm-operator`         | `$ helm-operator version`     |
+
+By project type (replace `${IMAGE_VERSION}` with base image version in your project `Dockerfile`):
+
+| Project type   | Lookup strategy                           |
+|----------------|-------------------------------------------|
+| Go             | controller-runtime version (see `go.mod`) |
+| Ansible        | `$ docker run --entrypoint ansible-operator quay.io/operator-framework/ansible-operator:${IMAGE_VERSION} version` |
+| Helm           | `$ docker run --entrypoint helm-operator quay.io/operator-framework/helm-operator:${IMAGE_VERSION} version` |
+
+
+[k-k]:https://github.com/kubernetes/kubernetes
+[client-go]:https://github.com/kubernetes/client-go
+[client-go-compat]:https://github.com/kubernetes/client-go#compatibility-matrix
+
+## OLM version compatibility
+
+Operator SDK officially supports the latest 3 versions of OLM present at the time of a given Operator SDK release. These versions of OLM manifests are packaged with the SDK binary in the form of `bindata` to support low-latency installations of OLM with [`operator-sdk olm install`][olm-install-cmd]. Any other version installed with this command may work but is not tested nor officially supported.
+
+Currently, the officially supported OLM Versions are: 0.15.1, 0.16.1 and 0.17.0.
+
+## Platform support
+
+Official build architectures for binaries:
+
+| Binary                    | `linux/amd64` | `linux/arm64` |`linux/ppc64le` | `linux/s390x` | `darwin/amd64` | `darwin/arm64` |
+|---------------------------|---------------|---------------|----------------|---------------|----------------|----------------|
+| `operator-sdk`            | ✓             | ✓             | ✓              | ✓             | ✓              | -              |
+| `ansible-operator`        | ✓             | ✓             | ✓              | ✓             | ✓              | -              |
+| `helm-operator`           | ✓             | ✓             | ✓              | ✓             | ✓              | -              |
+
+Official build architectures for images:
+
+| Binary                    | `linux/amd64` | `linux/arm64` |`linux/ppc64le` | `linux/s390x` |
+|---------------------------|---------------|---------------|----------------|---------------|
+| `operator-sdk`            | ✓             | ✓             | ✓              | ✓             |
+| `ansible-operator`        | ✓             | ✓             | ✓              | ✓             |
+| `helm-operator`           | ✓             | ✓             | ✓              | ✓             |
+| `scorecard-test`          | ✓             | ✓             | ✓              | ✓             |
+| `scorecard-test-kuttl`    | ✓             | ✓             | ✓              | -             |
+
+Official support for any Windows architecture is not on the roadmap at this time.
 
 ## Samples
 
@@ -89,9 +149,10 @@ Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file f
 [helm-guide]:/docs/building-operators/helm/quickstart/
 [install_guide]: /docs/installation/
 [license_file]:https://github.com/operator-framework/operator-sdk/blob/master/LICENSE
-[of-blog]: https://coreos.com/blog/introducing-operator-framework
+[of-blog]:https://www.openshift.com/blog/introducing-the-operator-framework
 [of-home]: https://github.com/operator-framework
-[operator_link]: https://coreos.com/operators/
+[operator_link]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 [proposals_docs]: https://github.com/operator-framework/operator-sdk/tree/master/proposals
 [testdata_samples]: https://github.com/operator-framework/operator-sdk/tree/master/testdata
 [sdk_cli_ref]: /docs/cli/
+[olm-install-cmd]: /docs/cli/operator-sdk_olm_install/

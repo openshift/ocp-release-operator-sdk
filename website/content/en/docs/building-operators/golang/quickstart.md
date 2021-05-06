@@ -2,91 +2,108 @@
 title: Quickstart for Go-based Operators
 linkTitle: Quickstart
 weight: 20
-description: A simple set of instructions that demonstrates the basics of setting up and running Go-based operator.
+description: A simple set of instructions to set up and run a Go-based operator.
 ---
 
 This guide walks through an example of building a simple memcached-operator using tools and libraries provided by the Operator SDK.
 
 ## Prerequisites
 
-- [Install operator-sdk][operator_install] and its prequisites.
-- Access to a Kubernetes v1.11.3+ cluster (v1.16.0+ if using `apiextensions.k8s.io/v1` CRDs).
-- User authorized with `cluster-admin` permissions
-
-## Quickstart Steps
-
-### Create a project
-
-Create and change into a directory for your project. Then call `operator-sdk init`
-with the Go plugin to initialize the project. 
- 
-```sh
-mkdir memcached-operator
-cd memcached-operator
-operator-sdk init --domain=example.com --repo=github.com/example-inc/memcached-operator
-```
-
-### Create an API
-
-Create a simple Memcached API:
-
-```sh
-operator-sdk create api --group cache --version v1 --kind Memcached --resource=true --controller=true
-```
-
-### Build and push the operator image
-
-Use the built-in Makefile targets to build and push your operator. Make
-sure to define `IMG` when you call `make`:
-
-```sh
-make docker-build docker-push IMG=<some-registry>/<project-name>:<tag>
-```
-
-**NOTE**: To allow the cluster pull the image the repository needs to be
-          set as public or you must configure an image pull secret.
+- Go through the [installation guide][install-guide].
+- User authorized with `cluster-admin` permissions.
+- An accessible image registry for various operator images (ex. [hub.docker.com](https://hub.docker.com/signup),
+[quay.io](https://quay.io/)) and be logged in in your command line environment.
+  - `example.com` is used as the registry Docker Hub namespace in these examples.
+  Replace it with another value if using a different registry or namespace.
+  - [Authentication and certificates][image-reg-config] if the registry is private or uses a custom CA.
 
 
-### Run the operator
+## Steps
 
-Install the CRD and deploy the project to the cluster. Set `IMG` with
-`make deploy` to use the image you just pushed:
+1. Create a project directory for your project and initialize the project:
 
-```sh
-make install
-make deploy IMG=<some-registry>/<project-name>:<tag>
-```
+  ```sh
+  mkdir memcached-operator
+  cd memcached-operator
+  operator-sdk init --domain example.com --repo github.com/example/memcached-operator
+  ```
 
-### Create a sample custom resource
+1. Create a simple Memcached API:
 
-Create a sample CR:
-```sh
-kubectl apply -f config/samples/cache_v1_memcached.yaml 
-```
+  ```sh
+  operator-sdk create api --group cache --version v1alpha1 --kind Memcached --resource --controller
+  ```
 
-Watch for the CR be reconciled by the operator:
-```
-kubectl logs deployment.apps/memcached-operator-controller-manager -n memcached-operator-system -c manager
-```
+1. Build and push your operator's image:
 
-## Clean up
+  ```sh
+  make docker-build docker-push IMG="example.com/memcached-operator:v0.0.1"
+  ```
 
-Delete the CR to uninstall memcached:
-```sh 
-kubectl delete -f config/samples/cache_v1_memcached.yaml
-```
+### OLM deployment
 
-Uninstall the operator and its CRDs:
-```sh
-kustomize build config/default | kubectl delete -f -
-```
+1. Install [OLM][doc-olm]:
+
+  ```sh
+  operator-sdk olm install
+  ```
+
+1. Bundle your operator, then build and push the bundle image (defaults to `example.com/memcached-operator-bundle:v0.0.1`):
+
+  ```sh
+  make bundle IMG="example.com/memcached-operator:v0.0.1"
+  make bundle-build bundle-push
+  ```
+
+1. Run your bundle. If your bundle image is hosted in a registry that is private and/or
+has a custom CA, these [configuration steps][image-reg-config] must be complete.
+
+  ```sh
+  operator-sdk run bundle example.com/memcached-operator-bundle:v0.0.1
+  ```
+
+1. Create a sample Memcached custom resource:
+
+  ```console
+  $ kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+  memcached.cache.example.com/memcached-sample created
+  ```
+
+1. Uninstall the operator:
+
+  ```sh
+  operator-sdk cleanup memcached-operator
+  ```
+
+
+### Direct deployment
+
+1. Deploy your operator:
+
+  ```sh
+  make deploy IMG="example.com/memcached-operator:v0.0.1"
+  ```
+
+1. Create a sample Memcached custom resource:
+
+  ```console
+  $ kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+  memcached.cache.example.com/memcached-sample created
+  ```
+
+1. Uninstall the operator:
+
+  ```sh
+  make undeploy
+  ```
+
 
 ## Next Steps
-Read the [tutorial][tutorial] for an in-depth walkthough of building a Go operator.
 
-[go_tool]:https://golang.org/dl/
-[docker_tool]:https://docs.docker.com/install/
-[kubectl_tool]:https://kubernetes.io/docs/tasks/tools/install-kubectl/
-[operator_install]: /docs/installation/
-[tutorial]: /docs/building-operators/golang/tutorial/ 
+Read the [full tutorial][tutorial] for an in-depth walkthough of building a Go operator.
 
+
+[install-guide]:/docs/building-operators/golang/installation
+[image-reg-config]:/docs/olm-integration/cli-overview#private-bundle-and-catalog-image-registries
+[doc-olm]:/docs/olm-integration/quickstart-bundle/#enabling-olm
+[tutorial]:/docs/building-operators/golang/tutorial/

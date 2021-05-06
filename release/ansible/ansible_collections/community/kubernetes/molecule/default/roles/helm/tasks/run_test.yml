@@ -12,6 +12,9 @@
 - name: "Install {{ helm_version }}"
   include_tasks: install.yml
 
+- name: "Ensure we honor the environment variables"
+  include_tasks: test_read_envvars.yml
+
 - name: tests_repository
   include_tasks: tests_repository.yml
 
@@ -23,6 +26,16 @@
     - from_local_path
     - from_repository
     - from_url
+
+- name: Test helm plugin
+  include_tasks: tests_helm_plugin.yml
+
+- name: Test helm diff
+  include_tasks: tests_helm_diff.yml
+
+# https://github.com/ansible-collections/community.kubernetes/issues/296
+- name: Test Skip CRDS feature in helm chart install
+  include_tasks: test_crds.yml
 
 - name: Clean helm install
   file:

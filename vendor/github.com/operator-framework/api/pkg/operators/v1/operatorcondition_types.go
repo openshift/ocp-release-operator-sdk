@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	// OperatorUpgradeable indicates that the operator is upgradeable
-	OperatorUpgradeable string = "OperatorUpgradeable"
+	// Upgradeable indicates that the operator is upgradeable
+	Upgradeable string = "Upgradeable"
 )
 
 // OperatorConditionSpec allows a cluster admin to convey information about the state of an operator to OLM, potentially overriding state reported by the operator.
@@ -25,6 +25,7 @@ type OperatorConditionStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +kubebuilder:storageversion
+// +kubebuilder:resource:shortName=condition,categories=olm
 // +kubebuilder:subresource:status
 // OperatorCondition is a Custom Resource of type `OperatorCondition` which is used to convey information to OLM about the state of an operator.
 type OperatorCondition struct {

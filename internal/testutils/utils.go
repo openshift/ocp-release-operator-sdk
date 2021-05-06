@@ -15,6 +15,7 @@
 package testutils
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -28,7 +29,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	kbtestutils "sigs.k8s.io/kubebuilder/v2/test/e2e/utils"
+	kbtestutils "sigs.k8s.io/kubebuilder/v3/test/e2e/utils"
 )
 
 const BinaryName = "operator-sdk"
@@ -148,7 +149,7 @@ func ReplaceRegexInFile(path, match, replace string) error {
 		return err
 	}
 	s := matcher.ReplaceAllString(string(b), replace)
-	if err != nil {
+	if s == string(b) {
 		return errors.New("unable to find the content to be replaced")
 	}
 	err = ioutil.WriteFile(path, []byte(s), info.Mode())
@@ -193,10 +194,20 @@ func UncommentCode(filename, target, prefix string) error {
 		return err
 	}
 
-	strs := strings.Split(target, "\n")
-	for _, str := range strs {
-		_, err := out.WriteString(strings.TrimPrefix(str, prefix) + "\n")
+	scanner := bufio.NewScanner(bytes.NewBufferString(target))
+	if !scanner.Scan() {
+		return nil
+	}
+	for {
+		_, err := out.WriteString(strings.TrimPrefix(scanner.Text(), prefix))
 		if err != nil {
+			return err
+		}
+		// Avoid writing a newline in case the previous line was the last in target.
+		if !scanner.Scan() {
+			break
+		}
+		if _, err := out.WriteString("\n"); err != nil {
 			return err
 		}
 	}

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ansible-collections/community.kubernetes/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/community.kubernetes/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/community.kubernetes)](https://codecov.io/gh/ansible-collections/community.kubernetes)
 
-This repo hosts the `community.kubernetes` Ansible Collection.
+This repo hosts the `community.kubernetes` (a.k.a. `kubernetes.core`) Ansible Collection.
 
 The collection includes a variety of Ansible content to help automate the management of applications in Kubernetes and OpenShift clusters, as well as the provisioning and maintenance of clusters themselves.
 
@@ -11,31 +11,34 @@ The collection includes a variety of Ansible content to help automate the manage
 Click on the name of a plugin or module to view that content's documentation:
 
   - **Connection Plugins**:
-    - [kubectl](https://docs.ansible.com/ansible/latest/plugins/connection/kubectl.html)
+    - [kubectl](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/kubectl_connection.html)
   - **Filter Plugins**:
     - [k8s_config_resource_name](https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html#kubernetes-filters)
   - **Inventory Source**:
-    - [k8s](https://docs.ansible.com/ansible/latest/plugins/inventory/k8s.html)
-    - [openshift](https://docs.ansible.com/ansible/latest/plugins/inventory/openshift.html)
+    - [k8s](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_inventory.html)
+    - [openshift](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/openshift_inventory.html)
   - **Lookup Plugins**:
-    - [k8s](https://docs.ansible.com/ansible/latest/plugins/lookup/k8s.html)
+    - [k8s](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_lookup.html)
   - **Modules**:
-    - [k8s](https://docs.ansible.com/ansible/latest/modules/k8s_module.html)
-    - [k8s_auth](https://docs.ansible.com/ansible/latest/modules/k8s_auth_module.html)
-    - [k8s_exec](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/k8s_exec.py)
-    - [k8s_log](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/k8s_log.py)
-    - [k8s_info](https://docs.ansible.com/ansible/latest/modules/k8s_info_module.html)
-    - [k8s_scale](https://docs.ansible.com/ansible/latest/modules/k8s_scale_module.html)
-    - [k8s_service](https://docs.ansible.com/ansible/latest/modules/k8s_service_module.html)
-    - [helm](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm.py)
-    - [helm_info](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm_info.py)
-    - [helm_repository](https://github.com/ansible-collections/community.kubernetes/blob/master/plugins/modules/helm_repository.py)
+    - [k8s](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_module.html)
+    - [k8s_auth](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_auth_module.html)
+    - [k8s_cluster_info](https://github.com/ansible-collections/community.kubernetes/blob/main/plugins/modules/k8s_cluster_info.py)
+    - [k8s_exec](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_exec_module.html)
+    - [k8s_info](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_info_module.html)
+    - [k8s_log](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_log_module.html)
+    - [k8s_scale](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_scale_module.html)
+    - [k8s_service](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/k8s_service_module.html)
+    - [helm](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/helm_module.html)
+    - [helm_info](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/helm_info_module.html)
+    - [helm_plugin](https://github.com/ansible-collections/community.kubernetes/blob/main/plugins/modules/helm_plugin.py)
+    - [helm_plugin_info](https://github.com/ansible-collections/community.kubernetes/blob/main/plugins/modules/helm_plugin_info.py)
+    - [helm_repository](https://docs.ansible.com/ansible/2.10/collections/community/kubernetes/helm_repository_module.html)
 
 ## Installation and Usage
 
 ### Installing the Collection from Ansible Galaxy
 
-Before using the Kuberentes collection, you need to install it with the Ansible Galaxy CLI:
+Before using the Kubernetes collection, you need to install it with the Ansible Galaxy CLI:
 
     ansible-galaxy collection install community.kubernetes
 
@@ -45,7 +48,7 @@ You can also include it in a `requirements.yml` file and install it via `ansible
 ---
 collections:
   - name: community.kubernetes
-    version: 0.11.1
+    version: 1.2.1
 ```
 
 ### Installing the OpenShift Python Library
@@ -126,43 +129,52 @@ For documentation on how to use individual modules and other content included in
 
 If you want to develop new content for this collection or improve what's already here, the easiest way to work on the collection is to clone it into one of the configured [`COLLECTIONS_PATHS`](https://docs.ansible.com/ansible/latest/reference_appendices/config.html#collections-paths), and work on it there.
 
+See [Contributing to community.kubernetes](CONTRIBUTING.md).
+
 ### Testing with `ansible-test`
 
 The `tests` directory contains configuration for running sanity and integration tests using [`ansible-test`](https://docs.ansible.com/ansible/latest/dev_guide/testing_integration.html).
 
 You can run the collection's test suites with the commands:
 
-    ansible-test sanity --docker -v --color
-    ansible-test integration --docker -v --color
+    make test-sanity
+    make test-integration
 
 ### Testing with `molecule`
 
-There are also integration tests in the `molecule` directory which are meant to be run against a local Kubernetes cluster, e.g. using [KinD](https://kind.sigs.k8s.io) or [Minikube](https://minikube.sigs.k8s.io). To run the tests, set up a local cluster, then run Molecule:
+There are also integration tests in the `molecule` directory which are meant to be run against a local Kubernetes cluster, e.g. using [KinD](https://kind.sigs.k8s.io) or [Minikube](https://minikube.sigs.k8s.io). To setup a local cluster using KinD and run Molecule:
 
     kind create cluster
-    molecule test
+    make test-molecule
 
 ## Publishing New Versions
 
-The current process for publishing new versions of the Kubernetes Collection is manual, and requires a user who has access to the `community.kubernetes` namespace on Ansible Galaxy to publish the build artifact. See [Issue #43](https://github.com/ansible-collections/community.kubernetes/issues/43) for progress in automating this process.
+Releases are automatically built and pushed to Ansible Galaxy for any new tag. Before tagging a release, make sure to do the following:
 
-  1. Ensure you're running Ansible from devel, so the [`build_ignore` key](https://github.com/ansible/ansible/issues/67130) in `galaxy.yml` is used.
-  1. Run `git clean -x -d -f` in this repository's directory to clean out any extra files which should not be included.
-  1. Update `galaxy.yml` and this README's `requirements.yml` example with the new `version` for the collection.
-  1. Update the CHANGELOG:
-    1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
-    1. Make sure there are fragments for all known changes in `changelogs/fragments`.
-    1. Run `antsibull-changelog release`.
-  1. Commit the changes and create a PR with the changes. Wait for tests to pass, then merge it once they have.
-  1. Tag the version in Git and push to GitHub.
-  1. Run the following commands to build and release the new version on Galaxy:
-
-     ```
-     ansible-galaxy collection build
-     ansible-galaxy collection publish ./community-kubernetes-$VERSION_HERE.tar.gz
-     ```
+  1. Update the version in the following places:
+     1. The `version` in `galaxy.yml`
+     2. This README's `requirements.yml` example
+     3. The `DOWNSTREAM_VERSION` in `utils/downstream.sh`
+     4. The `VERSION` in `Makefile`
+  2. Update the CHANGELOG:
+     1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
+     2. Make sure there are fragments for all known changes in `changelogs/fragments`.
+     3. Run `antsibull-changelog release`.
+  3. Commit the changes and create a PR with the changes. Wait for tests to pass, then merge it once they have.
+  4. Tag the version in Git and push to GitHub.
+  5. Manually build and release the `kubernetes.core` collection (see following section).
 
 After the version is published, verify it exists on the [Kubernetes Collection Galaxy page](https://galaxy.ansible.com/community/kubernetes).
+
+### Publishing `kubernetes.core`
+
+Until the contents of repository are moved into a new `kubernetes.core` repository on GitHub, this repository is the source of both the `kubernetes.core` and `community.kubernetes` repositories on Ansible Galaxy.
+
+To publish the `kubernetes.core` collection on Ansible Galaxy, do the following:
+
+  1. Run `make downstream-release` (on macOS, add `LC_ALL=C` before the command).
+
+The process for uploading a supported release to Automation Hub is documented separately.
 
 ## More Information
 

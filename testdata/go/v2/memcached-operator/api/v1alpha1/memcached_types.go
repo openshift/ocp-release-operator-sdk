@@ -1,5 +1,5 @@
 /*
-Copyright 2020.
+Copyright 2021.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ type MemcachedSpec struct {
 	// Size defines the number of Memcached instances
 	Size int32 `json:"size,omitempty"`
 
-	// Foo is an example field of Memcached. Edit Memcached_types.go to remove/update
+	// Foo is an example field of Memcached. Edit memcached_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
 }
 
@@ -44,8 +44,8 @@ type MemcachedStatus struct {
 	Nodes []string `json:"nodes,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
 // Memcached is the Schema for the memcacheds API
 type Memcached struct {
@@ -56,7 +56,7 @@ type Memcached struct {
 	Status MemcachedStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
 // MemcachedList contains a list of Memcached
 type MemcachedList struct {

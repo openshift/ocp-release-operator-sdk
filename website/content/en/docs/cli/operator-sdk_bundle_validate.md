@@ -11,6 +11,11 @@ The 'operator-sdk bundle validate' command can validate both content and format 
 image or an operator bundle directory on-disk containing operator metadata and manifests. This command will exit
 with an exit code of 1 if any validation errors arise, and 0 if only warnings arise or all validators pass.
 
+A valid bundle is defined by the bundle spec (linked below), therefore the default validator ensures a bundle conforms to	
+that spec. If you want to ensure that your bundle is valid for an optional superset of requirements such as to those
+required to publish your operator on operatorhub.io, then you will need to run one or more supported optional validators.
+Set '--list-optional' to list which optional validators are supported, and how they are grouped by label.
+	
 More information about operator bundles and metadata:
 https://github.com/operator-framework/operator-registry/blob/master/docs/design/operator-bundle.md
 
@@ -49,7 +54,14 @@ To list and run optional validators, which are specified by a label selector:
   NAME           LABELS                     DESCRIPTION
   operatorhub    name=operatorhub           OperatorHub.io metadata validation
                  suite=operatorframework
+
+To validate a bundle against the entire suite of validators for Operator Framework, in addition to required bundle validators:
+	
   $ operator-sdk bundle validate ./bundle --select-optional suite=operatorframework
+
+To validate a bundle against the validator for operatorhub.io specifically, in addition to required bundle validators:
+	
+  $ operator-sdk bundle validate ./bundle --select-optional name=operatorhub
 
 ```
 
@@ -59,13 +71,15 @@ To list and run optional validators, which are specified by a label selector:
   -h, --help                     help for validate
   -b, --image-builder string     Tool to pull and unpack bundle images. Only used when validating a bundle image. One of: [docker, podman, none] (default "docker")
       --list-optional            List all optional validators available. When set, no validators will be run
+  -o, --output string            Result format for results. One of: [text, json-alpha1]. Note: output format types containing "alphaX" are subject to change and not covered by guarantees of stable APIs. (default "text")
       --select-optional string   Label selector to select optional validators to run. Run this command with '--list-optional' to list available optional validators
 ```
 
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

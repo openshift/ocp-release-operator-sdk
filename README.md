@@ -318,3 +318,7 @@ Let's walk through an example. Assume we need to patch
 [upstream_repo]:https://github.com/operator-framework/operator-sdk/
 [license_file]:./LICENSE
 [sdk-docs]: https://sdk.operatorframework.io
+[operator-framework-community]: https://github.com/operator-framework/community
+[operator-framework-communication]: https://github.com/operator-framework/community#get-involved
+[operator-framework-meetings]: https://github.com/operator-framework/community#meetings
+[contribution-docs]: https://sdk.operatorframework.io/docs/contribution-guidelines/

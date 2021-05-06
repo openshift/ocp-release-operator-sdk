@@ -5,10 +5,6 @@ title: "operator-sdk generate kustomize"
 
 Contains subcommands that generate operator-framework kustomize data for the operator
 
-### Synopsis
-
-Contains subcommands that generate operator-framework kustomize data for the operator
-
 ### Options
 
 ```
@@ -18,7 +14,8 @@ Contains subcommands that generate operator-framework kustomize data for the ope
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

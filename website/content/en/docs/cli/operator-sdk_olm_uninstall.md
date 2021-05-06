@@ -5,10 +5,6 @@ title: "operator-sdk olm uninstall"
 
 Uninstall Operator Lifecycle Manager from your cluster
 
-### Synopsis
-
-Uninstall Operator Lifecycle Manager from your cluster
-
 ```
 operator-sdk olm uninstall [flags]
 ```
@@ -25,7 +21,8 @@ operator-sdk olm uninstall [flags]
 ### Options inherited from parent commands
 
 ```
-      --verbose   Enable verbose logging
+      --plugins strings   plugin keys to be used for this subcommand execution
+      --verbose           Enable verbose logging
 ```
 
 ### SEE ALSO

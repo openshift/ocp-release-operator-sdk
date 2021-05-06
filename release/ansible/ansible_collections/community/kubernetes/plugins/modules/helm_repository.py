@@ -11,7 +11,7 @@ DOCUMENTATION = r'''
 ---
 module: helm_repository
 
-short_description: Add and remove Helm repository
+short_description: Manage Helm repositories.
 
 version_added: "0.11.0"
 
@@ -59,7 +59,7 @@ options:
   repo_state:
     choices: ['present', 'absent']
     description:
-      - Desirated state of repository.
+      - Desired state of repository.
     required: false
     default: present
     aliases: [ state ]
@@ -67,13 +67,49 @@ options:
 '''
 
 EXAMPLES = r'''
-- name: Add default repository
+- name: Add a repository
   community.kubernetes.helm_repository:
     name: stable
-    repo_url: https://kubernetes-charts.storage.googleapis.com
+    repo_url: https://kubernetes.github.io/ingress-nginx
+
+- name: Add Red Hat Helm charts repository
+  community.kubernetes.helm_repository:
+    name: redhat-charts
+    repo_url: https://redhat-developer.github.com/redhat-helm-charts
 '''
 
-RETURN = r''' # '''
+RETURN = r'''
+stdout:
+  type: str
+  description: Full `helm` command stdout, in case you want to display it or examine the event log
+  returned: always
+  sample: '"bitnami" has been added to your repositories'
+stdout_lines:
+  type: list
+  description: Full `helm` command stdout in list, in case you want to display it or examine the event log
+  returned: always
+  sample: ["\"bitnami\" has been added to your repositories"]
+stderr:
+  type: str
+  description: Full `helm` command stderr, in case you want to display it or examine the event log
+  returned: always
+  sample: ''
+stderr_lines:
+  type: list
+  description: Full `helm` command stderr in list, in case you want to display it or examine the event log
+  returned: always
+  sample: [""]
+command:
+  type: str
+  description: Full `helm` command built by this module, in case you want to re-run the command outside the module or debug a problem.
+  returned: always
+  sample: '/usr/local/bin/helm repo add bitnami https://charts.bitnami.com/bitnami'
+msg:
+  type: str
+  description: Error message returned by `helm` command
+  returned: on failure
+  sample: 'Repository already have a repository named bitnami'
+'''
 
 import traceback
 
@@ -85,8 +121,7 @@ except ImportError:
     IMP_YAML = False
 
 from ansible.module_utils.basic import AnsibleModule, missing_required_lib
-
-module = None
+from ansible_collections.community.kubernetes.plugins.module_utils.helm import run_helm
 
 
 # Get repository from all repositories added
@@ -99,10 +134,10 @@ def get_repository(state, repo_name):
 
 
 # Get repository status
-def get_repository_status(command, repository_name):
+def get_repository_status(module, command, repository_name):
     list_command = command + " repo list --output=yaml"
 
-    rc, out, err = module.run_command(list_command)
+    rc, out, err = run_helm(module, list_command, fails_on_error=False)
 
     # no repo => rc=1 and 'no repositories to show' in output
     if rc == 1 and "no repositories to show" in err:
@@ -172,7 +207,7 @@ def main():
     else:
         helm_cmd = module.get_bin_path('helm', required=True)
 
-    repository_status = get_repository_status(helm_cmd, repo_name)
+    repository_status = get_repository_status(module, helm_cmd, repo_name)
 
     if repo_state == "absent" and repository_status is not None:
         helm_cmd = delete_repository(helm_cmd, repo_name)
@@ -189,7 +224,7 @@ def main():
     elif not changed:
         module.exit_json(changed=False, repo_name=repo_name, repo_url=repo_url)
 
-    rc, out, err = module.run_command(helm_cmd)
+    rc, out, err = run_helm(module, helm_cmd)
 
     if repo_password is not None:
         helm_cmd = helm_cmd.replace(repo_password, '******')

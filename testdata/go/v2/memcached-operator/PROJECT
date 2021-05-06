@@ -1,11 +1,22 @@
 domain: example.com
-layout: go.kubebuilder.io/v2
+layout:
+- go.kubebuilder.io/v2
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
 projectName: memcached-operator
 repo: github.com/example/memcached-operator
 resources:
-- group: cache
+- api:
+    crdVersion: v1beta1
+    namespaced: true
+  controller: true
+  domain: example.com
+  group: cache
   kind: Memcached
+  path: github.com/example/memcached-operator/api/v1alpha1
   version: v1alpha1
-version: 3-alpha
-plugins:
-  go.sdk.operatorframework.io/v2-alpha: {}
+  webhooks:
+    defaulting: true
+    webhookVersion: v1beta1
+version: "3"
