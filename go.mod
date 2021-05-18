@@ -11,10 +11,11 @@ require (
 	github.com/markbates/inflect v1.0.4
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.5
-	github.com/operator-framework/api v0.8.0
-	github.com/operator-framework/operator-lib v0.4.0
+	github.com/operator-framework/api v0.8.1-0.20210414192051-b51286920978
+	github.com/operator-framework/operator-lib v0.4.1
 	github.com/operator-framework/operator-registry v1.15.3
 	github.com/prometheus/client_golang v1.7.1
+	github.com/prometheus/client_model v0.2.0
 	github.com/sergi/go-diff v1.1.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/afero v1.2.2
@@ -23,8 +24,8 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.6.1
 	github.com/thoas/go-funk v0.8.0
-	golang.org/x/mod v0.3.0
-	golang.org/x/tools v0.0.0-20201224043029-2b0845dc783e
+	golang.org/x/mod v0.4.2
+	golang.org/x/tools v0.1.0
 	gomodules.xyz/jsonpatch/v3 v3.0.1
 	helm.sh/helm/v3 v3.4.1
 	k8s.io/api v0.20.2
@@ -34,9 +35,9 @@ require (
 	k8s.io/client-go v0.20.2
 	k8s.io/kubectl v0.20.2
 	rsc.io/letsencrypt v0.0.3 // indirect
-	sigs.k8s.io/controller-runtime v0.8.2
+	sigs.k8s.io/controller-runtime v0.8.3
 	sigs.k8s.io/controller-tools v0.5.0
-	sigs.k8s.io/kubebuilder/v3 v3.0.0-alpha.0.0.20210411191801-c7525d748153
+	sigs.k8s.io/kubebuilder/v3 v3.0.0-alpha.0.0.20210503171920-2b857cb37698
 	sigs.k8s.io/yaml v1.2.0
 )
 
