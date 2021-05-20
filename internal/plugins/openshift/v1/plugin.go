@@ -19,11 +19,9 @@ import (
 	cfgv2 "sigs.k8s.io/kubebuilder/v3/pkg/config/v2"
 	cfgv3 "sigs.k8s.io/kubebuilder/v3/pkg/config/v3"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
-
-	"github.com/operator-framework/operator-sdk/internal/plugins"
 )
 
-const pluginName = "openshift" + plugins.DefaultNameQualifier
+const pluginName = "sdk.x-openshift.io"
 
 var (
 	pluginVersion            = plugin.Version{Number: 1}
