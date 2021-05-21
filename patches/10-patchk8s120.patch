@@ -1,0 +1,12 @@
+diff -up ./Makefile.patch120 ./Makefile
+--- ./Makefile.patch120	2021-05-21 15:26:23.566008461 -0400
++++ ./Makefile	2021-05-21 15:26:38.657220323 -0400
+@@ -9,7 +9,7 @@ export IMAGE_VERSION = v1.7.2
+ export SIMPLE_VERSION = v1.7.2-ocp
+ export GIT_VERSION = $(SIMPLE_VERSION)
+ export GIT_COMMIT = $(shell git rev-parse HEAD)
+-export K8S_VERSION = 1.19.4
++export K8S_VERSION = 1.20.2
+ 
+ # Build settings
+ export TOOLS_DIR = tools/bin
