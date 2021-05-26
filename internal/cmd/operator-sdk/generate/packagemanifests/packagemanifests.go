@@ -30,9 +30,6 @@ import (
 
 const (
 	longHelp = `
-Note: while the package manifests format is not yet deprecated, the operator-framework is migrated
-towards using bundles by default. Run 'operator-sdk generate bundle -h' for more information.
-
 This command generates a set of manifests in a versioned directory and a package manifest file for
 your operator. Each versioned directory consists of a ClusterServiceVersion (CSV), CustomResourceDefinitions (CRDs),
 and manifests not part of the CSV but required by the operator.
@@ -180,13 +177,13 @@ func (c packagemanifestsCmd) run() error {
 	// If no CSV was initially read, a kustomize base can be used at the default base path.
 	// Only read from kustomizeDir if a base exists so users can still generate a barebones CSV.
 	baseCSVPath := filepath.Join(c.kustomizeDir, "bases", c.packageName+".clusterserviceversion.yaml")
-	if len(col.ClusterServiceVersions) == 0 && genutil.IsExist(baseCSVPath) {
+	if noCSVStdin := len(col.ClusterServiceVersions) == 0; noCSVStdin && genutil.IsExist(baseCSVPath) {
 		base, err := bases.ClusterServiceVersion{BasePath: baseCSVPath}.GetBase()
 		if err != nil {
 			return fmt.Errorf("error reading CSV base: %v", err)
 		}
 		col.ClusterServiceVersions = append(col.ClusterServiceVersions, *base)
-	} else {
+	} else if noCSVStdin {
 		c.println("Building a ClusterServiceVersion without an existing base")
 	}
 

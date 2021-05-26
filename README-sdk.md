@@ -1,6 +1,7 @@
 <img src="website/static/operator_logo_sdk_color.svg" height="125px"></img>
 
-[![Build Status](https://travis-ci.com/operator-framework/operator-sdk.svg?branch=master)](https://travis-ci.com/operator-framework/operator-sdk)
+
+[![Build Status](https://github.com/operator-framework/operator-sdk/workflows/deploy/badge.svg)](https://github.com/operator-framework/operator-sdk/actions)
 [![License](http://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Go Report Card](https://goreportcard.com/badge/github.com/operator-framework/operator-sdk)](https://goreportcard.com/report/github.com/operator-framework/operator-sdk)
 
@@ -16,7 +17,7 @@ Operators, in an effective, automated, and scalable way. Read more in
 the [introduction blog post][of-blog].
 
 [Operators][operator-link] make it easy to manage complex stateful
-applications on top of Kubernetes. However writing an operator today can
+applications on top of Kubernetes. However writing an Operator today can
 be difficult because of challenges such as using low level APIs, writing
 boilerplate, and a lack of modularity which leads to duplication.
 
@@ -26,40 +27,39 @@ operators easier by providing:
 
 - High level APIs and abstractions to write the operational logic more intuitively
 - Tools for scaffolding and code generation to bootstrap a new project fast
-- Extensions to cover common operator use cases
+- Extensions to cover common Operator use cases
 
 ## Dependency and platform support
 
 ### Go version
 
-Release binaries will be built with the Go compiler version specified in the Operator SDK's [prerequisites section][doc-readme-prereqs].
+Release binaries will be built with the Go compiler version specified in the [developer guide][dev-guide-prereqs].
+A Go Operator project's Go version can be found in its `go.mod` file.
+
+[dev-guide-prereqs]:https://sdk.operatorframework.io/docs/contribution-guidelines/developer-guide#prerequisites
 
 ### Kubernetes versions
 
-As the Operator SDK interacts directly with the Kubernetes API, certain API features are assumed to exist in the target cluster.
-The currently supported Kubernetes version will always be listed in the SDK [prerequisites section][doc-readme-prereqs].
+Supported Kubernetes versions for your Operator project or relevant binary can be determined
+by following this [compatibility guide][k8s-compat].
+
+[k8s-compat]:https://sdk.operatorframework.io/docs/overview#kubernetes-version-compatibility
 
 ### Platforms
 
-The following matrix defines which architectures are supported for GNU Linux:
+The set of supported platforms for all binaries and images can be found in [these tables][platforms].
 
-|                               |     `amd64`     |     `arm64`     |    `ppc64le`    |     `s390x`     |
-|-------------------------------|-----------------|-----------------|-----------------|-----------------|
-| `operator-sdk`                | ✓               | ✓               | ✓               | ✓               |
-| `ansible-operator`            | ✓               | ✓               | ✓               | ✓               |
-| `helm-operator`               | ✓               | ✓               | ✓               | ✓               |
-| `scorecard-test` image        | ✓               | ✓               | ✓               | ✓               |
-| `scorecard-test-kuttl` image  | ✓               | ✓               | ✓               | -               |
+[platforms]:https://sdk.operatorframework.io/docs/overview#platform-support
 
-The following matrix defines which architectures are supported for MacOS Darwin:
+## Community and how to get involved
 
-|                               |     `amd64`     |
-|-------------------------------|-----------------|
-| `operator-sdk`                | ✓               |
-| `ansible-operator`            | ✓               |
-| `helm-operator`               | ✓               |
+- [Operator framework community][operator-framework-community]
+- [Communication channels][operator-framework-communication]
+- [Project meetings][operator-framework-meetings]
 
-Support for the Windows platform is not on the roadmap at this time.
+## How to contribute
+
+Check out the [contributor documentation][contribution-docs].
 
 ## License
 
@@ -68,6 +68,10 @@ Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file f
 [controller-runtime]: https://github.com/kubernetes-sigs/controller-runtime
 [license_file]:./LICENSE
 [of-home]: https://github.com/operator-framework
-[of-blog]: https://coreos.com/blog/introducing-operator-framework
-[operator-link]: https://coreos.com/operators/
+[of-blog]: https://www.openshift.com/blog/introducing-the-operator-framework
+[operator-link]: https://kubernetes.io/docs/concepts/extend-kubernetes/operator/
 [sdk-docs]: https://sdk.operatorframework.io
+[operator-framework-community]: https://github.com/operator-framework/community
+[operator-framework-communication]: https://github.com/operator-framework/community#get-involved
+[operator-framework-meetings]: https://github.com/operator-framework/community#meetings
+[contribution-docs]: https://sdk.operatorframework.io/docs/contribution-guidelines/

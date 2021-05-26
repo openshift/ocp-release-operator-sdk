@@ -1,0 +1,12 @@
+diff -up ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.nodocker ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go
+--- ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.nodocker	2021-05-19 18:13:17.034968912 -0400
++++ ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go	2021-05-19 18:13:30.060005755 -0400
+@@ -69,7 +69,7 @@ var _ = Describe("Running pkgmanToBundle
+ 
+ 			p.pkgmanifestDir = pkgManDir
+ 			p.outputDir = outputDir
+-			p.baseImg = "quay.io/example/memcached-operator"
++			// p.baseImg = "quay.io/example/memcached-operator"
+ 
+ 			err := p.run()
+ 			Expect(err).NotTo(HaveOccurred())
