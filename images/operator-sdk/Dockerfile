@@ -1,5 +1,5 @@
 # Build the operator-sdk binary
-FROM --platform=$BUILDPLATFORM golang:1.15 as builder
+FROM --platform=$BUILDPLATFORM golang:1.16 as builder
 ARG TARGETARCH
 
 WORKDIR /workspace
@@ -17,9 +17,18 @@ COPY . .
 RUN GOOS=linux GOARCH=$TARGETARCH make build/operator-sdk
 
 # Final image.
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.3-298.1618432845
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4
 
-RUN microdnf install -y golang make which
+ENV GO_VERSION 1.16.4
+
+ARG TARGETARCH
+RUN microdnf install -y make which tar gzip
+RUN curl -sSLo /tmp/go.tar.gz https://golang.org/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz \
+	&& rm -rf /usr/local/go \
+	&& tar -C /usr/local -xzf /tmp/go.tar.gz \
+	&& ln -sf /usr/local/go/bin/* /usr/local/bin/ \
+	&& rm -f /tmp/go.tar.gz \
+	&& go version
 
 COPY --from=builder /workspace/build/operator-sdk /usr/local/bin/operator-sdk
 
