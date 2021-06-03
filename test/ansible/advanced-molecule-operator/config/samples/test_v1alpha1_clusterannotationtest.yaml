@@ -1,7 +1,7 @@
 apiVersion: test.example.com/v1alpha1
-kind: CaseTest
+kind: ClusterAnnotationTest
 metadata:
-  name: casetest-sample
+  name: clusterannotationtest-sample
 spec:
   # Add fields here
   foo: bar
