@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM --platform=$BUILDPLATFORM golang:1.15 as builder
+FROM --platform=$BUILDPLATFORM golang:1.16 as builder
 ARG TARGETARCH
 
 WORKDIR /workspace
@@ -17,7 +17,7 @@ COPY . .
 RUN GOOS=linux GOARCH=$TARGETARCH make build/ansible-operator
 
 # Final image.
-FROM quay.io/operator-framework/ansible-operator-base:v1.7.x-eef267f7e6a2f57df6a353fc3214899d7ca1db99
+FROM quay.io/operator-framework/ansible-operator-base:master-1851810cadc2bfeeb106d8fcaad43f3d6d6d817c
 
 ENV HOME=/opt/ansible \
     USER_NAME=ansible \

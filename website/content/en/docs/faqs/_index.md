@@ -12,6 +12,7 @@ Operator SDK offers additional features on top of the basic project scaffolding 
 - [Operator Lifecycle Manager][olm], an installation and runtime management system for operators
 - [OperatorHub][operatorhub.io], a community hub for publishing operators
 - Operator SDK [scorecard][scorecard-doc], a tool for ensuring operator best-practices and developing cluster tests
+
 Operator SDK supports operator types other than Go as well, such as Ansible and Helm.
 
 For further context about the relationship between Kubebuilder and Operator SDK, see [this blog post][operator-sdk-reaches-v1.0].
@@ -141,7 +142,7 @@ SHELL := /bin/bash
 ```
 
 
-[client.Reader]:https://godoc.org/sigs.k8s.io/controller-runtime/pkg/client#Reader
+[client.Reader]:https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/client#Reader
 [controller-runtime]: https://github.com/kubernetes-sigs/controller-runtime
 [cr-faq]:https://github.com/kubernetes-sigs/controller-runtime/blob/master/FAQ.md
 [finalizer]:/docs/building-operators/golang/advanced-topics/#handle-cleanup-on-deletion

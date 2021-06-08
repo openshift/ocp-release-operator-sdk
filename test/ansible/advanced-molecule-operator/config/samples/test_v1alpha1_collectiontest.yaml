@@ -3,4 +3,5 @@ kind: CollectionTest
 metadata:
   name: collectiontest-sample
 spec:
+  # Add fields here
   foo: bar

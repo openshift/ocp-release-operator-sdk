@@ -40,6 +40,13 @@ resources:
     namespaced: true
   domain: example.com
   group: test
+  kind: ClusterAnnotationTest
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: example.com
+  group: test
   kind: ReconciliationTest
   version: v1alpha1
 - api:

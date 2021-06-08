@@ -5,4 +5,5 @@ metadata:
   annotations:
     "ansible.sdk.operatorframework.io/verbosity": "0"
 spec:
+  # Add fields here
   size: 3

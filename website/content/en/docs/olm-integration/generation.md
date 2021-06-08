@@ -42,6 +42,7 @@ Comma-separated list of keywords for your operator (required):
 ```
 
 Once this base is written, you may modify any of the fields labeled _user_ in the [fields section](#csv-fields) below.
+These values will persist when generating a bundle, so make necessary metadata changes here and not the generated bundle.
 
 **For Go Operators only:** the command parses [CSV markers][csv-markers] from Go API type definitions, located
 in `./api` for single group projects and `./apis` for multigroup projects, to populate certain CSV fields.
@@ -190,6 +191,9 @@ $ tree ./bundle
         └── config.yaml
 ```
 
+**Important:** bundle generation is supposed to be idempotent, so any changes to CSV fields able to be persisted
+(marked _(user)_ or _(marker)_ [below](#csv-fields)) must be made to the base set of manifests, typically found in `config/`.
+
 Bundle metadata in `bundle/metadata/annotations.yaml` contains information about a particular Operator version
 available in a registry. OLM uses this information to install specific Operator versions and resolve dependencies.
 That file and `bundle.Dockerfile` contain the same [annotations][bundle-metadata], the latter as `LABEL`s,
@@ -219,9 +223,10 @@ You can list all available optional validators by setting the `--list-optional` 
 
 ```console
 $ operator-sdk bundle validate --list-optional
-NAME           LABELS                     DESCRIPTION
-operatorhub    name=operatorhub           OperatorHub.io metadata validation
-               suite=operatorframework
+NAME           LABELS                                                DESCRIPTION
+operatorhub    name=operatorhub                                      OperatorHub.io metadata validation. 
+               suite=operatorframework    
+community      name=community                                        (stage: alpha) Community Operator bundle validation      
 ...
 ```
 
@@ -249,6 +254,12 @@ operator-sdk bundle validate ./bundle --select-optional suite=operatorframework 
 
 Documentation on optional validators:
 - [`operatorhub`][operatorhub_validator]
+
+**Note**: (stage: alpha) The `Community` validator allows you to validate your `bundle.Dockerfile` configuration against its specific criteria using the `image-path` optional key value:
+
+```sh 
+operator-sdk bundle validate ./bundle --select-optional name=community --optional-values=image-path=bundle.Dockerfile
+```
 
 ### Package manifests format
 
@@ -385,8 +396,8 @@ Currently all but `MultiNamespace` are supported by SDK Operators.
 - `spec.customresourcedefinitions`: any CRDs the Operator uses. Certain fields in elements of `owned` will be filled by the SDK.
     - `owned`: all CRDs the Operator deploys itself from it's bundle.
         - `name`: CRD's `metadata.name`.
-        - `kind`: CRD's `metadata.spec.names.kind`.
-        - `version`: CRD's `metadata.spec.version`.
+        - `kind`: CRD's `spec.names.kind`.
+        - `version`: CRD's `spec.version`.
         - `description` _(marker)_ : description of the CRD.
         - `displayName` _(marker)_ : display name of the CRD.
         - `resources` _(marker)_ : any Kubernetes resources used by the CRD, ex. `Pod`'s and `ConfigMap`'s.
@@ -412,6 +423,11 @@ being managed, each with a `name` and `url`.
 - `spec.icon` _(user)_ : a base64-encoded icon unique to the Operator, set in a `base64data` field with a `mediatype`.
 - `spec.maturity` _(user)_: the Operator's maturity, ex. `alpha`.
 - `spec.webhookdefinitions`: any webhooks the Operator uses.
+- `spec.relatedImages` _(user)_: a list of image tags containing SHA digests [mapped to in-CSV names][relatedimages]
+that your Operator might require to perform their functions.
+    - To get the correct tag for an image available in some remote registry, run `docker inspect --format='{{range $i, $d := .RepoDigests}}{{$d}}{{"\n"}}{{end}}'`
+    and choose the tag for the desired registry.
+- `spec.skips` _(user)_: the names of one or more CSVs that should be skipped in a catalog's upgrade graph.
 
 **\*** `metadata.name` and `spec.version` will only be automatically updated from the base CSV
 when you set `--version` when running `generate <bundle|packagemanifests>`.
@@ -428,4 +444,5 @@ when you set `--version` when running `generate <bundle|packagemanifests>`.
 [csv-markers]:/docs/building-operators/golang/references/markers
 [operatorhub]:https://operatorhub.io/
 [scorecard]:/docs/advanced-topics/scorecard
-[operatorhub_validator]: https://olm.operatorframework.io/docs/tasks/validate-package/#validation
+[operatorhub_validator]:https://olm.operatorframework.io/docs/tasks/creating-operator-bundle/#validating-your-bundle
+[relatedimages]:https://pkg.go.dev/github.com/operator-framework/api@v0.8.1/pkg/operators/v1alpha1#RelatedImage

@@ -106,6 +106,23 @@ rules:
       - update
       - watch
   ##
+  ## Rules for test.example.com/v1alpha1, Kind: ClusterAnnotationTest
+  ##
+  - apiGroups:
+      - test.example.com
+    resources:
+      - clusterannotationtests
+      - clusterannotationtests/status
+      - clusterannotationtests/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  ##
   ## Rules for test.example.com/v1alpha1, Kind: ReconciliationTest
   ##
   - apiGroups:
@@ -163,6 +180,7 @@ rules:
       - ""
     resources:
       - configmaps
+      - namespaces
     verbs:
       - create
       - delete
