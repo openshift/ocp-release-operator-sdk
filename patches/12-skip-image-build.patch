@@ -1,0 +1,11 @@
+diff -up ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.skip-image-build ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go
+--- ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.skip-image-build	2021-07-14 00:07:02.437499765 -0400
++++ ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go	2021-07-14 00:07:39.812030225 -0400
+@@ -99,6 +99,7 @@ var _ = Describe("Running pkgmanToBundle
+ 		})
+ 
+ 		It("should build image when build command is provided", func() {
++			Skip("not supported in downstream CI")
+ 			// Specify input package manifest directory and output directory
+ 			pkgManDir = filepath.Join("testdata", "packagemanifests")
+ 
