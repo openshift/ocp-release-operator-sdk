@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-openapi/spec"
+	"k8s.io/kube-openapi/pkg/validation/spec"
 	"sigs.k8s.io/kustomize/kyaml/errors"
 	"sigs.k8s.io/kustomize/kyaml/openapi/kubernetesapi"
 	"sigs.k8s.io/kustomize/kyaml/openapi/kustomizationapi"
@@ -23,6 +23,9 @@ var globalSchema openapiData
 
 // kubernetesOpenAPIVersion specifies which builtin kubernetes schema to use
 var kubernetesOpenAPIVersion string
+
+// customSchemaFile stores the custom OpenApi schema if it is provided
+var customSchema []byte
 
 // openapiData contains the parsed openapi state.  this is in a struct rather than
 // a list of vars so that it can be reset from tests.
@@ -41,10 +44,9 @@ type openapiData struct {
 	// Kubernetes schema as part of the global schema
 	noUseBuiltInSchema bool
 
-	// currentOpenAPIVersion stores the version if the kubernetes openapi data
-	// that is currently stored as the schema, so that we only reparse the
-	// schema when necessary (to speed up performance)
-	currentOpenAPIVersion string
+	// schemaInit stores whether or not we've parsed the schema already,
+	// so that we only reparse the when necessary (to speed up performance)
+	schemaInit bool
 }
 
 // ResourceSchema wraps the OpenAPI Schema.
@@ -271,6 +273,15 @@ func IsNamespaceScoped(typeMeta yaml.TypeMeta) (bool, bool) {
 	return isNamespaceScoped, found
 }
 
+// IsCertainlyClusterScoped returns true for Node, Namespace, etc. and
+// false for Pod, Deployment, etc. and kinds that aren't recognized in the
+// openapi data. See:
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
+func IsCertainlyClusterScoped(typeMeta yaml.TypeMeta) bool {
+	nsScoped, found := IsNamespaceScoped(typeMeta)
+	return found && !nsScoped
+}
+
 // SuppressBuiltInSchemaUse can be called to prevent using the built-in Kubernetes
 // schema as part of the global schema.
 // Must be called before the schema is used.
@@ -363,25 +374,20 @@ func (rs *ResourceSchema) PatchStrategyAndKeyList() (string, []string) {
 		// empty patch strategy
 		return "", []string{}
 	}
-
 	mkList, found := rs.Schema.Extensions[kubernetesMergeKeyMapList]
 	if found {
 		// mkList is []interface, convert to []string
 		mkListStr := make([]string, len(mkList.([]interface{})))
-
 		for i, v := range mkList.([]interface{}) {
 			mkListStr[i] = v.(string)
 		}
-
 		return ps.(string), mkListStr
 	}
-
 	mk, found := rs.Schema.Extensions[kubernetesMergeKeyExtensionKey]
 	if !found {
 		// no mergeKey -- may be a primitive associative list (e.g. finalizers)
 		return ps.(string), []string{}
 	}
-
 	return ps.(string), []string{mk.(string)}
 }
 
@@ -434,45 +440,77 @@ const (
 	kindKey = "kind"
 )
 
-// SetSchemaVersion sets the kubernetes OpenAPI schema version to use
-func SetSchemaVersion(openAPIField map[string]string, reset bool) error {
+// SetSchema sets the kubernetes OpenAPI schema version to use
+func SetSchema(openAPIField map[string]string, schema []byte, reset bool) error {
 	// this should only be set once
-	if kubernetesOpenAPIVersion != "" && !reset {
+	schemaIsSet := (kubernetesOpenAPIVersion != "") || customSchema != nil
+	if schemaIsSet && !reset {
 		return nil
 	}
 
-	kubernetesOpenAPIVersion = strings.ReplaceAll(openAPIField["version"], ".", "")
+	version, exists := openAPIField["version"]
+	if exists && schema != nil {
+		return fmt.Errorf("builtin version and custom schema provided, cannot use both")
+	}
+
+	if schema != nil { // use custom schema
+		customSchema = schema
+		kubernetesOpenAPIVersion = "custom"
+		return nil
+	}
+
+	// use builtin version
+	kubernetesOpenAPIVersion = strings.ReplaceAll(version, ".", "")
 	if kubernetesOpenAPIVersion == "" {
 		return nil
 	}
 	if _, ok := kubernetesapi.OpenAPIMustAsset[kubernetesOpenAPIVersion]; !ok {
 		return fmt.Errorf("the specified OpenAPI version is not built in")
 	}
+	customSchema = nil
 	return nil
 }
 
 // GetSchemaVersion returns what kubernetes OpenAPI version is being used
 func GetSchemaVersion() string {
-	if kubernetesOpenAPIVersion == "" {
+	switch {
+	case kubernetesOpenAPIVersion == "" && customSchema == nil:
 		return kubernetesOpenAPIDefaultVersion
+	case customSchema != nil:
+		return "using custom schema from file provided"
+	default:
+		return kubernetesOpenAPIVersion
 	}
-	return kubernetesOpenAPIVersion
 }
 
 // initSchema parses the json schema
 func initSchema() {
-	currentVersion := kubernetesOpenAPIVersion
-	if currentVersion == "" {
-		currentVersion = kubernetesOpenAPIDefaultVersion
+	if globalSchema.schemaInit {
+		return
 	}
-	if globalSchema.currentOpenAPIVersion != currentVersion {
-		parseSchema(currentVersion)
+	globalSchema.schemaInit = true
+
+	if customSchema != nil {
+		err := parse(customSchema)
+		if err != nil {
+			panic("invalid schema file")
+		}
+		if err = parse(kustomizationapi.MustAsset(kustomizationAPIAssetName)); err != nil {
+			// this should never happen
+			panic(err)
+		}
+		return
 	}
-	globalSchema.currentOpenAPIVersion = currentVersion
+
+	if kubernetesOpenAPIVersion == "" {
+		parseBuiltinSchema(kubernetesOpenAPIDefaultVersion)
+	} else {
+		parseBuiltinSchema(kubernetesOpenAPIVersion)
+	}
 }
 
-// parseSchema calls parse to parse the json schemas
-func parseSchema(version string) {
+// parseBuiltinSchema calls parse to parse the json schemas
+func parseBuiltinSchema(version string) {
 	if globalSchema.noUseBuiltInSchema {
 		// don't parse the built in schema
 		return
