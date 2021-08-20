@@ -15,7 +15,7 @@ export PATH=$ROOTDIR/bin:$PATH
 
 # Install kubectl client
 if ! [ -x "$(command -v kubectl)" ]; then
-    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.18.8/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
+    curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.21.2/bin/linux/amd64/kubectl && chmod +x kubectl && mv kubectl bin/
 fi
 
 # Install oc client
