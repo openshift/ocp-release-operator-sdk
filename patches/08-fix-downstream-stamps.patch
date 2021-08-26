@@ -1,7 +1,7 @@
-unchanged:
---- internal/annotations/metrics/metrics.go.fix-stamps	2021-03-26 12:57:30.000000000 -0700
-+++ internal/annotations/metrics/metrics.go	2021-03-26 12:59:43.000000000 -0700
-@@ -69,6 +69,11 @@
+diff -up ./internal/annotations/metrics/metrics.go.fix-stamps ./internal/annotations/metrics/metrics.go
+--- ./internal/annotations/metrics/metrics.go.fix-stamps	2021-08-10 22:45:43.679072014 -0400
++++ ./internal/annotations/metrics/metrics.go	2021-08-10 22:46:01.612321380 -0400
+@@ -69,6 +69,11 @@ func parseVersion(input string) string {
  		return "unknown"
  	}
  
@@ -13,22 +13,12 @@ unchanged:
  	if isUnreleased(input) {
  		version = version + "+git"
  	}
-only in patch2:
-unchanged:
---- internal/annotations/metrics/metrics_test.go.fix-stamps	2021-03-26 12:57:41.000000000 -0700
-+++ internal/annotations/metrics/metrics_test.go	2021-03-26 12:59:16.000000000 -0700
-@@ -15,6 +15,8 @@
- package metrics
- 
- import (
-+	"testing"
-+
- 	. "github.com/onsi/ginkgo"
- 	. "github.com/onsi/gomega"
- )
-@@ -36,6 +38,26 @@
+diff -up ./internal/annotations/metrics/metrics_test.go.fix-stamps ./internal/annotations/metrics/metrics_test.go
+--- ./internal/annotations/metrics/metrics_test.go.fix-stamps	2021-08-10 22:45:52.904200292 -0400
++++ ./internal/annotations/metrics/metrics_test.go	2021-08-10 22:46:17.856547260 -0400
+@@ -41,5 +41,21 @@ var _ = Describe("SDK Label helper funct
  			output := parseVersion(version)
- 			Expect(output).To(Equal("v0.18.0+git"))
+ 			Expect(output).To(Equal("unknown"))
  		})
 +		It("should extract the right downstream sdk version", func() {
 +			version := "v1.3.0-ocp"
@@ -45,11 +35,6 @@ unchanged:
 +			output := parseVersion(version)
 +			Expect(output).To(Equal("v1.3.0-ocp+git"))
 +		})
- 
++
  	})
  })
-+
-+func TestVersion(t *testing.T) {
-+	RegisterFailHandler(Fail)
-+	RunSpecs(t, "metrics Suite")
-+}

@@ -6,10 +6,10 @@
 VERSION ?= 0.0.1
 
 # CHANNELS define the bundle channels used in the bundle.
-# Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
+# Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
-# - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=preview,fast,stable)
-# - use environment variables to overwrite this value (e.g export CHANNELS="preview,fast,stable")
+# - use the CHANNELS as arg of the bundle target (e.g make bundle CHANNELS=candidate,fast,stable)
+# - use environment variables to overwrite this value (e.g export CHANNELS="candidate,fast,stable")
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
 endif
@@ -93,7 +93,7 @@ ifeq (,$(shell which kustomize 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(KUSTOMIZE)) ;\
-	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.5.4/kustomize_v3.5.4_$(OS)_$(ARCH).tar.gz | \
+	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v3.8.7/kustomize_v3.8.7_$(OS)_$(ARCH).tar.gz | \
 	tar xzf - -C bin/ ;\
 	}
 else
@@ -109,7 +109,7 @@ ifeq (,$(shell which ansible-operator 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(ANSIBLE_OPERATOR)) ;\
-	curl -sSLo $(ANSIBLE_OPERATOR) https://github.com/operator-framework/operator-sdk/releases/download/v1.8.0/ansible-operator_$(OS)_$(ARCH) ;\
+	curl -sSLo $(ANSIBLE_OPERATOR) https://github.com/operator-framework/operator-sdk/releases/download/v1.10.1/ansible-operator_$(OS)_$(ARCH) ;\
 	chmod +x $(ANSIBLE_OPERATOR) ;\
 	}
 else
