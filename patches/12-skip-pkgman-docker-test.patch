@@ -1,0 +1,11 @@
+diff -up ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.skip-pkgman-docker-test ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go
+--- ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go.skip-pkgman-docker-test	2021-08-10 23:02:30.230179742 -0400
++++ ./internal/cmd/operator-sdk/pkgmantobundle/pkgmantobundle_test.go	2021-08-10 23:07:45.879629399 -0400
+@@ -99,6 +99,7 @@ var _ = Describe("Running pkgmanToBundle
+ 		})
+ 
+ 		It("should build image when build command is provided", func() {
++			Skip("can't run docker downstream")
+ 			// Specify input package manifest directory and output directory
+ 			pkgManDir = filepath.Join("testdata", "packagemanifests")
+ 
