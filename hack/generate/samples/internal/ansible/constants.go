@@ -16,7 +16,7 @@ package ansible
 
 const roleFragment = `
 - name: start memcached
-  community.kubernetes.k8s:
+  kubernetes.core.k8s:
     definition:
       kind: Deployment
       apiVersion: apps/v1
@@ -69,8 +69,7 @@ const moleculeTaskFragment = `- name: Load CR
     wait: yes
     wait_timeout: 300
     wait_condition:
-      type: Running
-      reason: Successful
+      type: Successful
       status: "True"
 
 - name: Wait 2 minutes for memcached deployment
@@ -223,7 +222,7 @@ const originalTaskSecret = `---
 // false positive: G101: Potential hardcoded credentials (gosec)
 // nolint:gosec
 const taskForSecret = `- name: Create test service
-  community.kubernetes.k8s:
+  kubernetes.core.k8s:
     definition:
       kind: Service
       api_version: v1
@@ -259,8 +258,7 @@ const originaMemcachedMoleculeTask = `- name: Create the cache.example.com/v1alp
     wait: yes
     wait_timeout: 300
     wait_condition:
-      type: Running
-      reason: Successful
+      type: Successful
       status: "True"
   vars:
     cr_file: 'cache_v1alpha1_memcached.yaml'
@@ -311,7 +309,7 @@ const memcachedWithBlackListTask = `
     status:
       test: "hello world"
 
-- community.kubernetes.k8s:
+- kubernetes.core.k8s:
     definition:
       kind: Secret
       apiVersion: v1
@@ -322,10 +320,10 @@ const memcachedWithBlackListTask = `
         test: aGVsbG8K
 - name: Get cluster api_groups
   set_fact:
-    api_groups: "{{ lookup('community.kubernetes.k8s', cluster_info='api_groups', kubeconfig=lookup('env', 'K8S_AUTH_KUBECONFIG')) }}"
+    api_groups: "{{ lookup('kubernetes.core.k8s', cluster_info='api_groups', kubeconfig=lookup('env', 'K8S_AUTH_KUBECONFIG')) }}"
 
 - name: create project if projects are available
-  community.kubernetes.k8s:
+  kubernetes.core.k8s:
     definition:
       apiVersion: project.openshift.io/v1
       kind: Project
@@ -334,7 +332,7 @@ const memcachedWithBlackListTask = `
   when: "'project.openshift.io' in api_groups"
 
 - name: Create ConfigMap to test blacklisted watches
-  community.kubernetes.k8s:
+  kubernetes.core.k8s:
     definition:
       kind: ConfigMap
       apiVersion: v1
@@ -346,7 +344,7 @@ const memcachedWithBlackListTask = `
     state: present`
 
 const taskToDeleteConfigMap = `- name: delete configmap for test
-  community.kubernetes.k8s:
+  kubernetes.core.k8s:
     kind: ConfigMap
     api_version: v1
     name: deleteme

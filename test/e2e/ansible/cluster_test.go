@@ -23,10 +23,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	kbtestutils "sigs.k8s.io/kubebuilder/v3/test/e2e/utils"
+	kbtutil "sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 
 	"github.com/operator-framework/operator-sdk/internal/testutils"
-	"github.com/operator-framework/operator-sdk/internal/util"
 )
 
 var _ = Describe("Running ansible projects", func() {
@@ -80,7 +79,7 @@ var _ = Describe("Running ansible projects", func() {
 				if err != nil {
 					return fmt.Errorf("could not get pods: %v", err)
 				}
-				podNames := kbtestutils.GetNonEmptyLines(podOutput)
+				podNames := kbtutil.GetNonEmptyLines(podOutput)
 				if len(podNames) != 1 {
 					return fmt.Errorf("expecting 1 pod, have %d", len(podNames))
 				}
@@ -215,7 +214,7 @@ var _ = Describe("Running ansible projects", func() {
 			Eventually(verifyMemcachedScalesBack, time.Minute, time.Second).Should(Succeed())
 
 			By("updating size to 2 in the CR manifest")
-			err = util.ReplaceInFile(memcachedSampleFile, "size: 1", "size: 2")
+			err = kbtutil.ReplaceInFile(memcachedSampleFile, "size: 1", "size: 2")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("applying CR manifest with size: 2")
@@ -263,11 +262,8 @@ var _ = Describe("Running ansible projects", func() {
 			Expect(len(token)).To(BeNumerically(">", 0))
 
 			By("creating a curl pod")
-			// TODO: the flag --generator=run-pod/v1 is deprecated, however, shows that besides
-			// it should not make any difference and work locally successfully when the flag is removed
-			// the test will fail and the curl pod is not found when the flag is not used
 			cmdOpts := []string{
-				"run", "--generator=run-pod/v1", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure",
+				"run", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure",
 				"--serviceaccount", tc.Kubectl.ServiceAccount, "--",
 				"curl", "-v", "-k", "-H", fmt.Sprintf(`Authorization: Bearer %s`, token),
 				fmt.Sprintf("https://%s-controller-manager-metrics-service.%s.svc:8443/metrics", tc.ProjectName, tc.Kubectl.Namespace),

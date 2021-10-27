@@ -57,9 +57,9 @@ const pomxmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
     <maven.compiler.target>11</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <fabric8-client.version>5.4.1</fabric8-client.version>
-    <quarkus-sdk.version>1.9.4</quarkus-sdk.version>
-    <quarkus.version>1.13.7.Final</quarkus.version>
+    <fabric8-client.version>5.7.2</fabric8-client.version>
+    <quarkus-sdk.version>2.0.0.Beta5</quarkus-sdk.version>
+    <quarkus.version>2.2.1.Final</quarkus.version>
   </properties>
 
   <dependencyManagement>

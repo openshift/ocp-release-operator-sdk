@@ -23,10 +23,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	kbtestutils "sigs.k8s.io/kubebuilder/v3/test/e2e/utils"
+	kbutil "sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 
 	"github.com/operator-framework/operator-sdk/internal/testutils"
-	"github.com/operator-framework/operator-sdk/internal/util"
 )
 
 var _ = Describe("Running Helm projects", func() {
@@ -74,7 +73,7 @@ var _ = Describe("Running Helm projects", func() {
 				if err != nil {
 					return fmt.Errorf("could not get pods: %v", err)
 				}
-				podNames := kbtestutils.GetNonEmptyLines(podOutput)
+				podNames := kbutil.GetNonEmptyLines(podOutput)
 				if len(podNames) != 1 {
 					return fmt.Errorf("expecting 1 pod, have %d", len(podNames))
 				}
@@ -115,7 +114,7 @@ var _ = Describe("Running Helm projects", func() {
 				fmt.Sprintf("%s_%s_%s.yaml", tc.Group, tc.Version, strings.ToLower(tc.Kind)))
 
 			By("updating replicaCount to 1 in the CR manifest")
-			err = util.ReplaceInFile(filepath.Join(tc.Dir, sampleFile), "replicaCount: 3", "replicaCount: 1")
+			err = kbutil.ReplaceInFile(filepath.Join(tc.Dir, sampleFile), "replicaCount: 3", "replicaCount: 1")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating an instance of release(CR)")
@@ -173,7 +172,7 @@ var _ = Describe("Running Helm projects", func() {
 			Eventually(verifyRelease, time.Minute, time.Second).Should(Succeed())
 
 			By("updating replicaCount to 2 in the CR manifest")
-			err = util.ReplaceInFile(filepath.Join(tc.Dir, sampleFile), "replicaCount: 1", "replicaCount: 2")
+			err = kbutil.ReplaceInFile(filepath.Join(tc.Dir, sampleFile), "replicaCount: 1", "replicaCount: 2")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("applying CR manifest with replicaCount: 2")
@@ -220,11 +219,8 @@ var _ = Describe("Running Helm projects", func() {
 			Expect(len(token)).To(BeNumerically(">", 0))
 
 			By("creating a curl pod")
-			// TODO: the flag --generator=run-pod/v1 is deprecated, however, shows that besides
-			// it should not make any difference and work locally successfully when the flag is removed
-			// the test will fail and the curl pod is not found when the flag is not used
 			cmdOpts := []string{
-				"run", "--generator=run-pod/v1", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure",
+				"run", "curl", "--image=curlimages/curl:7.68.0", "--restart=OnFailure",
 				"--serviceaccount", tc.Kubectl.ServiceAccount, "--",
 				"curl", "-v", "-k", "-H", fmt.Sprintf(`Authorization: Bearer %s`, token),
 				fmt.Sprintf("https://%s-controller-manager-metrics-service.%s.svc:8443/metrics", tc.ProjectName, tc.Kubectl.Namespace),

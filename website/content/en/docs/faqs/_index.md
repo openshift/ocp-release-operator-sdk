@@ -1,7 +1,7 @@
 ---
 title: Operator SDK FAQ
 linkTitle: FAQ
-weight: 11
+weight: 12
 ---
 
 ## What are the the differences between Kubebuilder and Operator-SDK?
@@ -34,7 +34,7 @@ For example, you should refrain from moving the scaffolded files, doing so will 
 
 ## How can I have separate logic for Create, Update, and Delete events? When reconciling an object can I access its previous state?
 
-You should not have separate logic. Instead design your reconciler to be idempotent. See the [controller-runtime FAQ][controller-runtime_faq] for more details.
+You should not have separate logic. Instead design your reconciler to be idempotent. See the [controller-runtime FAQ][cr-faq] for more details.
 
 ## When my Custom Resource is deleted, I need to know its contents or perform cleanup tasks. How can I do that?
 
@@ -141,11 +141,27 @@ If using an OS or distro that does not point `sh` to the `bash` shell (Ubuntu fo
 SHELL := /bin/bash
 ```
 
+## How do I make my Operator proxy-friendly?
+---
 
+Administrators can configure proxy-friendly Operators to support network proxies by
+specifiying `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY` environment
+variables in the Operator deployment. (These variables can be handled by OLM.)
+
+Proxy-friendly Operators are responsible for inspecting the Operator
+environment and passing these variables along to the rquired operands.
+For more information and examples, please see the type-specific docs:
+- [Ansible][ansible-proxy-vars]
+- [Golang][go-proxy-vars]
+- [Helm][helm-proxy-vars]
+
+[ansible-proxy-vars]: /docs/building-operators/ansible/reference/proxy-vars/
 [client.Reader]:https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/client#Reader
 [controller-runtime]: https://github.com/kubernetes-sigs/controller-runtime
 [cr-faq]:https://github.com/kubernetes-sigs/controller-runtime/blob/master/FAQ.md
 [finalizer]:/docs/building-operators/golang/advanced-topics/#handle-cleanup-on-deletion
+[go-proxy-vars]: /docs/building-operators/golang/references/proxy-vars/
+[helm-proxy-vars]: /docs/building-operators/helm/reference/proxy-vars/
 [kb-doc-what-is-a-basic-project]: https://book.kubebuilder.io/cronjob-tutorial/basic-project.html
 [kube-apiserver_options]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/#options
 [olm]:  https://github.com/operator-framework/operator-lifecycle-manager
@@ -154,5 +170,43 @@ SHELL := /bin/bash
 [owner-references-permission-enforcement]: https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#ownerreferencespermissionenforcement
 [rbac-markers]: https://book.kubebuilder.io/reference/markers/rbac.html
 [rbac]:https://kubernetes.io/docs/reference/access-authn-authz/rbac/
-[scorecard-doc]: /docs/testing-operators/scorecard/
+[scorecard-doc]: https://sdk.operatorframework.io/docs/testing-operators/scorecard/
 [project-doc]: /docs/overview/project-layout
+
+## Preserve the `preserveUnknownFields` in your CRDs
+
+The [`preserveUnknownFields`](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning) will be removed if set to false when running `make bundle`. Because of some underlying data structure changes and how yaml is unmarshalled, it is best to add them back in after they have been written.
+
+You can use this script to post process the files to add the `preserveUnknownFields` back in.
+
+```sh
+function generate_preserveUnknownFieldsdata() {
+    for j in config/crd/patches/*.yaml ; do
+        if grep -qF "preserveUnknownFields" "$j";then
+            variable=`awk '/metadata/{flag=1} flag && /name:/{print $NF;flag=""}' "$j"`
+            for k in config/crd/bases/*.yaml ; do
+                if grep -qF "$variable" "$j";then
+                    filename=`awk 'END{ var=FILENAME; split (var,a,/\//); print a[4]}' "$k"`
+                    awk '/^spec:/{print;print "  preserveUnknownFields: false";next}1' "bundle/manifests/$filename" > testfile.tmp && mv testfile.tmp "bundle/manifests/$filename"
+                fi
+            done
+        fi
+    done
+}
+
+generate_preserveUnknownFieldsdata
+```
+
+You can then modify the `bundle` target in your `Makefile` by adding a call to the script at the end of the target. See the example below:
+
+```
+.PHONY: bundle
+bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
+	operator-sdk generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	operator-sdk bundle validate ./bundle | ./preserve_script.sh
+```
+
+Note:
+Though this is a bug with controller-gen which is used by Operator SDK to generate CRD, this is a workaround from our end to enable users to preserve the field after controller-gen has run.
