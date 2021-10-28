@@ -49,6 +49,9 @@ type scorecardCmd struct {
 	list           bool
 	skipCleanup    bool
 	waitTime       time.Duration
+	storageImage   string
+	untarImage     string
+	testOutput     string
 }
 
 func NewCmd() *cobra.Command {
@@ -85,6 +88,14 @@ If the argument holds an image tag, it must be present remotely.`,
 		"Disable resource cleanup after tests are run")
 	scorecardCmd.Flags().DurationVarP(&c.waitTime, "wait-time", "w", 30*time.Second,
 		"seconds to wait for tests to complete. Example: 35s")
+	scorecardCmd.Flags().StringVarP(&c.storageImage, "storage-image", "b",
+		"docker.io/library/busybox@sha256:c71cb4f7e8ececaffb34037c2637dc86820e4185100e18b4d02d613a9bd772af",
+		"Storage image to be used by the Scorecard pod")
+	scorecardCmd.Flags().StringVarP(&c.untarImage, "untar-image", "u",
+		"registry.access.redhat.com/ubi8@sha256:910f6bc0b5ae9b555eb91b88d28d568099b060088616eba2867b07ab6ea457c7",
+		"Untar image to be used by the Scorecard pod")
+	scorecardCmd.Flags().StringVarP(&c.testOutput, "test-output", "t", "test-output",
+		"Test output directory.")
 
 	return scorecardCmd
 }
@@ -139,8 +150,11 @@ func (c *scorecardCmd) convertXunit(output v1alpha3.TestList) xunit.TestSuites {
 			}
 			tSuite.TestCases = append(tSuite.TestCases, tCase)
 			tSuite.URL = item.Spec.Image
-			//TODO: Add TestStuite ID when API updates version
-			//tSuite.ID = item.Spec.UniqueID
+			if item.Spec.UniqueID != "" {
+				tSuite.ID = item.Spec.UniqueID
+			} else {
+				tSuite.ID = res.Name
+			}
 			resultSuite.TestSuite = append(resultSuite.TestSuite, tSuite)
 		}
 	}
@@ -192,15 +206,22 @@ func (c *scorecardCmd) run() (err error) {
 	if c.list {
 		scorecardTests = o.List()
 	} else {
+		runnerSA := c.serviceAccount
+		if o.Config.ServiceAccount != "" {
+			runnerSA = o.Config.ServiceAccount
+		}
 		runner := scorecard.PodTestRunner{
-			ServiceAccount: c.serviceAccount,
+			ServiceAccount: runnerSA,
 			Namespace:      scorecard.GetKubeNamespace(c.kubeconfig, c.namespace),
 			BundlePath:     c.bundle,
+			TestOutput:     c.testOutput,
 			BundleMetadata: metadata,
+			StorageImage:   c.storageImage,
+			UntarImage:     c.untarImage,
 		}
 
 		// Only get the client if running tests.
-		if runner.Client, err = scorecard.GetKubeClient(c.kubeconfig); err != nil {
+		if runner.Client, runner.RESTConfig, err = scorecard.GetKubeClient(c.kubeconfig); err != nil {
 			return fmt.Errorf("error getting kubernetes client: %w", err)
 		}
 

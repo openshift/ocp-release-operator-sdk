@@ -62,10 +62,7 @@ func (s *initScaffolder) Scaffold() error {
 	)
 
 	return scaffold.Execute(
-		&templates.OperatorFile{
-			Package:      util.ReverseDomain(s.config.GetDomain()),
-			OperatorName: util.ToClassname(s.config.GetProjectName()),
-		},
+		&templates.SrcMainJava{},
 		&templates.PomXmlFile{
 			Package:         util.ReverseDomain(s.config.GetDomain()),
 			ProjectName:     s.config.GetProjectName(),

@@ -224,7 +224,11 @@ Now make a pull request.
 Just like sync to master, verify things look okay. Ensure the patches apply,
 if they do not you will have to either recreate the patch to make it apply,
 or remove it entirely if it is no longer needed. This will require manual
-intervention and inspection.
+intervention and inspection. You can manually verify the patches apply by running:
+
+```
+make -f ci/prow.Makefile patch build
+```
 
 Once the patches have been verified, create a release PR downstream:
 

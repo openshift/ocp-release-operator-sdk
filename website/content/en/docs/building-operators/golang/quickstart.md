@@ -52,14 +52,14 @@ This guide walks through an example of building a simple memcached-operator usin
 
   ```sh
   make bundle IMG="example.com/memcached-operator:v0.0.1"
-  make bundle-build bundle-push
+  make bundle-build bundle-push BUNDLE_IMG="example.com/memcached-operator-bundle:v0.0.1"
   ```
 
 1. Run your bundle. If your bundle image is hosted in a registry that is private and/or
 has a custom CA, these [configuration steps][image-reg-config] must be complete.
 
   ```sh
-  operator-sdk run bundle example.com/memcached-operator-bundle:v0.0.1
+  operator-sdk run bundle <some-registry>/memcached-operator-bundle:v0.0.1
   ```
 
 1. Create a sample Memcached custom resource:
@@ -105,5 +105,5 @@ Read the [full tutorial][tutorial] for an in-depth walkthough of building a Go o
 
 [install-guide]:/docs/building-operators/golang/installation
 [image-reg-config]:/docs/olm-integration/cli-overview#private-bundle-and-catalog-image-registries
-[doc-olm]:/docs/olm-integration/quickstart-bundle/#enabling-olm
+[doc-olm]:/docs/olm-integration/tutorial-bundle/#enabling-olm
 [tutorial]:/docs/building-operators/golang/tutorial/

@@ -69,7 +69,7 @@ The `tests.go` file is where the custom tests are implemented in the sample test
 package tests
 
 import (
-  "github.com/operator-framework/operator-registry/pkg/registry"
+  apimanifests "github.com/operator-framework/api/pkg/manifests"
   scapiv1alpha3 "github.com/operator-framework/api/pkg/apis/scorecard/v1alpha3"
 )
 
@@ -78,10 +78,9 @@ const (
 )
 
 // CustomTest1
-func CustomTest1(bundle registry.Bundle) scapiv1alpha3.TestStatus {
+func CustomTest1(bundle *apimanifests.Bundle) scapiv1alpha3.TestStatus {
   r := scapiv1alpha3.TestResult{}
   r.Name = CustomTest1Name
-  r.Description = "Custom Test 1"
   r.State = scapiv1alpha3.PassState
   r.Errors = make([]string, 0)
   r.Suggestions = make([]string, 0)
@@ -242,6 +241,23 @@ The `--skip-cleanup` flag can be used when executing the `operator-sdk scorecard
 This is useful when debugging or writing new tests so that you can view
 the test logs or the pod manifests.
 
+### Storing scorecard test output
+
+The `--test-output` flag can be used when executing the `operator-sdk scorecard` command with a config specifying [output persistence][storage] to store the output of the scorecard tests in a specific directory. Any persistent volume data will be stored in the specified local directory upon completion of the scorecard tests.
+
+```console
+$ operator-sdk scorecard ./bundle --test-output=/mytestoutput
+```
+
+**Note**: By default, the gathered test output will be stored in `$(pwd)/test-output`.
+
+### Overwrite storage and untar images to prevent downloading the images from external registries
+
+The following options are useful to prevent downloading the images from external registries during scorecard job execution.
+That could be a case of disconnected environments or to prevent an impact of the external registry's pull limits.
+- The `--storage-image` flag can be used when executing the `operator-sdk scorecard` command to overwrite the default `busybox` image used by the Scorecard pod.
+- The `--untar-image` flag can be used when executing the `operator-sdk scorecard` command to overwrite the default untar image used by the Scorecard pod.
+
 ### Scorecard initContainer
 
 The scorecard inserts an `initContainer` into the test pods it creates. The
@@ -301,3 +317,4 @@ connection to invoke the Kube API.
 [sample_makefile]: https://github.com/operator-framework/operator-sdk/blob/09c3aa14625965af9f22f513cd5c891471dbded2/Makefile
 [kustomize-patchJson6902]: https://kubernetes-sigs.github.io/kustomize/api-reference/kustomization/patchesjson6902/
 [testresults]:https://github.com/operator-framework/api/blob/333d064/pkg/apis/scorecard/v1alpha3/test_types.go#L35
+[storage]:https://pkg.go.dev/github.com/operator-framework/api@v0.10.4/pkg/apis/scorecard/v1alpha3#Storage

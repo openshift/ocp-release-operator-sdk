@@ -119,6 +119,11 @@ git add README-sdk.md
 echo "$version" > UPSTREAM-VERSION
 git add UPSTREAM-VERSION
 
+# Edit the version in the patch so that -ocp is properly appended
+sed -i.bak -e "s/+export SIMPLE_VERSION=.*/+export SIMPLE_VERSION = ${version}-ocp/" patches/03-setversion.patch
+rm -f patches/03-setversion.patch.bak
+git add patches/03-setversion.patch
+
 # just to make sure an old version merge is not being made
 git diff --staged --quiet && { echo "No changed files in merge?! Aborting."; exit 1; }
 
