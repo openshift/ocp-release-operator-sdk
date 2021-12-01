@@ -132,7 +132,7 @@ After modifying the `*_types.go` file always run the following command to update
 make generate
 ```
 
-The above makefile target will invoke the [controller-gen][controller_tools] utility to update the `api/v1alpha1/zz_generated.deepcopy.go` file to ensure our API's Go type definitons implement the `runtime.Object` interface that all Kind types must implement.
+The above makefile target will invoke the [controller-gen][controller_tools] utility to update the `api/v1alpha1/zz_generated.deepcopy.go` file to ensure our API's Go type definitions implement the `runtime.Object` interface that all Kind types must implement.
 
 ### Generating CRD manifests
 
@@ -147,7 +147,7 @@ This makefile target will invoke [controller-gen][controller_tools] to generate 
 ### OpenAPI validation
 
 OpenAPI validation defined in a CRD ensures CRs are validated based on a set of declarative rules. All CRDs should have validation.
-See the [OpenAPI valiation][openapi-validation] doc for details.
+See the [OpenAPI validation][openapi-validation] doc for details.
 
 ## Implement the Controller
 

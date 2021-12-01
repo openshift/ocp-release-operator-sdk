@@ -55,6 +55,15 @@ subscriptions.operators.coreos.com                           CustomResourceDefin
 
 All resources listed should have status `Installed`.
 
+
+**Note:** The `operator-sdk olm status` command is geared to detect the status of OLM that was installed by installation methods like `operator-sdk olm install` or by applying OLM [manifests][olm-manifests] directly on the cluster. This command retrieves the resources that were compiled into SDK at the time of installation from the OLM [manifests][olm-manifests]. However, if OLM was installed in a cluster in a custom fashion (such as in OpenShift clusters), it is possible that some resources will show a `Not Found` status when the `operator-sdk olm status` command is issued.
+
+To check the true status of such resources in OCP clusters, run:
+
+```
+oc get <resource-name> -n <resource-namespace>
+```
+
 If OLM is not already installed, go ahead and install the latest version:
 
 ```console
@@ -86,7 +95,7 @@ We will now create bundle manifests by running `make bundle` in the root of the 
 
 ```console
 $ make bundle
-/home/user/go/bin/controller-gen "crd:trivialVersions=true" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+/home/user/go/bin/controller-gen rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 operator-sdk generate kustomize manifests -q
 kustomize build config/manifests | operator-sdk generate bundle -q --overwrite --version 0.0.1
 INFO[0000] Building annotations.yaml
@@ -293,3 +302,4 @@ In-depth discussions of OLM concepts mentioned here:
 [catalogsource]:https://olm.operatorframework.io/docs/concepts/crds/catalogsource/
 [subscription]:https://olm.operatorframework.io/docs/concepts/crds/subscription/
 [olm-install]:https://olm.operatorframework.io/docs/tasks/install-operator-with-olm/
+[olm-manifests]:https://github.com/operator-framework/operator-lifecycle-manager/blob/master/deploy/upstream/quickstart/olm.yaml
