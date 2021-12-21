@@ -1,0 +1,23 @@
+diff -up ./internal/plugins/ansible/v1/scaffolds/internal/templates/requirements.go.bump-util ./internal/plugins/ansible/v1/scaffolds/internal/templates/requirements.go
+--- ./internal/plugins/ansible/v1/scaffolds/internal/templates/requirements.go.bump-util	2021-12-21 12:22:39.460401555 -0500
++++ ./internal/plugins/ansible/v1/scaffolds/internal/templates/requirements.go	2021-12-21 12:24:13.700575211 -0500
+@@ -38,7 +38,7 @@ collections:
+   - name: community.kubernetes
+     version: "1.2.1"
+   - name: operator_sdk.util
+-    version: "0.2.0"
++    version: "0.3.1"
+   - name: kubernetes.core
+     version: "2.2.0"
+ `
+diff -up ./testdata/ansible/memcached-operator/requirements.yml.bump-util ./testdata/ansible/memcached-operator/requirements.yml
+--- ./testdata/ansible/memcached-operator/requirements.yml.bump-util	2021-12-21 12:23:25.741881243 -0500
++++ ./testdata/ansible/memcached-operator/requirements.yml	2021-12-21 12:23:44.696149608 -0500
+@@ -3,6 +3,6 @@ collections:
+   - name: community.kubernetes
+     version: "1.2.1"
+   - name: operator_sdk.util
+-    version: "0.2.0"
++    version: "0.3.1"
+   - name: kubernetes.core
+     version: "2.2.0"
