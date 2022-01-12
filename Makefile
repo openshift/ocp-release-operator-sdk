@@ -4,7 +4,7 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.13.0
+export IMAGE_VERSION = v1.15.0
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
@@ -82,8 +82,13 @@ build/scorecard-test build/scorecard-test-kuttl build/custom-scorecard-tests:
 
 # Convenience wrapper for building all remotely hosted images.
 .PHONY: image-build
-IMAGE_TARGET_LIST = operator-sdk helm-operator ansible-operator scorecard-test scorecard-test-kuttl
+IMAGE_TARGET_LIST = operator-sdk helm-operator ansible-operator ansible-operator-2.11-preview scorecard-test scorecard-test-kuttl
 image-build: $(foreach i,$(IMAGE_TARGET_LIST),image/$(i)) ## Build all images.
+
+# Convenience wrapper for building dependency base images.
+.PHONY: image-build-base
+IMAGE_BASE_TARGET_LIST = ansible-operator ansible-operator-2.11-preview
+image-build-base: $(foreach i,$(IMAGE_BASE_TARGET_LIST),image-base/$(i)) ## Build all images.
 
 # Build an image.
 BUILD_IMAGE_REPO = quay.io/operator-framework
@@ -95,6 +100,9 @@ image/%: export DOCKER_CLI_EXPERIMENTAL = enabled
 image/%:
 	docker buildx build $(DOCKER_PROGRESS) -t $(BUILD_IMAGE_REPO)/$*:dev -f ./images/$*/Dockerfile --load .
 
+image-base/%: export DOCKER_CLI_EXPERIMENTAL = enabled
+image-base/%:
+	docker buildx build $(DOCKER_PROGRESS) -t $(BUILD_IMAGE_REPO)/$*:dev -f ./images/$*/base.Dockerfile --load images/$*
 ##@ Release
 
 .PHONY: release
@@ -102,7 +110,7 @@ release: ## Release target. See 'make -f release/Makefile help' for more informa
 	$(MAKE) -f release/Makefile $@
 
 .PHONY: prerelease
-prerelease: ## Write release commit changes. See 'make -f release/Makefile help' for more information.
+prerelease: generate ## Write release commit changes. See 'make -f release/Makefile help' for more information.
 ifneq ($(RELEASE_VERSION),$(IMAGE_VERSION))
 	$(error "IMAGE_VERSION "$(IMAGE_VERSION)" must be updated to match RELEASE_VERSION "$(RELEASE_VERSION)" prior to creating a release commit")
 endif
@@ -147,7 +155,7 @@ e2e_targets := test-e2e $(e2e_tests)
 .PHONY: test-e2e-setup
 export KIND_CLUSTER := operator-sdk-e2e
 
-export KUBEBUILDER_ASSETS = $(PWD)/$(shell go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest && $(shell go env GOPATH)/bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir tools/bin/ -p path)
+KUBEBUILDER_ASSETS = $(PWD)/$(shell go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest && $(shell go env GOPATH)/bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir tools/bin/ -p path)
 test-e2e-setup: build
 	$(SCRIPTS_DIR)/fetch kind 0.11.0
 	$(SCRIPTS_DIR)/fetch kubectl $(ENVTEST_K8S_VERSION) # Install kubectl AFTER envtest because envtest includes its own kubectl binary

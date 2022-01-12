@@ -118,7 +118,7 @@ PLAY [localhost] ***************************************************************
 TASK [Gathering Facts] *********************************************************************
 ok: [localhost]
 
-Task [memcached : set example-coonfig configmap to present]
+Task [memcached : set ConfigMap example-config to present]
 changed: [localhost]
 
 PLAY RECAP *********************************************************************************
@@ -145,7 +145,7 @@ PLAY [localhost] ***************************************************************
 TASK [Gathering Facts] *********************************************************************
 ok: [localhost]
 
-Task [memcached : set example-config configmap to absent]
+Task [memcached : set ConfigMap example-config to absent]
 changed: [localhost]
 
 PLAY RECAP *********************************************************************************
@@ -162,7 +162,6 @@ No resources found in default namespace.
 ## Using Ansible inside an Operator
 
 Now that we have demonstrated using the Kubernetes Collection, we want to
-
 trigger this Ansible logic when a custom resource changes. In the above
 example, we want to map a role to a specific Kubernetes resource that the
 operator will watch. This mapping is done in a file called `watches.yaml`.
