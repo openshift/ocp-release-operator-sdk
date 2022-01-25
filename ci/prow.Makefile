@@ -15,10 +15,10 @@ patch:
 build:
 	$(MAKE) -f Makefile build/operator-sdk build/ansible-operator build/helm-operator build-darwin
 
-test-e2e-go:
+test-e2e-go: patch
 	./ci/tests/e2e-go.sh $(ARGS)
 
-test-e2e-ansible:
+test-e2e-ansible: patch
 	./ci/tests/e2e-ansible-scaffolding.sh
 
 #test-e2e-ansible test/e2e/ansible:test-scaffolding-e2e-ansible
@@ -31,7 +31,7 @@ test-e2e-helm: patch
 	./ci/tests/e2e-helm.sh
 	#./hack/tests/e2e-helm.sh
 
-test-subcommand:
+test-subcommand: patch
 	./ci/tests/subcommand.sh
 
 ci-images:
