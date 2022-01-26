@@ -15,7 +15,7 @@ Following document provides overview of Ansible Turbo mode in ``kubernetes.core`
 Synopsis
 --------
 - A brief introduction about Ansible Turbo mode in ``kuberentes.core`` collection.
-- Ansible Turbo mode is an optional performance optimization. It can be enabled by simply installing the cloud.common collection.
+- Ansible Turbo mode is an optional performance optimization. It can be enabled by installing the cloud.common collection and setting the ``ENABLE_TURBO_MODE`` environment variable.
 
 Requirements
 ------------
@@ -23,6 +23,15 @@ Requirements
 The following requirement is needed on the host that executes this module.
 
 - The ``cloud.common`` collection (https://github.com/ansible-collections/cloud.common)
+
+You will also need to set the environment variable ``ENABLE_TURBO_MODE=1`` on the managed host. This can be done in the same ways you would usually do so, for example::
+
+  ---
+  - hosts: remote
+    environment:
+      ENABLE_TURBO_MODE: 1
+    tasks:
+      ...
 
 
 Installation
@@ -90,7 +99,7 @@ The background service
 The daemon kills itself after 15s, and communication are done
 through an Unix socket.
 It runs in one single process and uses ``asyncio`` internally.
-Consequently you can use the ``sync`` keyword in your Ansible module.
+Consequently you can use the ``async`` keyword in your Ansible module.
 This will be handy if you interact with a lot of remote systems
 at the same time.
 

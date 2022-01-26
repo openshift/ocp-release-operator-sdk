@@ -29,6 +29,7 @@ from distutils.version import LooseVersion
 
 from ansible_collections.kubernetes.core.plugins.module_utils.args_common import (AUTH_ARG_MAP, AUTH_ARG_SPEC, AUTH_PROXY_HEADERS_SPEC)
 from ansible_collections.kubernetes.core.plugins.module_utils.hashes import generate_hash
+from ansible_collections.kubernetes.core.plugins.module_utils.selector import LabelSelectorFilter
 
 from ansible.module_utils.basic import missing_required_lib
 from ansible.module_utils.six import iteritems, string_types
@@ -53,7 +54,7 @@ except ImportError as e:
 
 IMP_K8S_CLIENT = None
 try:
-    from ansible_collections.kubernetes.core.plugins.module_utils.k8sdynamicclient import K8SDynamicClient
+    from ansible_collections.kubernetes.core.plugins.module_utils import k8sdynamicclient
     from ansible_collections.kubernetes.core.plugins.module_utils.client.discovery import LazyDiscoverer
     IMP_K8S_CLIENT = True
 except ImportError as e:
@@ -119,9 +120,8 @@ def get_api_client(module=None, **kwargs):
 
     def _raise_or_fail(exc, msg):
         if module:
-            module.fail_json(msg % to_native(exc))
+            module.fail_json(msg=msg % to_native(exc))
         raise exc
-
     # If authorization variables aren't defined, look for them in environment variables
     for true_name, arg_name in AUTH_ARG_MAP.items():
         if module and module.params.get(arg_name) is not None:
@@ -147,7 +147,23 @@ def get_api_client(module=None, **kwargs):
                 auth[true_name] = env_value
 
     def auth_set(*names):
-        return all([auth.get(name) for name in names])
+        return all(auth.get(name) for name in names)
+
+    def _load_config():
+        kubeconfig = auth.get('kubeconfig')
+        optional_arg = {
+            'context': auth.get('context'),
+            'persist_config': auth.get('persist_config'),
+        }
+        if kubeconfig:
+            if isinstance(kubeconfig, string_types):
+                kubernetes.config.load_kube_config(config_file=kubeconfig, **optional_arg)
+            elif isinstance(kubeconfig, dict):
+                if LooseVersion(kubernetes.__version__) < LooseVersion("17.17"):
+                    _raise_or_fail(Exception("kubernetes >= 17.17.0 is required to use in-memory kubeconfig."), 'Failed to load kubeconfig due to: %s')
+                kubernetes.config.load_kube_config_from_dict(config_dict=kubeconfig, **optional_arg)
+        else:
+            kubernetes.config.load_kube_config(config_file=None, **optional_arg)
 
     if auth_set('host'):
         # Removing trailing slashes if any from hostname
@@ -158,7 +174,7 @@ def get_api_client(module=None, **kwargs):
         pass
     elif auth_set('kubeconfig') or auth_set('context'):
         try:
-            kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+            _load_config()
         except Exception as err:
             _raise_or_fail(err, 'Failed to load kubeconfig due to %s')
 
@@ -168,7 +184,7 @@ def get_api_client(module=None, **kwargs):
             kubernetes.config.load_incluster_config()
         except kubernetes.config.ConfigException:
             try:
-                kubernetes.config.load_kube_config(auth.get('kubeconfig'), auth.get('context'), persist_config=auth.get('persist_config'))
+                _load_config()
             except Exception as err:
                 _raise_or_fail(err, 'Failed to load kubeconfig due to %s')
 
@@ -195,7 +211,7 @@ def get_api_client(module=None, **kwargs):
         return client
 
     try:
-        client = K8SDynamicClient(kubernetes.client.ApiClient(configuration), discoverer=LazyDiscoverer)
+        client = k8sdynamicclient.K8SDynamicClient(kubernetes.client.ApiClient(configuration), discoverer=LazyDiscoverer)
     except Exception as err:
         _raise_or_fail(err, 'Failed to get client due to %s')
 
@@ -208,13 +224,13 @@ get_api_client._pool = {}
 
 class K8sAnsibleMixin(object):
 
-    def __init__(self, module, *args, **kwargs):
+    def __init__(self, module, pyyaml_required=True, *args, **kwargs):
         if not HAS_K8S_MODULE_HELPER:
             module.fail_json(msg=missing_required_lib('kubernetes'), exception=K8S_IMP_ERR,
                              error=to_native(k8s_import_exception))
         self.kubernetes_version = kubernetes.__version__
 
-        if not HAS_YAML:
+        if pyyaml_required and not HAS_YAML:
             module.fail_json(msg=missing_required_lib("PyYAML"), exception=YAML_IMP_ERR)
 
     def find_resource(self, kind, api_version, fail=False):
@@ -263,18 +279,28 @@ class K8sAnsibleMixin(object):
         def _elapsed():
             return (datetime.now() - start).seconds
 
-        if result is None:
-            while _elapsed() < wait_timeout:
-                try:
-                    result = resource.get(name=name, namespace=namespace,
-                                          label_selector=','.join(label_selectors),
-                                          field_selector=','.join(field_selectors))
-                    break
-                except NotFoundError:
-                    pass
-                time.sleep(wait_sleep)
-            if result is None:
-                return dict(resources=[], api_found=True)
+        def result_empty(result):
+            return (
+                result is None
+                or result.kind.endswith("List")
+                and not result.get("items")
+            )
+
+        while result_empty(result) and _elapsed() < wait_timeout:
+            try:
+                result = resource.get(
+                    name=name,
+                    namespace=namespace,
+                    label_selector=",".join(label_selectors),
+                    field_selector=",".join(field_selectors),
+                )
+            except NotFoundError:
+                pass
+            if not result_empty(result):
+                break
+            time.sleep(wait_sleep)
+        if result_empty(result):
+            return dict(resources=[], api_found=True)
 
         if isinstance(result, ResourceInstance):
             satisfied_by = []
@@ -315,7 +341,7 @@ class K8sAnsibleMixin(object):
         if not os.path.exists(path):
             self.fail(msg="Error accessing {0}. Does the file exist?".format(path))
         try:
-            with open(path, 'r') as f:
+            with open(path, "rb") as f:
                 result = list(yaml.safe_load_all(f))
         except (IOError, yaml.YAMLError) as exc:
             self.fail(msg="Error loading resource_definition: {0}".format(exc))
@@ -349,7 +375,7 @@ class K8sAnsibleMixin(object):
     def fail(self, msg=None):
         self.fail_json(msg=msg)
 
-    def _wait_for(self, resource, name, namespace, predicate, sleep, timeout, state):
+    def _wait_for(self, resource, name, namespace, predicate, sleep, timeout, state, label_selectors=None):
         start = datetime.now()
 
         def _wait_for_elapsed():
@@ -358,7 +384,10 @@ class K8sAnsibleMixin(object):
         response = None
         while _wait_for_elapsed() < timeout:
             try:
-                response = resource.get(name=name, namespace=namespace)
+                params = dict(name=name, namespace=namespace)
+                if label_selectors:
+                    params['label_selector'] = ','.join(label_selectors)
+                response = resource.get(**params)
                 if predicate(response):
                     if response:
                         return True, response.to_dict(), _wait_for_elapsed()
@@ -371,7 +400,7 @@ class K8sAnsibleMixin(object):
             response = response.to_dict()
         return False, response, _wait_for_elapsed()
 
-    def wait(self, resource, definition, sleep, timeout, state='present', condition=None):
+    def wait(self, resource, definition, sleep, timeout, state='present', condition=None, label_selectors=None):
 
         def _deployment_ready(deployment):
             # FIXME: frustratingly bool(deployment.status) is True even if status is empty
@@ -388,7 +417,7 @@ class K8sAnsibleMixin(object):
 
         def _pod_ready(pod):
             return (pod.status and pod.status.containerStatuses is not None
-                    and all([container.ready for container in pod.status.containerStatuses]))
+                    and all(container.ready for container in pod.status.containerStatuses))
 
         def _daemonset_ready(daemonset):
             return (daemonset.status and daemonset.status.desiredNumberScheduled is not None
@@ -396,6 +425,14 @@ class K8sAnsibleMixin(object):
                     and daemonset.status.numberReady == daemonset.status.desiredNumberScheduled
                     and daemonset.status.observedGeneration == daemonset.metadata.generation
                     and not daemonset.status.unavailableReplicas)
+
+        def _statefulset_ready(statefulset):
+            return (statefulset.status and statefulset.spec.updateStrategy.type == "RollingUpdate"
+                    and statefulset.status.observedGeneration == (statefulset.metadata.generation or 0)
+                    and statefulset.status.updateRevision == statefulset.status.currentRevision
+                    and statefulset.status.updatedReplicas == statefulset.spec.replicas
+                    and statefulset.status.readyReplicas == statefulset.spec.replicas
+                    and statefulset.status.replicas == statefulset.spec.replicas)
 
         def _custom_condition(resource):
             if not resource.status or not resource.status.conditions:
@@ -420,21 +457,22 @@ class K8sAnsibleMixin(object):
             return False
 
         def _resource_absent(resource):
-            return not resource
+            return not resource or (resource.kind.endswith('List') and resource.items == [])
 
         waiter = dict(
+            StatefulSet=_statefulset_ready,
             Deployment=_deployment_ready,
             DaemonSet=_daemonset_ready,
             Pod=_pod_ready
         )
         kind = definition['kind']
-        if state == 'present' and not condition:
-            predicate = waiter.get(kind, lambda x: x)
-        elif state == 'present' and condition:
-            predicate = _custom_condition
+        if state == 'present':
+            predicate = waiter.get(kind, lambda x: x) if not condition else _custom_condition
         else:
             predicate = _resource_absent
-        return self._wait_for(resource, definition['metadata']['name'], definition['metadata'].get('namespace'), predicate, sleep, timeout, state)
+        name = definition['metadata']['name']
+        namespace = definition['metadata'].get('namespace')
+        return self._wait_for(resource, name, namespace, predicate, sleep, timeout, state, label_selectors)
 
     def set_resource_definitions(self, module):
         resource_definition = module.params.get('resource_definition')
@@ -575,6 +613,7 @@ class K8sAnsibleMixin(object):
         wait_timeout = self.params.get('wait_timeout')
         wait_condition = None
         continue_on_error = self.params.get('continue_on_error')
+        label_selectors = self.params.get('label_selectors')
         if self.params.get('wait_condition') and self.params['wait_condition'].get('type'):
             wait_condition = self.params['wait_condition']
 
@@ -591,6 +630,8 @@ class K8sAnsibleMixin(object):
             params = dict(name=name)
             if namespace:
                 params['namespace'] = namespace
+            if label_selectors:
+                params['label_selector'] = ','.join(label_selectors)
             existing = resource.get(**params)
         except (NotFoundError, MethodNotAllowedError):
             # Remove traceback so that it doesn't show up in later failures
@@ -625,7 +666,13 @@ class K8sAnsibleMixin(object):
 
         if state == 'absent':
             result['method'] = "delete"
-            if not existing:
+
+            def _empty_resource_list():
+                if existing and existing.kind.endswith('List'):
+                    return existing.items == []
+                return False
+
+            if not existing or _empty_resource_list():
                 # The object already does not exist
                 return result
             else:
@@ -651,7 +698,7 @@ class K8sAnsibleMixin(object):
                         else:
                             self.fail_json(msg=build_error_msg(definition['kind'], origin_name, msg), error=exc.status, status=exc.status, reason=exc.reason)
                     if wait:
-                        success, resource, duration = self.wait(resource, definition, wait_sleep, wait_timeout, 'absent')
+                        success, resource, duration = self.wait(resource, definition, wait_sleep, wait_timeout, 'absent', label_selectors=label_selectors)
                         result['duration'] = duration
                         if not success:
                             msg = "Resource deletion timed out"
@@ -663,6 +710,13 @@ class K8sAnsibleMixin(object):
                 return result
 
         else:
+            if label_selectors:
+                filter_selector = LabelSelectorFilter(label_selectors)
+                if not filter_selector.isMatching(definition):
+                    result['changed'] = False
+                    result['msg'] = "resource 'kind={kind},name={name},namespace={namespace}' filtered by label_selectors.".format(
+                                    kind=definition['kind'], name=origin_name, namespace=namespace)
+                    return result
             if apply:
                 if self.check_mode:
                     ignored, patch = apply_object(resource, _encode_stringdata(definition))
@@ -693,7 +747,8 @@ class K8sAnsibleMixin(object):
                     existing = {}
                 match, diffs = self.diff_objects(existing, result['result'])
                 result['changed'] = not match
-                result['diff'] = diffs
+                if self.module._diff:
+                    result['diff'] = diffs
                 result['method'] = 'apply'
                 if not success:
                     msg = "Resource apply timed out"
@@ -785,7 +840,8 @@ class K8sAnsibleMixin(object):
                 match, diffs = self.diff_objects(existing.to_dict(), result['result'])
                 result['changed'] = not match
                 result['method'] = 'replace'
-                result['diff'] = diffs
+                if self.module._diff:
+                    result['diff'] = diffs
                 if not success:
                     msg = "Resource replacement timed out"
                     if continue_on_error:
@@ -819,7 +875,8 @@ class K8sAnsibleMixin(object):
             match, diffs = self.diff_objects(existing.to_dict(), result['result'])
             result['changed'] = not match
             result['method'] = 'patch'
-            result['diff'] = diffs
+            if self.module._diff:
+                result['diff'] = diffs
 
             if not success:
                 msg = "Resource update timed out"

@@ -2,7 +2,7 @@
  "collection_info": {
   "namespace": "operator_sdk",
   "name": "util",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "authors": [
    "Austin Macdonald <austin@redhat.com>",
    "Fabian von Feilitzsch <fabian@redhat.com>",
@@ -29,7 +29,7 @@
   "name": "FILES.json",
   "ftype": "file",
   "chksum_type": "sha256",
-  "chksum_sha256": "e254d9c5da6d67bec91281bda466b9f6ee78f05f33aee284b6c44f3d8aefb0c4",
+  "chksum_sha256": "e4bd5d8eedb9aabf531bedac45959ad3d0c3c9d29a54099ba6f407922ac89e62",
   "format": 1
  },
  "format": 1
