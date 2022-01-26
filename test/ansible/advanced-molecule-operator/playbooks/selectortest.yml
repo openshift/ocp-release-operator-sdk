@@ -2,7 +2,7 @@
 - hosts: localhost
   gather_facts: no
   collections:
-    - community.kubernetes
+    - kubernetes.core
   tasks:
     - name: Create configmap
       k8s:

@@ -3,5 +3,4 @@ kind: ArgsTest
 metadata:
   name: argstest-sample
 spec:
-  # Add fields here
-  foo: bar
+  # TODO(user): Add fields here

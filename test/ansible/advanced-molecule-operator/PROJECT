@@ -5,6 +5,7 @@ multigroup: true
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
+  sdk.x-openshift.io/v1: {}
 projectName: advanced-molecule-operator
 resources:
 - api:
