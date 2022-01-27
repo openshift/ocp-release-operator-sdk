@@ -15,7 +15,7 @@ short_description: Apply JSON patch operations to existing objects
 
 description:
   - This module is used to apply RFC 6902 JSON patch operations only.
-  - Use the M(k8s) module for strategic merge or JSON merge operations.
+  - Use the M(kubernetes.core.k8s) module for strategic merge or JSON merge operations.
   - The jsonpatch library is required for check mode.
 
 version_added: 2.0.0
@@ -254,7 +254,8 @@ def execute_module(k8s_module, module):
         success, result['result'], result['duration'] = k8s_module.wait(resource, definition, wait_sleep, wait_timeout, condition=wait_condition)
     match, diffs = k8s_module.diff_objects(existing.to_dict(), obj)
     result["changed"] = not match
-    result["diff"] = diffs
+    if module._diff:
+        result["diff"] = diffs
 
     if not success:
         msg = "Resource update timed out"

@@ -13,13 +13,12 @@
     wait: yes
     wait_timeout: 300
     wait_condition:
-      type: Running
-      reason: Successful
+      type: Successful
       status: "True"
   register: reconciliation_test
 - name: Retreive the number of iterations on the ConfigMap
   debug: var=cm.data.iterations
-  retries: 10
+  retries: 20
   delay: 2
   until: "cm.data.iterations|int == 5"
   vars:

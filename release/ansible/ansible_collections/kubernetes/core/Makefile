@@ -1,8 +1,8 @@
 # Also needs to be updated in galaxy.yml
-VERSION = 2.1.1
+VERSION = 2.2.3
 
 TEST_ARGS ?= ""
-PYTHON_VERSION ?= `python -c 'import platform; print("{0}.{1}".format(platform.python_version_tuple()[0], platform.python_version_tuple()[1]))'`
+PYTHON_VERSION ?= `python -c 'import platform; print(".".join(platform.python_version_tuple()[0:2]))'`
 
 clean:
 	rm -f kubernetes-core-${VERSION}.tar.gz

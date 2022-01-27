@@ -8,6 +8,7 @@ __metaclass__ = type
 
 import copy
 import traceback
+import os
 from contextlib import contextmanager
 
 
@@ -113,7 +114,7 @@ class ActionModule(ActionBase):
 
     def import_jinja2_lstrip(self, templates):
         # Option `lstrip_blocks' was added in Jinja2 version 2.7.
-        if any([tmp['lstrip_blocks'] for tmp in templates]):
+        if any(tmp['lstrip_blocks'] for tmp in templates):
             try:
                 import jinja2.defaults
             except ImportError:
@@ -126,8 +127,8 @@ class ActionModule(ActionBase):
 
     def load_template(self, template, new_module_args, task_vars):
         # template is only supported by k8s module.
-        if self._task.action not in ('k8s', 'kubernetes.core.k8s', 'community.okd.k8s'):
-            raise AnsibleActionFail("'template' is only supported parameter for 'k8s' module.")
+        if self._task.action not in ('k8s', 'kubernetes.core.k8s', 'community.okd.k8s', 'redhat.openshift.k8s', 'community.kubernetes.k8s'):
+            raise AnsibleActionFail("'template' is only a supported parameter for the 'k8s' module.")
 
         template_params = []
         if isinstance(template, string_types) or isinstance(template, dict):
@@ -179,6 +180,38 @@ class ActionModule(ActionBase):
             new_module_args.pop('template')
         new_module_args['definition'] = result_template
 
+    def get_file_realpath(self, local_path):
+        # local_path is only supported by k8s_cp module.
+        if self._task.action not in ('k8s_cp', 'kubernetes.core.k8s_cp', 'community.kubernetes.k8s_cp'):
+            raise AnsibleActionFail("'local_path' is only supported parameter for 'k8s_cp' module.")
+
+        if os.path.exists(local_path):
+            return local_path
+
+        try:
+            # find in expected paths
+            return self._find_needle('files', local_path)
+        except AnsibleError:
+            raise AnsibleActionFail("%s does not exist in local filesystem" % local_path)
+
+    def get_kubeconfig(self, kubeconfig, remote_transport, new_module_args):
+        if isinstance(kubeconfig, string_types):
+            # find the kubeconfig in the expected search path
+            if not remote_transport:
+                # kubeconfig is local
+                # find in expected paths
+                kubeconfig = self._find_needle('files', kubeconfig)
+
+                # decrypt kubeconfig found
+                actual_file = self._loader.get_real_file(kubeconfig, decrypt=True)
+                new_module_args['kubeconfig'] = actual_file
+
+        elif isinstance(kubeconfig, dict):
+            new_module_args['kubeconfig'] = kubeconfig
+        else:
+            raise AnsibleActionFail("Error while reading kubeconfig parameter - "
+                                    "a string or dict expected, but got %s instead" % type(kubeconfig))
+
     def run(self, tmp=None, task_vars=None):
         ''' handler for k8s options '''
         if task_vars is None:
@@ -196,21 +229,14 @@ class ActionModule(ActionBase):
         new_module_args = copy.deepcopy(self._task.args)
 
         kubeconfig = self._task.args.get('kubeconfig', None)
-        # find the kubeconfig in the expected search path
-        if kubeconfig and not remote_transport:
-            # kubeconfig is local
+        if kubeconfig:
             try:
-                # find in expected paths
-                kubeconfig = self._find_needle('files', kubeconfig)
+                self.get_kubeconfig(kubeconfig, remote_transport, new_module_args)
             except AnsibleError as e:
                 result['failed'] = True
                 result['msg'] = to_text(e)
                 result['exception'] = traceback.format_exc()
                 return result
-
-            # decrypt kubeconfig found
-            actual_file = self._loader.get_real_file(kubeconfig, decrypt=True)
-            new_module_args['kubeconfig'] = actual_file
 
         # find the file in the expected search path
         src = self._task.args.get('src', None)
@@ -237,6 +263,11 @@ class ActionModule(ActionBase):
         template = self._task.args.get('template', None)
         if template:
             self.load_template(template, new_module_args, task_vars)
+
+        local_path = self._task.args.get('local_path')
+        state = self._task.args.get('state', None)
+        if local_path and state == 'to_pod':
+            new_module_args['local_path'] = self.get_file_realpath(local_path)
 
         # Execute the k8s_* module.
         module_return = self._execute_module(module_name=self._task.action, module_args=new_module_args, task_vars=task_vars)
