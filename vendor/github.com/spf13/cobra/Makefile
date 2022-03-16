@@ -23,7 +23,7 @@ lint:
 	$(info ******************** running lint tools ********************)
 	golangci-lint run -v
 
-test: install_deps
+test: install_deps lint
 	$(info ******************** running tests ********************)
 	richgo test -v ./...
 
