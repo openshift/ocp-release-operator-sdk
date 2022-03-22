@@ -6,10 +6,10 @@ SHELL = /bin/bash
 # version is moved to a separate repo and release process.
 export IMAGE_VERSION = v1.18.1
 # Build-time variables to inject into binaries
-export SIMPLE_VERSION = v1.18.1-ocp
-export GIT_VERSION = $(SIMPLE_VERSION)
+export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
+export GIT_VERSION = $(shell git describe --dirty --tags --always)
 export GIT_COMMIT = $(shell git rev-parse HEAD)
-export K8S_VERSION = 1.22
+export K8S_VERSION = 1.21
 # TODO: bump this to 1.21, after kubectl `--generator` flag is removed from e2e tests.
 export ENVTEST_K8S_VERSION = 1.21.1
 
@@ -51,6 +51,7 @@ bindata: ## Update project bindata
 
 .PHONY: fix
 fix: ## Fixup files in the repo.
+	go mod tidy
 	go fmt ./...
 
 .PHONY: clean
@@ -128,11 +129,13 @@ test-all: test-static test-e2e ## Run all tests
 test-static: test-sanity test-unit test-docs ## Run all non-cluster-based tests
 
 .PHONY: test-sanity
-test-sanity: build fix ## Test repo formatting, linting, etc.
+test-sanity: generate fix ## Test repo formatting, linting, etc.
+	git diff --exit-code # fast-fail if generate or fix produced changes
 	./hack/check-license.sh
 	./hack/check-error-log-msg-format.sh
 	go vet ./...
 	$(SCRIPTS_DIR)/fetch golangci-lint 1.31.0 && $(TOOLS_DIR)/golangci-lint run
+	git diff --exit-code # diff again to ensure other checks don't change repo
 
 .PHONY: test-docs
 test-docs: ## Test doc links
@@ -191,8 +194,3 @@ help: ## Show this help screen.
 	@echo 'Available targets are:'
 	@echo ''
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-.PHONY: build-darwin
-build-darwin: ## Build operator-sdk, ansible-operator, and helm-operator.
-	@mkdir -p $(BUILD_DIR)/darwin_amd64
-	GOOS=darwin GOARCH=amd64 go build $(GO_BUILD_ARGS) -o $(BUILD_DIR)/darwin_amd64/ ./cmd/operator-sdk
