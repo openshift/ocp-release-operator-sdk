@@ -6,8 +6,8 @@ SHELL = /bin/bash
 # version is moved to a separate repo and release process.
 export IMAGE_VERSION = v1.18.1
 # Build-time variables to inject into binaries
-export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
-export GIT_VERSION = $(shell git describe --dirty --tags --always)
+export SIMPLE_VERSION = v1.18.1-ocp
+export GIT_VERSION = $(SIMPLE_VERSION)
 export GIT_COMMIT = $(shell git rev-parse HEAD)
 export K8S_VERSION = 1.21
 # TODO: bump this to 1.21, after kubectl `--generator` flag is removed from e2e tests.

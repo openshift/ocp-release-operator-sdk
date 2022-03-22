@@ -190,11 +190,6 @@ func (c bundleCmd) runManifests() (err error) {
 		c.println("Building a ClusterServiceVersion without an existing base")
 	}
 
-	relatedImages, err := c.findRelatedImages(col)
-	if err != nil {
-		return err
-	}
-
 	var opts []gencsv.Option
 	stdout := genutil.NewMultiManifestWriter(os.Stdout)
 	if c.stdout {
@@ -209,7 +204,6 @@ func (c bundleCmd) runManifests() (err error) {
 		Collector:            col,
 		Annotations:          metricsannotations.MakeBundleObjectAnnotations(c.layout),
 		ExtraServiceAccounts: c.extraServiceAccounts,
-		RelatedImages:        relatedImages,
 	}
 	if err := csvGen.Generate(opts...); err != nil {
 		return fmt.Errorf("error generating ClusterServiceVersion: %v", err)
