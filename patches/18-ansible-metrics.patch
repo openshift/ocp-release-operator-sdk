@@ -1,0 +1,331 @@
+diff -up ./hack/generate/samples/internal/ansible/testdata/tasks/clusterannotationtest_test.yml.ansible-metrics ./hack/generate/samples/internal/ansible/testdata/tasks/clusterannotationtest_test.yml
+--- ./hack/generate/samples/internal/ansible/testdata/tasks/clusterannotationtest_test.yml.ansible-metrics	2022-01-26 15:36:03.671568929 -0500
++++ ./hack/generate/samples/internal/ansible/testdata/tasks/clusterannotationtest_test.yml	2022-01-26 15:38:29.398958755 -0500
+@@ -47,4 +47,5 @@
+     name: "externalnamespace"
+   register: external_namespace
+   until: external_namespace.resources[0].metadata.labels["foo"] == "bar"
++  retries: 6
+ 
+diff -up ./hack/tests/e2e-ansible-molecule.sh.ansible-metrics ./hack/tests/e2e-ansible-molecule.sh
+--- ./hack/tests/e2e-ansible-molecule.sh.ansible-metrics	2022-01-26 15:36:18.737022755 -0500
++++ ./hack/tests/e2e-ansible-molecule.sh	2022-01-26 15:38:54.581717095 -0500
+@@ -31,6 +31,7 @@ pip3 install cryptography==3.3.2 molecul
+ pip3 install ansible-lint yamllint
+ pip3 install docker==4.2.2 openshift==0.12.1 jmespath
+ ansible-galaxy collection install 'kubernetes.core:==2.2.0'
++ansible-galaxy collection install 'operator_sdk.util:==0.4.0'
+ 
+ header_text "Copying molecule testdata scenarios"
+ ROOTDIR="$(pwd)"
+@@ -48,7 +49,6 @@ else
+ fi
+ KUSTOMIZE_PATH=${KUSTOMIZE} TEST_OPERATOR_NAMESPACE=default molecule test -s kind
+ 
+-
+ header_text "Running Default test with advanced-molecule-operator"
+ pushd $TMPDIR/advanced-molecule-operator
+ 
+diff -up ./internal/ansible/apiserver/apiserver.go.ansible-metrics ./internal/ansible/apiserver/apiserver.go
+--- ./internal/ansible/apiserver/apiserver.go.ansible-metrics	2022-01-26 15:37:01.005296029 -0500
++++ ./internal/ansible/apiserver/apiserver.go	2022-01-26 15:39:34.674924439 -0500
+@@ -0,0 +1,75 @@
++// Copyright 2022 The Operator-SDK Authors
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package apiserver
++
++import (
++	"encoding/json"
++	"fmt"
++	"io"
++	"net/http"
++
++	logf "sigs.k8s.io/controller-runtime/pkg/log"
++	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
++
++	"github.com/operator-framework/operator-sdk/internal/ansible/metrics"
++)
++
++var log = logf.Log.WithName("apiserver")
++
++type Options struct {
++	Address string
++	Port    int
++}
++
++func Run(options Options) error {
++	mux := http.NewServeMux()
++	mux.HandleFunc("/metrics", metricsHandler)
++
++	server := http.Server{
++		Addr:    fmt.Sprintf("%s:%d", options.Address, options.Port),
++		Handler: mux,
++	}
++	log.Info("Starting to serve metrics listener", "Address", server.Addr)
++	return server.ListenAndServe()
++}
++
++func metricsHandler(w http.ResponseWriter, r *http.Request) {
++	defer func() {
++		_, _ = io.Copy(io.Discard, r.Body)
++		r.Body.Close()
++	}()
++	log.V(3).Info(fmt.Sprintf("%s %s", r.Method, r.URL))
++
++	var userMetric metrics.UserMetric
++
++	switch r.Method {
++	case http.MethodPost:
++		log.V(3).Info("The apiserver has received a POST")
++		err := json.NewDecoder(r.Body).Decode(&userMetric)
++		if err != nil {
++			log.Info(err.Error())
++			http.Error(w, err.Error(), http.StatusBadRequest)
++			return
++		}
++		err = metrics.HandleUserMetric(crmetrics.Registry, userMetric)
++		if err != nil {
++			log.Info(err.Error())
++			http.Error(w, err.Error(), http.StatusBadRequest)
++		}
++	default:
++		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
++	}
++
++}
+diff -up ./internal/ansible/metrics/metrics.go.ansible-metrics ./internal/ansible/metrics/metrics.go
+--- ./internal/ansible/metrics/metrics.go.ansible-metrics	2022-01-26 15:37:30.817194074 -0500
++++ ./internal/ansible/metrics/metrics.go	2022-01-26 15:39:55.848562052 -0500
+@@ -15,6 +15,7 @@
+ package metrics
+ 
+ import (
++	"errors"
+ 	"fmt"
+ 
+ 	"github.com/prometheus/client_golang/prometheus"
+@@ -60,6 +61,8 @@ var (
+ 		[]string{
+ 			"GVK",
+ 		})
++
++	userMetrics = map[string]prometheus.Collector{}
+ )
+ 
+ func init() {
+@@ -82,6 +85,165 @@ func RegisterBuildInfo(r prometheus.Regi
+ 	r.MustRegister(buildInfo)
+ }
+ 
++type UserMetric struct {
++	Name      string               `json:"name" yaml:"name"`
++	Help      string               `json:"description" yaml:"description"`
++	Counter   *UserMetricCounter   `json:"counter,omitempty" yaml:"counter,omitempty"`
++	Gauge     *UserMetricGauge     `json:"gauge,omitempty" yaml:"gauge,omitempty"`
++	Histogram *UserMetricHistogram `json:"histogram,omitempty" yaml:"histogram,omitempty"`
++	Summary   *UserMetricSummary   `json:"summary,omitempty" yaml:"summary,omitempty"`
++}
++
++type UserMetricCounter struct {
++	Inc bool    `json:"increment,omitempty" yaml:"increment,omitempty"`
++	Add float64 `json:"add,omitempty" yaml:"add,omitempty"`
++}
++
++type UserMetricGauge struct {
++	Set              float64 `json:"set,omitempty" yaml:"set,omitempty"`
++	Inc              bool    `json:"increment,omitempty" yaml:"increment,omitempty"`
++	Dec              bool    `json:"decrement,omitempty" yaml:"decrement,omitempty"`
++	SetToCurrentTime bool    `json:"set_to_current_time,omitempty" yaml:"set_to_current_time,omitempty"`
++	Add              float64 `json:"add,omitempty" yaml:"add,omitempty"`
++	Sub              float64 `json:"subtract,omitempty" yaml:"subtract,omitempty"`
++}
++
++type UserMetricHistogram struct {
++	Observe float64 `json:"observe,omitempty" yaml:"observe,omitempty"`
++}
++
++type UserMetricSummary struct {
++	Observe float64 `json:"observe,omitempty" yaml:"observe,omitempty"`
++}
++
++func validateMetricSpec(metricSpec UserMetric) error {
++	var metricConfigs int
++	if metricSpec.Counter != nil {
++		metricConfigs++
++	}
++	if metricSpec.Gauge != nil {
++		metricConfigs++
++	}
++	if metricSpec.Summary != nil {
++		metricConfigs++
++	}
++	if metricSpec.Histogram != nil {
++		metricConfigs++
++	}
++	if metricConfigs > 1 {
++		return errors.New("only one metric can be processed at a time")
++	} else if metricConfigs == 0 {
++		return errors.New("a request should contain at least one metric")
++	}
++	return nil
++}
++
++func handleCounter(metricSpec UserMetric, counter prometheus.Counter) error {
++	if metricSpec.Counter == nil {
++		return fmt.Errorf("cannot change metric type of %s, which is a counter", metricSpec.Name)
++	}
++	if metricSpec.Counter.Inc {
++		counter.Inc()
++	} else if metricSpec.Counter.Add != 0.0 {
++		if metricSpec.Counter.Add < 0 {
++			return errors.New("counter metrics cannot decrease in value")
++		}
++		counter.Add(metricSpec.Counter.Add)
++	}
++	return nil
++}
++
++func handleGauge(metricSpec UserMetric, gauge prometheus.Gauge) error {
++	if metricSpec.Gauge == nil {
++		return fmt.Errorf("cannot change metric type of %s, which is a gauge", metricSpec.Name)
++	}
++	if metricSpec.Gauge.Inc {
++		gauge.Inc()
++	} else if metricSpec.Gauge.Dec {
++		gauge.Dec()
++	} else if metricSpec.Gauge.Add != 0.0 {
++		gauge.Add(metricSpec.Gauge.Add)
++	} else if metricSpec.Gauge.Sub != 0.0 {
++		gauge.Sub(metricSpec.Gauge.Sub)
++	} else if metricSpec.Gauge.Set != 0.0 {
++		gauge.Set(metricSpec.Gauge.Set)
++	} else if metricSpec.Gauge.SetToCurrentTime {
++		gauge.SetToCurrentTime()
++	}
++	return nil
++}
++
++func handleSummaryOrHistogram(metricSpec UserMetric, summary prometheus.Summary) error {
++	if metricSpec.Histogram == nil && metricSpec.Summary == nil {
++		return fmt.Errorf("cannot change metric type of %s, which is a histogram or summary", metricSpec.Name)
++	}
++	if metricSpec.Histogram != nil {
++		summary.Observe(metricSpec.Histogram.Observe)
++	} else if metricSpec.Summary != nil {
++		summary.Observe(metricSpec.Summary.Observe)
++	}
++	return nil
++}
++
++func ensureMetric(r prometheus.Registerer, metricSpec UserMetric) {
++	if _, ok := userMetrics[metricSpec.Name]; !ok {
++		// This is the first time we've seen this metric
++		logf.Log.WithName("metrics").Info("Registering", "metric", metricSpec.Name)
++		if metricSpec.Counter != nil {
++			userMetrics[metricSpec.Name] = prometheus.NewCounter(prometheus.CounterOpts{
++				Name: metricSpec.Name,
++				Help: metricSpec.Help,
++			})
++		}
++		if metricSpec.Gauge != nil {
++			userMetrics[metricSpec.Name] = prometheus.NewGauge(prometheus.GaugeOpts{
++				Name: metricSpec.Name,
++				Help: metricSpec.Help,
++			})
++		}
++		if metricSpec.Histogram != nil {
++			userMetrics[metricSpec.Name] = prometheus.NewHistogram(prometheus.HistogramOpts{
++				Name: metricSpec.Name,
++				Help: metricSpec.Help,
++			})
++		}
++		if metricSpec.Summary != nil {
++			userMetrics[metricSpec.Name] = prometheus.NewSummary(prometheus.SummaryOpts{
++				Name: metricSpec.Name,
++				Help: metricSpec.Help,
++			})
++		}
++		if err := r.Register(userMetrics[metricSpec.Name]); err != nil {
++			logf.Log.WithName("metrics").Info("Unable to register %s metric with prometheus.", metricSpec.Name)
++		}
++	}
++}
++
++func HandleUserMetric(r prometheus.Registerer, metricSpec UserMetric) error {
++	if err := validateMetricSpec(metricSpec); err != nil {
++		return err
++	}
++	ensureMetric(r, metricSpec)
++	collector := userMetrics[metricSpec.Name]
++	switch v := collector.(type) {
++	// Gauge must be first, because a Counter is a Gauge, but a Gauge is not a Counter.
++	case prometheus.Gauge:
++		if err := handleGauge(metricSpec, v); err != nil {
++			return err
++		}
++	case prometheus.Counter:
++		if err := handleCounter(metricSpec, v); err != nil {
++			return err
++		}
++	// Histogram and Summary interfaces are identical, so we accept either case.
++	case prometheus.Histogram:
++		if err := handleSummaryOrHistogram(metricSpec, v); err != nil {
++			return err
++		}
++	}
++	return nil
++}
++
+ func ReconcileSucceeded(gvk string) {
+ 	defer recoverMetricPanic()
+ 	reconcileResults.WithLabelValues(gvk, "succeeded").Inc()
+diff -up ./internal/cmd/ansible-operator/run/cmd.go.ansible-metrics ./internal/cmd/ansible-operator/run/cmd.go
+--- ./internal/cmd/ansible-operator/run/cmd.go.ansible-metrics	2022-01-26 15:37:49.849767403 -0500
++++ ./internal/cmd/ansible-operator/run/cmd.go	2022-01-26 15:40:15.306147982 -0500
+@@ -38,6 +38,7 @@ import (
+ 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+ 	crmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
+ 
++	"github.com/operator-framework/operator-sdk/internal/ansible/apiserver"
+ 	"github.com/operator-framework/operator-sdk/internal/ansible/controller"
+ 	"github.com/operator-framework/operator-sdk/internal/ansible/events"
+ 	"github.com/operator-framework/operator-sdk/internal/ansible/flags"
+@@ -262,6 +263,14 @@ func run(cmd *cobra.Command, f *flags.Fl
+ 		log.Error(err, "Error starting proxy.")
+ 		os.Exit(1)
+ 	}
++	// start the ansible-operator api server
++	go func() {
++		err = apiserver.Run(apiserver.Options{
++			Address: "localhost",
++			Port:    5050,
++		})
++		done <- err
++	}()
+ 
+ 	// start the operator
+ 	go func() {
+diff -up ./internal/ansible/controller/reconcile.go.ansible-metrics ./internal/ansible/controller/reconcile.go
+--- ./internal/ansible/controller/reconcile.go.ansible-metrics	2022-01-26 16:05:26.913662934 -0500
++++ ./internal/ansible/controller/reconcile.go	2022-01-26 16:05:52.591435973 -0500
+@@ -189,7 +189,7 @@ func (r *AnsibleOperatorReconciler) Reco
+ 		}
+ 
+ 		if module, found := event.EventData["task_action"]; found {
+-			if module == "operator_sdk.util.requeue_after" && event.Event != eventapi.EventRunnerOnFailed {
++			if module == "operator_sdk.util.requeue_after" || module == "requeue_after" && event.Event != eventapi.EventRunnerOnFailed {
+ 				if data, exists := event.EventData["res"]; exists {
+ 					if fields, check := data.(map[string]interface{}); check {
+ 						requeueDuration, err := time.ParseDuration(fields["period"].(string))
