@@ -41,5 +41,21 @@ var _ = Describe("SDK Label helper functions", func() {
 			output := parseVersion(version)
 			Expect(output).To(Equal("unknown"))
 		})
+		It("should extract the right downstream sdk version", func() {
+			version := "v1.3.0-ocp"
+			output := parseVersion(version)
+			Expect(output).To(Equal("v1.3.0-ocp"))
+		})
+		It("should extract the right downstream sdk version", func() {
+			version := "v1.3.0-ocp-ge87627f4"
+			output := parseVersion(version)
+			Expect(output).To(Equal("v1.3.0-ocp+git"))
+		})
+		It("should extract the right downstream sdk version", func() {
+			version := "v1.3.0-ocp-ge87627f4-dirty"
+			output := parseVersion(version)
+			Expect(output).To(Equal("v1.3.0-ocp+git"))
+		})
+
 	})
 })

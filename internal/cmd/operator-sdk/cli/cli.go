@@ -46,6 +46,7 @@ import (
 	envtestv1 "github.com/operator-framework/operator-sdk/internal/plugins/envtest/v1"
 	helmv1 "github.com/operator-framework/operator-sdk/internal/plugins/helm/v1"
 	manifestsv2 "github.com/operator-framework/operator-sdk/internal/plugins/manifests/v2"
+	openshiftv1 "github.com/operator-framework/operator-sdk/internal/plugins/openshift/v1"
 	scorecardv2 "github.com/operator-framework/operator-sdk/internal/plugins/scorecard/v2"
 	"github.com/operator-framework/operator-sdk/internal/util/projutil"
 )
@@ -87,18 +88,21 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *cobra.Command) {
 		golangv3.Plugin{},
 		manifestsv2.Plugin{},
 		scorecardv2.Plugin{},
+		openshiftv1.Plugin{},
 	)
 	ansibleBundle, _ := plugin.NewBundle("ansible"+plugins.DefaultNameQualifier, plugin.Version{Number: 1},
 		kustomizev1.Plugin{},
 		ansiblev1.Plugin{},
 		manifestsv2.Plugin{},
 		scorecardv2.Plugin{},
+		openshiftv1.Plugin{},
 	)
 	helmBundle, _ := plugin.NewBundle("helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1},
 		kustomizev1.Plugin{},
 		helmv1.Plugin{},
 		manifestsv2.Plugin{},
 		scorecardv2.Plugin{},
+		openshiftv1.Plugin{},
 	)
 	hybridBundle, _ := plugin.NewBundle("hybrid.helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1, Stage: stage.Alpha},
 		kustomizev1.Plugin{},
