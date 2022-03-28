@@ -35,6 +35,17 @@ IMAGE_TAG_BASE ?= example.com/memcached-operator
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
+# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
+BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+
+# USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
+# You can enable this value if you would like to use SHA Based Digests
+# To enable set flag to true
+USE_IMAGE_DIGESTS ?= false
+ifeq ($(USE_IMAGE_DIGESTS), true)
+	BUNDLE_GEN_FLAGS += --use-image-digests
+endif
+
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 
@@ -118,7 +129,7 @@ ifeq (,$(shell which helm-operator 2>/dev/null))
 	@{ \
 	set -e ;\
 	mkdir -p $(dir $(HELM_OPERATOR)) ;\
-	curl -sSLo $(HELM_OPERATOR) https://github.com/operator-framework/operator-sdk/releases/download/v1.16.0/helm-operator_$(OS)_$(ARCH) ;\
+	curl -sSLo $(HELM_OPERATOR) https://github.com/operator-framework/operator-sdk/releases/download/v1.18.1/helm-operator_$(OS)_$(ARCH) ;\
 	chmod +x $(HELM_OPERATOR) ;\
 	}
 else
