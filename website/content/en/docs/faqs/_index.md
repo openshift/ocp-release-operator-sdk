@@ -36,6 +36,26 @@ For example, you should refrain from moving the scaffolded files, doing so will 
 
 You should not have separate logic. Instead design your reconciler to be idempotent. See the [controller-runtime FAQ][cr-faq] for more details.
 
+## How do I wait for some specific cluster state such as a resource being deleted?
+
+You don't. Instead, design your reconciler to be idempotent by  taking the next step based on the current state, and then returning and requeuing. For example, waiting for an object to be deleted might look something like this:
+
+```
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.Result, err error) {
+    ...
+    if !r.IfPodWasDeleted(ctx, pod) {
+        if err := r.Delete(ctx, pod); err != nil {
+            return ctrl.Result{}, err
+        }
+        return ctrl.Result{Requeue: true}, nil
+    }
+    // This code will be invoked only after pod deletion    
+    r.DeployBiggerPod(ctx)
+    ...
+}
+```
+
+
 ## When my Custom Resource is deleted, I need to know its contents or perform cleanup tasks. How can I do that?
 
 Use a [finalizer].
@@ -210,3 +230,25 @@ bundle: manifests kustomize ## Generate bundle manifests and metadata, then vali
 
 Note:
 Though this is a bug with controller-gen which is used by Operator SDK to generate CRD, this is a workaround from our end to enable users to preserve the field after controller-gen has run.
+
+## What is the bundle limit size? Was this amount increased?
+
+Bundles have a size limitation because their manifests are used to create a configMap, and the Kubernetes API does not 
+allow configMaps larger than `~1MB`. Beginning with [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0` 
+and [OPM](https://github.com/operator-framework/operator-registry) `1.17.5`, 
+these values are now compressed accommodating larger bundles. ([More info](https://github.com/operator-framework/operator-registry/pull/685)).
+
+The change to allow bigger bundles from [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0` only impacts the full bundle size amount. 
+Any single manifest within the bundle such as the CRD will still make the bundle uninstallable if it exceeds the default file size limit on clusters (`~1MB`).
+
+## The size of my Operator bundle is too big. What can I do?
+
+If your bundle is too large, there are a few things you can try:
+
+  * Reducing the number of [CRD versions][k8s-crd-versions] supported in your Operator by deprecating and then removing older API versions. It is a good idea to have a clear plan for deprecation and removal of old CRDs versions when new ones get added, see [Kubernetes API change practices][k8s-api-change]. Also, refer to the [Kubernetes API conventions][k8s-api-convention].
+  * Reduce the verbosity of your API documentation. (We do not recommend eliminating documenting the APIs)
+
+
+[k8s-crd-versions]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#specify-multiple-versions
+[k8s-api-change]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api_changes.md
+[k8s-api-convention]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md
