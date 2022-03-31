@@ -28,17 +28,17 @@ and then modifying the generated `cmd/completion.go` file to look something like
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate completion script",
-	Long: fmt.Sprintf(`To load completions:
+	Long: `To load completions:
 
 Bash:
 
-  $ source <(%[1]s completion bash)
+  $ source <(yourprogram completion bash)
 
   # To load completions for each session, execute once:
   # Linux:
-  $ %[1]s completion bash > /etc/bash_completion.d/%[1]s
+  $ yourprogram completion bash > /etc/bash_completion.d/yourprogram
   # macOS:
-  $ %[1]s completion bash > /usr/local/etc/bash_completion.d/%[1]s
+  $ yourprogram completion bash > /usr/local/etc/bash_completion.d/yourprogram
 
 Zsh:
 
@@ -48,25 +48,25 @@ Zsh:
   $ echo "autoload -U compinit; compinit" >> ~/.zshrc
 
   # To load completions for each session, execute once:
-  $ %[1]s completion zsh > "${fpath[1]}/_%[1]s"
+  $ yourprogram completion zsh > "${fpath[1]}/_yourprogram"
 
   # You will need to start a new shell for this setup to take effect.
 
 fish:
 
-  $ %[1]s completion fish | source
+  $ yourprogram completion fish | source
 
   # To load completions for each session, execute once:
-  $ %[1]s completion fish > ~/.config/fish/completions/%[1]s.fish
+  $ yourprogram completion fish > ~/.config/fish/completions/yourprogram.fish
 
 PowerShell:
 
-  PS> %[1]s completion powershell | Out-String | Invoke-Expression
+  PS> yourprogram completion powershell | Out-String | Invoke-Expression
 
   # To load completions for every new session, run:
-  PS> %[1]s completion powershell > %[1]s.ps1
+  PS> yourprogram completion powershell > yourprogram.ps1
   # and source this file from your PowerShell profile.
-`,cmd.Root().Name()),
+`,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 	Args:                  cobra.ExactValidArgs(1),
