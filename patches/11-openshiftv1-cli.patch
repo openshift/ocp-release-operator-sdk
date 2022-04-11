@@ -1,7 +1,7 @@
-diff -up internal/cmd/operator-sdk/cli/cli.go.patchocpv1 internal/cmd/operator-sdk/cli/cli.go
---- internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2021-06-01 09:07:16.690850490 -0700
-+++ internal/cmd/operator-sdk/cli/cli.go	2021-06-01 09:07:22.057927153 -0700
-@@ -43,6 +43,7 @@ import (
+diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operator-sdk/cli/cli.go
+--- ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2022-04-07 21:03:46.533082769 -0400
++++ ./internal/cmd/operator-sdk/cli/cli.go	2022-04-07 21:04:38.098692449 -0400
+@@ -46,6 +46,7 @@ import (
  	envtestv1 "github.com/operator-framework/operator-sdk/internal/plugins/envtest/v1"
  	helmv1 "github.com/operator-framework/operator-sdk/internal/plugins/helm/v1"
  	manifestsv2 "github.com/operator-framework/operator-sdk/internal/plugins/manifests/v2"
@@ -9,7 +9,7 @@ diff -up internal/cmd/operator-sdk/cli/cli.go.patchocpv1 internal/cmd/operator-s
  	scorecardv2 "github.com/operator-framework/operator-sdk/internal/plugins/scorecard/v2"
  	"github.com/operator-framework/operator-sdk/internal/util/projutil"
  )
-@@ -84,18 +85,21 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+@@ -87,24 +88,28 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
  		golangv3.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
@@ -25,6 +25,13 @@ diff -up internal/cmd/operator-sdk/cli/cli.go.patchocpv1 internal/cmd/operator-s
  	helmBundle, _ := plugin.NewBundle("helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1},
  		kustomizev1.Plugin{},
  		helmv1.Plugin{},
+ 		manifestsv2.Plugin{},
+ 		scorecardv2.Plugin{},
++		openshiftv1.Plugin{},
+ 	)
+ 	hybridBundle, _ := plugin.NewBundle("hybrid.helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1, Stage: stage.Alpha},
+ 		kustomizev1.Plugin{},
+ 		hybrid.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
 +		openshiftv1.Plugin{},
