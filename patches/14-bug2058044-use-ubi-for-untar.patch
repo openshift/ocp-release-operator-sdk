@@ -1,0 +1,12 @@
+diff -up ./internal/scorecard/testpod.go.bug2058044 ./internal/scorecard/testpod.go
+--- ./internal/scorecard/testpod.go.bug2058044	2022-03-15 14:26:01.317298424 -0400
++++ ./internal/scorecard/testpod.go	2022-03-15 14:29:43.240764199 -0400
+@@ -33,7 +33,7 @@ const (
+ 
+ 	// The image used to untar bundles prior to running tests within a runner Pod.
+ 	// This image tag should always be pinned to a specific version.
+-	scorecardUntarImage = "docker.io/busybox:1.33.0"
++	scorecardUntarImage = "registry.access.redhat.com/ubi8/ubi:8.4"
+ )
+ 
+ // getPodDefinition fills out a Pod definition based on
