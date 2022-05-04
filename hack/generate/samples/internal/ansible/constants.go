@@ -418,7 +418,6 @@ const targetMoleculeCheckDeployment = `- name: Wait 2 minutes for memcached depl
     )}}'`
 
 const molecuTaskToCheckConfigMap = `
-
 - name: Create ConfigMap that the Operator should delete
   k8s:
     definition:
@@ -559,4 +558,22 @@ const customMetricsTest = `
     that:
       - "'histogram_test_sum 2' in metrics_output.stdout"
 
+`
+
+const watchNamespacePatch = `---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
 `

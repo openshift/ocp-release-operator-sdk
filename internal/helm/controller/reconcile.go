@@ -61,8 +61,9 @@ const (
 	// Deprecated: use uninstallFinalizer. This will be removed in operator-sdk v2.0.0.
 	uninstallFinalizerLegacy = "uninstall-helm-release"
 
-	helmUpgradeForceAnnotation  = "helm.sdk.operatorframework.io/upgrade-force"
-	helmUninstallWaitAnnotation = "helm.sdk.operatorframework.io/uninstall-wait"
+	helmUpgradeForceAnnotation    = "helm.sdk.operatorframework.io/upgrade-force"
+	helmUninstallWaitAnnotation   = "helm.sdk.operatorframework.io/uninstall-wait"
+	helmReconcilePeriodAnnotation = "helm.sdk.operatorframework.io/reconcile-period"
 )
 
 // Reconcile reconciles the requested resource by installing, updating, or
@@ -100,6 +101,18 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 
 	status := types.StatusFor(o)
 	log = log.WithValues("release", manager.ReleaseName())
+
+	reconcileResult := reconcile.Result{RequeueAfter: r.ReconcilePeriod}
+	// Determine the correct reconcile period based on the existing value in the reconciler and the
+	// annotations in the custom resource. If a reconcile period is specified in the custom resource
+	// annotations, this value will take precedence over the the existing reconcile period value
+	// (which came from either the command-line flag or the watches.yaml file).
+	finalReconcilePeriod, err := determineReconcilePeriod(r.ReconcilePeriod, o)
+	if err != nil {
+		log.Error(err, "Error: unable to parse reconcile period from the custom resource's annotations")
+		return reconcile.Result{}, err
+	}
+	reconcileResult.RequeueAfter = finalReconcilePeriod
 
 	if o.GetDeletionTimestamp() != nil {
 		if !(controllerutil.ContainsFinalizer(o, uninstallFinalizer) ||
@@ -171,7 +184,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 			}
 			if !isAllResourcesDeleted {
 				log.Info("Waiting until all resources are deleted")
-				return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, nil
+				return reconcileResult, nil
 			}
 			status.RemoveCondition(types.ConditionReleaseFailed)
 		}
@@ -271,7 +284,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 			Manifest: installedRelease.Manifest,
 		}
 		err = r.updateResourceStatus(ctx, o, status)
-		return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, err
+		return reconcileResult, err
 	}
 
 	if !(controllerutil.ContainsFinalizer(o, uninstallFinalizer) ||
@@ -334,7 +347,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 			Manifest: upgradedRelease.Manifest,
 		}
 		err = r.updateResourceStatus(ctx, o, status)
-		return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, err
+		return reconcileResult, err
 	}
 
 	// If a change is made to the CR spec that causes a release failure, a
@@ -387,8 +400,26 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 		Name:     expectedRelease.Name,
 		Manifest: expectedRelease.Manifest,
 	}
+
 	err = r.updateResourceStatus(ctx, o, status)
-	return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, err
+	return reconcileResult, err
+}
+
+// returns the reconcile period that will be set to the RequeueAfter field in the reconciler. If any period
+// is specified in the custom resource's annotations, this will be returned. If not, the existing reconcile period
+// will be returned. An error will be thrown if the custom resource time period is not in proper format.
+func determineReconcilePeriod(currentPeriod time.Duration, o *unstructured.Unstructured) (time.Duration, error) {
+	// If custom resource annotations are present, they will take precedence over the command-line flag
+	if annot, exists := o.UnstructuredContent()["metadata"].(map[string]interface{})["annotations"]; exists {
+		if timeDuration, present := annot.(map[string]interface{})[helmReconcilePeriodAnnotation]; present {
+			annotationsPeriod, err := time.ParseDuration(timeDuration.(string))
+			if err != nil {
+				return currentPeriod, err // First return value does not matter, since err != nil
+			}
+			return annotationsPeriod, nil
+		}
+	}
+	return currentPeriod, nil
 }
 
 // returns the boolean representation of the annotation string

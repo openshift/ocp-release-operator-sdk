@@ -26,6 +26,9 @@
   kind: Secret
   playbook: playbooks/secret.yml
   manageStatus: false
+  selector:
+    matchExpressions:
+     - {key: reconcile, operator: Exists, values: []}
   vars:
     meta: '{{ ansible_operator_meta }}'
 
@@ -66,6 +69,16 @@
   kind: ClusterAnnotationTest
   playbook: playbooks/clusterannotationtest.yml
   watchClusterScopedResources: true
+  vars:
+    meta: '{{ ansible_operator_meta }}'
+
+- version: v1alpha1
+  group: test.example.com
+  kind: FinalizerConcurrencyTest
+  playbook: playbooks/finalizerconcurrencytest.yml
+  finalizer:
+    name: test.example.com/finalizer
+    playbook: playbooks/finalizerconcurrencyfinalizer.yml
   vars:
     meta: '{{ ansible_operator_meta }}'
 #+kubebuilder:scaffold:watch

@@ -287,7 +287,7 @@ When the operator is not running in a cluster, the Manager will return an error 
 
 ### Multiple architectures
 
-Authors may decide to distribute their bundles for various architectures: x86_64, aarch64, ppc64le, s390x, etc, to accomodate the diversity of Kubernetes clusters and reach a larger number of potential users. Each architecture requires however compatible binaries. Considerations on the topic are available in the [Multiple Architectures page][multi_arch].
+Authors may decide to distribute their bundles for various architectures: x86_64, aarch64, ppc64le, s390x, etc, to accommodate the diversity of Kubernetes clusters and reach a larger number of potential users. Each architecture requires however compatible binaries. Considerations on the topic are available in the [Multiple Architectures page][multi_arch].
 
 [typical-status-properties]: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
 [scheme_package]:https://github.com/kubernetes/client-go/blob/master/kubernetes/scheme/register.go
@@ -299,7 +299,7 @@ Authors may decide to distribute their bundles for various architectures: x86_64
 [garbage_collection]: https://kubernetes.io/docs/concepts/workloads/controllers/garbage-collection/
 [finalizers]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#finalizers
 [cronjobs]: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
-[cronjobs_fields]: https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
+[cronjob_fields]: https://kubernetes.io/docs/tasks/job/automated-tasks-with-cron-jobs/#jobs-history-limits
 [cronjob_tutorial]: https://book.kubebuilder.io/cronjob-tutorial/controller-implementation.html#3-clean-up-old-jobs-according-to-the-history-limit
 [pv]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 [reclaiming]: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming
