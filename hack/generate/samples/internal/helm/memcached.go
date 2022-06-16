@@ -75,7 +75,7 @@ func (mh *Memcached) Run() {
 	// role and cause sanity testing to fail.
 	os.Setenv("KUBECONFIG", "broken_so_we_generate_static_default_rules")
 
-	helmChartPath := "../../../hack/generate/samples/internal/helm/testdata/memcached-0.0.1.tgz"
+	helmChartPath := "../../../hack/generate/samples/internal/helm/testdata/memcached-0.0.2.tgz"
 	log.Infof("creating the project using the helm chart in: (%v)", helmChartPath)
 	err := mh.ctx.Init(
 		"--plugins", "helm",
@@ -85,6 +85,9 @@ func (mh *Memcached) Run() {
 		"--kind", mh.ctx.Kind,
 		"--helm-chart", helmChartPath)
 	pkg.CheckError("creating the project", err)
+
+	err = mh.ctx.UncommentRestrictivePodStandards()
+	pkg.CheckError("creating the bundle", err)
 
 	log.Infof("customizing the sample")
 	err = kbutil.ReplaceInFile(

@@ -96,7 +96,7 @@ func (f *Flags) AddTo(flagSet *pflag.FlagSet) {
 	// Controller flags.
 	flagSet.DurationVar(&f.ReconcilePeriod,
 		"reconcile-period",
-		time.Minute,
+		10*time.Hour,
 		"Default reconcile period for controllers",
 	)
 	flagSet.IntVar(&f.MaxConcurrentReconciles,
@@ -207,7 +207,7 @@ func (f *Flags) ToManagerOptions(options manager.Options) manager.Options {
 		options.LeaderElectionNamespace = f.LeaderElectionNamespace
 	}
 	if options.LeaderElectionResourceLock == "" {
-		options.LeaderElectionResourceLock = resourcelock.ConfigMapsResourceLock
+		options.LeaderElectionResourceLock = resourcelock.ConfigMapsLeasesResourceLock
 	}
 	if changed("graceful-shutdown-timeout") || options.GracefulShutdownTimeout == nil {
 		options.GracefulShutdownTimeout = &f.GracefulShutdownTimeout
