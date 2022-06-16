@@ -53,9 +53,7 @@ test_operator() {
         exit 1
     fi
 
-    # get the serviceaccount and its token to access the metrics
-    serviceaccount_secret=$(kubectl get serviceaccounts default -o json | jq -r '.secrets[] | select(.name|test("default-token-.")) | .name')
-    token=$(kubectl get secret ${serviceaccount_secret} -o jsonpath={.data.token} | base64 -d)
+    token=$(kubectl get secrets -o=jsonpath='{.items[?(@.metadata.annotations.kubernetes\.io/service-account\.name==memcached-operator-system:default)].data.token}' | base64 -d)
 
     # verify that the metrics endpoint exists
     if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
@@ -138,6 +136,9 @@ kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding 
 
 # switch to the "memcached-operator-system" namespace
 oc project memcached-operator-system
+
+# create token to allow curl the metrics
+kubectl kubectl apply -f service-account-token.yaml
 
 # Test the operator
 echo "running test_operator"

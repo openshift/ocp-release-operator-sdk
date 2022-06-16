@@ -12,3 +12,4 @@ ROOTDIR="$(pwd)"
 
 mkdir -p /ansible
 cp -r $ROOTDIR/testdata/ansible/memcached-operator/ /ansible/
+cp -r $ROOTDIR/ci/tests/scaffolding/service-account-token.yaml /ansible/
