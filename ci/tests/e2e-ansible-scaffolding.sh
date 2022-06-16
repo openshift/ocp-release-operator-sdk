@@ -44,6 +44,8 @@ test_operator() {
         exit 1
     fi
 
+    # TODO: figure out why this check is failing
+    #
     # verify that metrics service was created
     if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
@@ -53,9 +55,20 @@ test_operator() {
         exit 1
     fi
 
-    # get the serviceaccount and its token to access the metrics
-    serviceaccount_secret=$(kubectl get serviceaccounts default -o json | jq -r '.secrets[] | select(.name|test("default-token-.")) | .name')
-    token=$(kubectl get secret ${serviceaccount_secret} -o jsonpath={.data.token} | base64 -d)
+    # create the service-account-token for the default service account
+    cat <<EOF | kubectl apply -n memcached-operator-system -f -
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: service-account-secret
+  annotations:
+    kubernetes.io/service-account.name: "default"
+EOF
+
+    # get the serviceaccount token to access the metrics
+    token=$(kubectl get secret service-account-secret -o jsonpath={.data.token} | base64 -d)
+
 
     # verify that the metrics endpoint exists
     if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
