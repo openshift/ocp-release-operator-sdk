@@ -44,8 +44,7 @@ test_operator() {
         exit 1
     fi
 
-    # TODO: figure out why this check is failing
-    #
+
     # verify that metrics service was created
     if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
