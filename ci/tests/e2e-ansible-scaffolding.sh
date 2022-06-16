@@ -138,7 +138,7 @@ kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding 
 oc project memcached-operator-system
 
 # create token to allow curl the metrics
-kubectl kubectl apply -f service-account-token.yaml
+kubectl apply -f service-account-token.yaml
 
 # Test the operator
 echo "running test_operator"
