@@ -1,14 +1,14 @@
 diff -up ./Makefile.setversion ./Makefile
---- ./Makefile.setversion	2021-01-18 18:00:48.798480030 -0500
-+++ ./Makefile	2021-01-18 18:01:39.492178121 -0500
+--- ./Makefile.setversion	2022-06-15 23:51:25.351598627 -0400
++++ ./Makefile	2022-06-15 23:53:16.378875096 -0400
 @@ -6,8 +6,8 @@ SHELL = /bin/bash
  # version is moved to a separate repo and release process.
- export IMAGE_VERSION = v1.3.0
+ export IMAGE_VERSION = v1.22.0
  # Build-time variables to inject into binaries
--export SIMPLE_VERSION = $(shell (test "$(shell git describe)" = "$(shell git describe --abbrev=0)" && echo $(shell git describe)) || echo $(shell git describe --abbrev=0)+git)
+-export SIMPLE_VERSION = $(shell (test "$(shell git describe --tags)" = "$(shell git describe --tags --abbrev=0)" && echo $(shell git describe --tags)) || echo $(shell git describe --tags --abbrev=0)+git)
 -export GIT_VERSION = $(shell git describe --dirty --tags --always)
-+export SIMPLE_VERSION = v1.20.0-ocp
++export SIMPLE_VERSION = v1.22.0-ocp
 +export GIT_VERSION = $(SIMPLE_VERSION)
  export GIT_COMMIT = $(shell git rev-parse HEAD)
- export K8S_VERSION = 1.19.4
+ export K8S_VERSION = 1.24.1
  
