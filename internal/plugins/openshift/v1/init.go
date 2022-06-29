@@ -27,9 +27,9 @@ import (
 
 const (
 	// The current OCP release version.
-	ocpProductVersion = "4.10"
+	ocpProductVersion = "4.11"
 	// The currently used version of ubi8/ubi-minimal images.
-	ubiMinimalVersion = "8.5"
+	ubiMinimalVersion = "8.6"
 )
 
 type initSubcommand struct {
