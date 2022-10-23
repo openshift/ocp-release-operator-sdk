@@ -1,12 +1,13 @@
 diff -up ./Makefile.darwin ./Makefile
 --- ./Makefile.darwin	2021-02-18 12:02:57.158711869 -0500
 +++ ./Makefile	2021-02-18 12:10:11.759446770 -0500
-@@ -177,3 +177,8 @@ help: ## Show this help screen.
+@@ -195,3 +195,9 @@ help: ## Show this help screen.
  	@echo 'Available targets are:'
  	@echo ''
  	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 +
 +.PHONY: build-darwin
 +build-darwin: ## Build operator-sdk, ansible-operator, and helm-operator.
-+	@mkdir -p $(BUILD_DIR)/darwin_amd64
++	@mkdir -p $(BUILD_DIR)/darwin_amd64 $(BUILD_DIR)/darwin_arm64
 +	GOOS=darwin GOARCH=amd64 go build $(GO_BUILD_ARGS) -o $(BUILD_DIR)/darwin_amd64/ ./cmd/operator-sdk
++	GOOS=darwin GOARCH=arm64 go build $(GO_BUILD_ARGS) -o $(BUILD_DIR)/darwin_arm64/ ./cmd/operator-sdk
