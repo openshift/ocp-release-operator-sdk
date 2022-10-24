@@ -244,11 +244,16 @@ func (d *dir) delete(p string) error {
 		return errNotExists
 	}
 
-	if _, ok := parent.(*dir).children[filename]; !ok {
+	parentDir, ok := parent.(*dir)
+	if !ok {
+		return errIsNotDir
+	}
+
+	if _, ok := parentDir.children[filename]; !ok {
 		return errNotExists
 	}
 
-	delete(parent.(*dir).children, filename)
+	delete(parentDir.children, filename)
 	return nil
 }
 
@@ -279,6 +284,9 @@ func (f *file) sectionReader(offset int64) io.Reader {
 }
 
 func (f *file) ReadAt(p []byte, offset int64) (n int, err error) {
+	if offset >= int64(len(f.data)) {
+		return 0, io.EOF
+	}
 	return copy(p, f.data[offset:]), nil
 }
 

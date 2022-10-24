@@ -27,26 +27,16 @@ import (
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
 	kustomizecommonv1 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v1"
-	kustomizecommonv2 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v2"
+	kustomizecommonv2alpha "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v2-alpha"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds/internal/templates/hack"
 )
 
 const (
 	// ControllerRuntimeVersion is the kubernetes-sigs/controller-runtime version to be used in the project
-	ControllerRuntimeVersion = "v0.12.1"
+	ControllerRuntimeVersion = "v0.13.0"
 	// ControllerToolsVersion is the kubernetes-sigs/controller-tools version to be used in the project
-	ControllerToolsVersion = "v0.9.0"
-	// KustomizeVersion is the kubernetes-sigs/kustomize version to be used in the project
-	// @Deprecated. This information ought to come from kustomize plugin
-	// Note that by updating the following value nothing will change for the go/3 plugin
-	// it is no longer used and it was not removed only because it would be a breaking
-	// change for the API. (api-diff check)
-	//
-	// NOTE: If you want to update the kustomize version used by this plugin
-	// then you need to update it in pkg/plugins/common/kustomize/v1/plugin.go
-	// Todo: we should remove it for the next go/v4 plugin
-	KustomizeVersion = "v3.8.7"
+	ControllerToolsVersion = "v0.10.0"
 
 	imageName = "controller:latest"
 )
@@ -115,12 +105,13 @@ func (s *initScaffolder) Scaffold() error {
 	// we need to ensure that we use its supported Kustomize Version
 	// in order to support it
 	kustomizeVersion = kustomizecommonv1.KustomizeVersion
-	kustomizev2 := kustomizecommonv2.Plugin{}
+	kustomizev2 := kustomizecommonv2alpha.Plugin{}
+	gov4alpha := "go.kubebuilder.io/v4-alpha"
 	pluginKeyForKustomizeV2 := plugin.KeyFor(kustomizev2)
 
 	for _, pluginKey := range s.config.GetPluginChain() {
-		if pluginKey == pluginKeyForKustomizeV2 {
-			kustomizeVersion = kustomizecommonv2.KustomizeVersion
+		if pluginKey == pluginKeyForKustomizeV2 || pluginKey == gov4alpha {
+			kustomizeVersion = kustomizecommonv2alpha.KustomizeVersion
 			break
 		}
 	}
