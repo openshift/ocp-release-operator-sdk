@@ -1,7 +1,7 @@
 diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operator-sdk/cli/cli.go
---- ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2022-04-07 21:03:46.533082769 -0400
-+++ ./internal/cmd/operator-sdk/cli/cli.go	2022-04-07 21:04:38.098692449 -0400
-@@ -46,6 +46,7 @@ import (
+--- ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2022-10-24 11:58:06.931760183 -0400
++++ ./internal/cmd/operator-sdk/cli/cli.go	2022-10-24 11:58:57.187484410 -0400
+@@ -48,6 +48,7 @@ import (
  	envtestv1 "github.com/operator-framework/operator-sdk/internal/plugins/envtest/v1"
  	helmv1 "github.com/operator-framework/operator-sdk/internal/plugins/helm/v1"
  	manifestsv2 "github.com/operator-framework/operator-sdk/internal/plugins/manifests/v2"
@@ -9,32 +9,40 @@ diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operat
  	scorecardv2 "github.com/operator-framework/operator-sdk/internal/plugins/scorecard/v2"
  	"github.com/operator-framework/operator-sdk/internal/util/projutil"
  )
-@@ -87,24 +88,28 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+@@ -87,6 +88,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+ 		golangv3.Plugin{},
+ 		manifestsv2.Plugin{},
+ 		scorecardv2.Plugin{},
++		openshiftv1.Plugin{},
+ 	)
+ 	gov4AlphaBundle, _ := plugin.NewBundle(golang.DefaultNameQualifier, plugin.Version{Number: 4, Stage: stage.Alpha},
+ 		kustomizev2Alpha.Plugin{},
+@@ -95,24 +97,28 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
  		golangv3.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
 +		openshiftv1.Plugin{},
  	)
  	ansibleBundle, _ := plugin.NewBundle("ansible"+plugins.DefaultNameQualifier, plugin.Version{Number: 1},
- 		kustomizev1.Plugin{},
+ 		kustomizev2Alpha.Plugin{},
  		ansiblev1.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
 +		openshiftv1.Plugin{},
  	)
  	helmBundle, _ := plugin.NewBundle("helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1},
- 		kustomizev1.Plugin{},
+ 		kustomizev2Alpha.Plugin{},
  		helmv1.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
 +		openshiftv1.Plugin{},
  	)
  	hybridBundle, _ := plugin.NewBundle("hybrid.helm"+plugins.DefaultNameQualifier, plugin.Version{Number: 1, Stage: stage.Alpha},
- 		kustomizev1.Plugin{},
+ 		kustomizev2Alpha.Plugin{},
  		hybrid.Plugin{},
  		manifestsv2.Plugin{},
  		scorecardv2.Plugin{},
 +		openshiftv1.Plugin{},
  	)
- 	c, err := cli.New(
- 		cli.WithCommandName("operator-sdk"),
+ 	deployImageBundle, _ := plugin.NewBundle("deploy-image."+golang.DefaultNameQualifier, plugin.Version{Number: 1, Stage: stage.Alpha},
+ 		deployimagev1alpha.Plugin{},
