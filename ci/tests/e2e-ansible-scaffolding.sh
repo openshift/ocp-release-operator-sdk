@@ -70,7 +70,7 @@ EOF
 
 
     # verify that the metrics endpoint exists
-    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
+    if ! timeout 1m bash -c -- "until kubectl run --attach --rm --restart=Never test-metrics --image=registry.access.redhat.com/ubi8/ubi-minimal:latest -n memcached-operator-system --overrides='{\"spec\":{\"securityContext\":{\"runAsNonRoot\": true, \"capabilities\": {\"drop\": [\"ALL\"]}, \"allowPrivelegeEscalation\": false, \"seccompProfile\": {\"type\": \"RuntimeDefault\"}}}}' -- curl -sfkH \"Authorization: Bearer ${token}\" https://memcached-operator-controller-manager-metrics-service:8443/metrics; do sleep 1; done";
     then
         echo "Failed to verify that metrics endpoint exists"
         kubectl describe pods
