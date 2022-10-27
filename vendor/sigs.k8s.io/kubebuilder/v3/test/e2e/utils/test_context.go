@@ -19,7 +19,6 @@ package utils
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,22 +26,31 @@ import (
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 
-	. "github.com/onsi/ginkgo" //nolint:golint,revive
+	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+)
+
+const (
+	certmanagerVersion        = "v1.5.3"
+	certmanagerURLTmpl        = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
+	prometheusOperatorVersion = "0.51"
+	prometheusOperatorURL     = "https://raw.githubusercontent.com/prometheus-operator/" +
+		"prometheus-operator/release-%s/bundle.yaml"
 )
 
 // TestContext specified to run e2e tests
 type TestContext struct {
 	*CmdContext
-	TestSuffix string
-	Domain     string
-	Group      string
-	Version    string
-	Kind       string
-	Resources  string
-	ImageName  string
-	BinaryName string
-	Kubectl    *Kubectl
-	K8sVersion *KubernetesVersion
+	TestSuffix   string
+	Domain       string
+	Group        string
+	Version      string
+	Kind         string
+	Resources    string
+	ImageName    string
+	BinaryName   string
+	Kubectl      *Kubectl
+	K8sVersion   *KubernetesVersion
+	IsRestricted bool
 }
 
 // NewTestContext init with a random suffix for test TestContext stuff,
@@ -105,37 +113,18 @@ func (t *TestContext) Prepare() error {
 	}
 
 	fmt.Fprintf(GinkgoWriter, "preparing testing directory: %s\n", t.Dir)
-	return os.MkdirAll(t.Dir, 0755)
+	return os.MkdirAll(t.Dir, 0o755)
 }
 
-const (
-	certmanagerVersionWithv1beta2CRs = "v0.11.0"
-	certmanagerLegacyVersion         = "v1.0.4"
-	certmanagerVersion               = "v1.5.3"
-
-	certmanagerURLTmplLegacy = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager-legacy.yaml"
-	certmanagerURLTmpl       = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
-)
-
 // makeCertManagerURL returns a kubectl-able URL for the cert-manager bundle.
-func (t *TestContext) makeCertManagerURL(hasv1beta1CRs bool) string {
-	// Return a URL for the manifest bundle with v1beta1 CRs.
-	if hasv1beta1CRs {
-		return fmt.Sprintf(certmanagerURLTmpl, certmanagerVersionWithv1beta2CRs)
-	}
-
-	// Determine which URL to use for a manifest bundle with v1 CRs.
-	// The most up-to-date bundle uses v1 CRDs, which were introduced in k8s v1.16.
-	if ver := t.K8sVersion.ServerVersion; ver.GetMajorInt() <= 1 && ver.GetMinorInt() < 16 {
-		return fmt.Sprintf(certmanagerURLTmplLegacy, certmanagerLegacyVersion)
-	}
+func (t *TestContext) makeCertManagerURL() string {
 	return fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
 }
 
 // InstallCertManager installs the cert manager bundle. If hasv1beta1CRs is true,
 // the legacy version (which uses v1alpha2 CRs) is installed.
-func (t *TestContext) InstallCertManager(hasv1beta1CRs bool) error {
-	url := t.makeCertManagerURL(hasv1beta1CRs)
+func (t *TestContext) InstallCertManager() error {
+	url := t.makeCertManagerURL()
 	if _, err := t.Kubectl.Apply(false, "-f", url, "--validate=false"); err != nil {
 		return err
 	}
@@ -149,43 +138,24 @@ func (t *TestContext) InstallCertManager(hasv1beta1CRs bool) error {
 	return err
 }
 
-// UninstallCertManager uninstalls the cert manager bundle. If hasv1beta1CRs is true,
-// the legacy version (which uses v1alpha2 CRs) is installed.
-func (t *TestContext) UninstallCertManager(hasv1beta1CRs bool) {
-	url := t.makeCertManagerURL(hasv1beta1CRs)
+// UninstallCertManager uninstalls the cert manager bundle.
+func (t *TestContext) UninstallCertManager() {
+	url := t.makeCertManagerURL()
 	if _, err := t.Kubectl.Delete(false, "-f", url); err != nil {
 		warnError(err)
 	}
 }
 
-const (
-	prometheusOperatorLegacyVersion = "0.33"
-	prometheusOperatorLegacyURL     = "https://raw.githubusercontent.com/coreos/prometheus-operator/release-%s/bundle.yaml"
-	prometheusOperatorVersion       = "0.51"
-	prometheusOperatorURL           = "https://raw.githubusercontent.com/prometheus-operator/" +
-		"prometheus-operator/release-%s/bundle.yaml"
-)
-
 // InstallPrometheusOperManager installs the prometheus manager bundle.
 func (t *TestContext) InstallPrometheusOperManager() error {
-	var url string
-	if ver := t.K8sVersion.ServerVersion; ver.GetMajorInt() <= 1 && ver.GetMinorInt() < 16 {
-		url = fmt.Sprintf(prometheusOperatorLegacyURL, prometheusOperatorLegacyVersion)
-	} else {
-		url = fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
-	}
+	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
 	_, err := t.Kubectl.Apply(false, "-f", url)
 	return err
 }
 
 // UninstallPrometheusOperManager uninstalls the prometheus manager bundle.
 func (t *TestContext) UninstallPrometheusOperManager() {
-	var url string
-	if ver := t.K8sVersion.ServerVersion; ver.GetMajorInt() <= 1 && ver.GetMinorInt() < 16 {
-		url = fmt.Sprintf(prometheusOperatorLegacyURL, prometheusOperatorLegacyVersion)
-	} else {
-		url = fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
-	}
+	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
 	if _, err := t.Kubectl.Delete(false, "-f", url); err != nil {
 		warnError(err)
 	}
@@ -213,6 +183,15 @@ func (t *TestContext) Init(initOptions ...string) error {
 	initOptions = append([]string{"init"}, initOptions...)
 	//nolint:gosec
 	cmd := exec.Command(t.BinaryName, initOptions...)
+	_, err := t.Run(cmd)
+	return err
+}
+
+// Edit is for running `kubebuilder edit`
+func (t *TestContext) Edit(editOptions ...string) error {
+	editOptions = append([]string{"edit"}, editOptions...)
+	//nolint:gosec
+	cmd := exec.Command(t.BinaryName, editOptions...)
 	_, err := t.Run(cmd)
 	return err
 }
@@ -262,6 +241,22 @@ func (t *TestContext) Destroy() {
 	}
 }
 
+// CreateManagerNamespace will create the namespace where the manager is deployed
+func (t *TestContext) CreateManagerNamespace() error {
+	_, err := t.Kubectl.Command("create", "ns", t.Kubectl.Namespace)
+	return err
+}
+
+// LabelAllNamespacesToWarnAboutRestricted will label all namespaces so that we can verify
+// if a warning with `Warning: would violate PodSecurity` will be raised when the manifests are applied
+func (t *TestContext) LabelAllNamespacesToWarnAboutRestricted() error {
+	_, err := t.Kubectl.Command("label", "--overwrite", "ns", "--all",
+		"pod-security.kubernetes.io/audit=restricted",
+		"pod-security.kubernetes.io/enforce-version=v1.24",
+		"pod-security.kubernetes.io/warn=restricted")
+	return err
+}
+
 // LoadImageToKindCluster loads a local docker image to the kind cluster
 func (t *TestContext) LoadImageToKindCluster() error {
 	cluster := "kind"
@@ -271,6 +266,18 @@ func (t *TestContext) LoadImageToKindCluster() error {
 	kindOptions := []string{"load", "docker-image", t.ImageName, "--name", cluster}
 	cmd := exec.Command("kind", kindOptions...)
 	_, err := t.Run(cmd)
+	return err
+}
+
+// LoadImageToKindClusterWithName loads a local docker image with the name informed to the kind cluster
+func (tc TestContext) LoadImageToKindClusterWithName(image string) error {
+	cluster := "kind"
+	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
+		cluster = v
+	}
+	kindOptions := []string{"load", "docker-image", "--name", cluster, image}
+	cmd := exec.Command("kind", kindOptions...)
+	_, err := tc.Run(cmd)
 	return err
 }
 
@@ -302,13 +309,13 @@ func (cc *CmdContext) Run(cmd *exec.Cmd) ([]byte, error) {
 func (t *TestContext) AllowProjectBeMultiGroup() error {
 	const multiGroup = `multigroup: true
 `
-	projectBytes, err := ioutil.ReadFile(filepath.Join(t.Dir, "PROJECT"))
+	projectBytes, err := os.ReadFile(filepath.Join(t.Dir, "PROJECT"))
 	if err != nil {
 		return err
 	}
 
 	projectBytes = append([]byte(multiGroup), projectBytes...)
-	err = ioutil.WriteFile(filepath.Join(t.Dir, "PROJECT"), projectBytes, 0644)
+	err = os.WriteFile(filepath.Join(t.Dir, "PROJECT"), projectBytes, 0o644)
 	if err != nil {
 		return err
 	}
