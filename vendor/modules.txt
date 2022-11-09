@@ -694,7 +694,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.17
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/operator-framework/api v0.17.2-0.20221006132308-b527a19c8e14
+# github.com/operator-framework/api v0.17.2-0.20221028193825-b611f6cef49c
 ## explicit; go 1.19
 github.com/operator-framework/api/pkg/apis/scorecard/v1alpha3
 github.com/operator-framework/api/pkg/constraints
