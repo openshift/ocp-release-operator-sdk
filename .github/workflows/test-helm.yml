@@ -5,11 +5,11 @@ on:
 jobs:
   check_docs_only:
     name: check_docs_only
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       skip: ${{ steps.check_docs_only.outputs.skip }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - id: check_docs_only
@@ -22,14 +22,14 @@ jobs:
 
   e2e:
     name: e2e
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: check_docs_only
     if: needs.check_docs_only.outputs.skip != 'true'
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: 1.19
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - run: sudo rm -rf /usr/local/bin/kustomize
