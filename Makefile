@@ -4,12 +4,12 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.27.0
+export IMAGE_VERSION = v1.28.0
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe --tags)" = "$(shell git describe --tags --abbrev=0)" && echo $(shell git describe --tags)) || echo $(shell git describe --tags --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
 export GIT_COMMIT = $(shell git rev-parse HEAD)
-export K8S_VERSION = 1.25.0
+export K8S_VERSION = 1.26.0
 
 # Build settings
 export TOOLS_DIR = tools/bin
@@ -43,7 +43,7 @@ generate: build # Generate CLI docs and samples
 	go generate ./...
 
 .PHONY: bindata
-OLM_VERSIONS = 0.21.2 0.22.0 0.23.1
+OLM_VERSIONS = 0.22.0 0.23.1 0.24.0
 bindata: ## Update project bindata
 	./hack/generate/olm_bindata.sh $(OLM_VERSIONS)
 	$(MAKE) fix
@@ -57,7 +57,7 @@ fix: ## Fixup files in the repo.
 
 .PHONY: setup-lint
 setup-lint: ## Setup the lint
-	$(SCRIPTS_DIR)/fetch golangci-lint 1.50.0
+	$(SCRIPTS_DIR)/fetch golangci-lint 1.51.2
 
 .PHONY: lint
 lint: setup-lint ## Run the lint check
@@ -92,7 +92,7 @@ build/scorecard-test build/scorecard-test-kuttl build/custom-scorecard-tests:
 
 # Convenience wrapper for building all remotely hosted images.
 .PHONY: image-build
-IMAGE_TARGET_LIST = operator-sdk helm-operator ansible-operator ansible-operator-2.11-preview scorecard-test scorecard-test-kuttl
+IMAGE_TARGET_LIST = operator-sdk helm-operator ansible-operator ansible-operator-2.11-preview scorecard-test scorecard-test-kuttl scorecard-untar scorecard-storage
 image-build: $(foreach i,$(IMAGE_TARGET_LIST),image/$(i)) ## Build all images.
 
 # Convenience wrapper for building dependency base images.
@@ -175,12 +175,12 @@ cluster-create::
 
 .PHONY: dev-install
 dev-install::
-	$(SCRIPTS_DIR)/fetch kind 0.16.0
+	$(SCRIPTS_DIR)/fetch kind 0.17.0
 	$(SCRIPTS_DIR)/fetch kubectl $(K8S_VERSION) # Install kubectl AFTER envtest because envtest includes its own kubectl binary
 
 .PHONY: test-e2e-teardown
 test-e2e-teardown:
-	$(SCRIPTS_DIR)/fetch kind 0.16.0
+	$(SCRIPTS_DIR)/fetch kind 0.17.0
 	$(TOOLS_DIR)/kind delete cluster --name $(KIND_CLUSTER)
 	rm -f $(KUBECONFIG)
 
