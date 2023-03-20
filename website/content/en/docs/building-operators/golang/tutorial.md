@@ -97,7 +97,7 @@ This will scaffold the Memcached resource API at `api/v1alpha1/memcached_types.g
 
 For an in-depth explanation of Kubernetes APIs and the group-version-kind model, check out these [kubebuilder docs][kb-doc-gkvs].
 
-In general, it's recommended to have one controller responsible for manage each API created for the project to
+In general, it's recommended to have one controller responsible for managing each API created for the project to
 properly follow the design goals set by [controller-runtime][controller-runtime].
 
 ### Define the API
@@ -115,7 +115,7 @@ type MemcachedSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=3
+	// +kubebuilder:validation:Maximum=5
 	// +kubebuilder:validation:ExclusiveMaximum=false
 
 	// Size defines the number of Memcached instances
@@ -183,7 +183,9 @@ See the [OpenAPI validation][openapi-validation] doc for details.
 
 ## Implement the Controller
 
-For this example replace the generated controller file `controllers/memcached_controller.go` with the example [`memcached_controller.go`][memcached_controller] implementation.
+For this example replace the generated controller file `controllers/memcached_controller.go` with the example [`memcached_controller.go`][memcached_controller] implementation. 
+
+**Note**: If you used a value other than `github.com/example/memcached-operator` for repository (`--repo` flag) when running the `operator-sdk init` command, modify accordingly in the `import` block of the file.
 
 **Note**: The next two subsections explain how the controller watches resources and how the reconcile loop is triggered.
 If you'd like to skip this section, head to the [deploy](#run-the-operator) section to see how to run the operator.
@@ -406,6 +408,7 @@ metadata:
   name: memcached-sample
 spec:
   size: 3
+  containerPort: 11211
 ```
 
 Create the CR:
