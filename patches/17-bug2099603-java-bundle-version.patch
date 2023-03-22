@@ -1,22 +1,22 @@
 diff -up ./go.mod.bug2099603 ./go.mod
---- ./go.mod.bug2099603	2022-06-21 15:25:13.532379361 -0400
-+++ ./go.mod	2022-06-21 15:26:47.576644916 -0400
+--- ./go.mod.bug2099603	2023-03-22 11:38:39.288950102 -0400
++++ ./go.mod	2023-03-22 11:41:54.331652313 -0400
 @@ -15,7 +15,7 @@ require (
  	github.com/onsi/gomega v1.18.1
  	github.com/operator-framework/api v0.15.0
- 	github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220613184440-7329cace347f
+ 	github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220616200420-1a695cb9f6a1
 -	github.com/operator-framework/java-operator-plugins v0.5.1
 +	github.com/operator-framework/java-operator-plugins v0.5.1-0.20220621191241-d474ba0c3de5
  	github.com/operator-framework/operator-lib v0.11.0
  	github.com/operator-framework/operator-manifest-tools v0.2.1
  	github.com/operator-framework/operator-registry v1.23.0
 diff -up ./go.sum.bug2099603 ./go.sum
---- ./go.sum.bug2099603	2022-06-21 15:25:33.256435070 -0400
-+++ ./go.sum	2022-06-21 15:30:14.195228446 -0400
+--- ./go.sum.bug2099603	2023-03-22 11:39:10.176061290 -0400
++++ ./go.sum	2023-03-22 11:42:44.602833313 -0400
 @@ -869,8 +869,8 @@ github.com/operator-framework/api v0.15.
  github.com/operator-framework/api v0.15.0/go.mod h1:scnY9xqSeCsOdtJtNoHIXd7OtHZ14gj1hkDA4+DlgLY=
- github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220613184440-7329cace347f h1:lS/IvqlvEQGIwXE0VlW+mOCmFEXBKywNbGQDrK++r/g=
- github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220613184440-7329cace347f/go.mod h1:D7zPPwmIFBqHtWigU2iJiLuZ0v7hOJOb1/VC+/UuBAQ=
+ github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220616200420-1a695cb9f6a1 h1:ulX/0zkiQIg2JkVuAtC329ygfXHg9Sb578vQ7kdNVkY=
+ github.com/operator-framework/helm-operator-plugins v0.0.12-0.20220616200420-1a695cb9f6a1/go.mod h1:D7zPPwmIFBqHtWigU2iJiLuZ0v7hOJOb1/VC+/UuBAQ=
 -github.com/operator-framework/java-operator-plugins v0.5.1 h1:HmiTocc61d/uqVPY/7EUR6ZTHDVeZ5/fgy7uo1QIBFc=
 -github.com/operator-framework/java-operator-plugins v0.5.1/go.mod h1:UnUHAWY203Xw1j6Xpiirp/psJJaSRYcjenc0NH2+aVw=
 +github.com/operator-framework/java-operator-plugins v0.5.1-0.20220621191241-d474ba0c3de5 h1:6Nam18EspFwdx/CoIO2vHvDncOKCvz7vOPy0uvZErDk=
@@ -25,8 +25,8 @@ diff -up ./go.sum.bug2099603 ./go.sum
  github.com/operator-framework/operator-lib v0.11.0/go.mod h1:RpyKhFAoG6DmKTDIwMuO6pI3LRc8IE9rxEYWy476o6g=
  github.com/operator-framework/operator-manifest-tools v0.2.1 h1:hD3iyOm2mBItzYhpFFWqU1StkolS4XGvXxRvFO4v3Oo=
 diff -up ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go.bug2099603 ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go
---- ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go.bug2099603	2022-06-21 15:35:41.571152992 -0400
-+++ ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go	2022-06-21 15:36:54.320358453 -0400
+--- ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go.bug2099603	2023-03-22 11:40:34.957366529 -0400
++++ ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/api.go	2023-03-22 11:42:49.436850717 -0400
 @@ -109,7 +109,7 @@ func (p *createAPISubcommand) Scaffold(f
  			projectName = strings.ToLower(filepath.Base(dir))
  		}
@@ -82,8 +82,8 @@ diff -up ./vendor/github.com/operator-framework/java-operator-plugins/pkg/quarku
  `
  )
 diff -up ./vendor/modules.txt.bug2099603 ./vendor/modules.txt
---- ./vendor/modules.txt.bug2099603	2022-06-21 15:34:28.872947675 -0400
-+++ ./vendor/modules.txt	2022-06-21 15:36:54.827359885 -0400
+--- ./vendor/modules.txt.bug2099603	2023-03-22 11:41:17.216518680 -0400
++++ ./vendor/modules.txt	2023-03-22 11:42:49.969852636 -0400
 @@ -747,7 +747,7 @@ github.com/operator-framework/helm-opera
  github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/hack
  github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/rbac
