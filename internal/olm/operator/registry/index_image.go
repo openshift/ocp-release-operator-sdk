@@ -144,21 +144,21 @@ func getChannelHead(entries []declarativeconfig.ChannelEntry) (string, error) {
 }
 
 // handleTraditionalUpgrade upgrades an operator that was installed using OLM. Subsequent upgrades will go through the runFBCUpgrade function
-func handleTraditionalUpgrade(ctx context.Context, indexImage string, bundleImage string, channelName string) (string, error) {
+func handleTraditionalUpgrade(ctx context.Context, indexImage string, bundleImage string, channelName string, skipTLSVerify bool, useHTTP bool) (string, error) {
 	// render the index image
-	originalDeclCfg, err := fbcutil.RenderRefs(ctx, []string{indexImage})
+	originalDeclCfg, err := fbcutil.RenderRefs(ctx, []string{indexImage}, skipTLSVerify, useHTTP)
 	if err != nil {
-		return "", fmt.Errorf("error in rendering index %q", indexImage)
+		return "", fmt.Errorf("error rendering index %q", indexImage)
 	}
 
 	// render the bundle image
-	bundleDeclConfig, err := fbcutil.RenderRefs(ctx, []string{bundleImage})
+	bundleDeclConfig, err := fbcutil.RenderRefs(ctx, []string{bundleImage}, skipTLSVerify, useHTTP)
 	if err != nil {
-		return "", fmt.Errorf("error in rendering index %q", bundleImage)
+		return "", fmt.Errorf("error rendering bundle image %q", bundleImage)
 	}
 
 	if len(bundleDeclConfig.Bundles) != 1 {
-		return "", errors.New("bundle image must have exactly one bundle")
+		return "", errors.New("rendered bundle must have exactly one bundle")
 	}
 
 	// search for the specific channel in which the upgrade needs to take place, and upgrade from the channel head
@@ -201,7 +201,7 @@ func (c *IndexImageCatalogCreator) runFBCUpgrade(ctx context.Context) error {
 		refs = append(refs, c.IndexImage)
 	}
 
-	originalDeclcfg, err := fbcutil.RenderRefs(ctx, refs)
+	originalDeclcfg, err := fbcutil.RenderRefs(ctx, refs, c.SkipTLSVerify, c.UseHTTP)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (c *IndexImageCatalogCreator) runFBCUpgrade(ctx context.Context) error {
 	}
 
 	// Adding the FBC "f" to the originalDeclcfg to generate a new FBC
-	declcfg, err := upgradeFBC(ctx, f, originalDeclcfg)
+	declcfg, err := upgradeFBC(ctx, f, originalDeclcfg, c.SkipTLSVerify, c.UseHTTP)
 	if err != nil {
 		return fmt.Errorf("error creating the upgraded FBC: %v", err)
 	}
@@ -235,8 +235,8 @@ func (c *IndexImageCatalogCreator) runFBCUpgrade(ctx context.Context) error {
 
 // upgradeFBC constructs a new File-Based Catalog from both the FBCContext object and the declarative config object. This function will check to see
 // if the FBCContext object "f" is already present in the original declarative config.
-func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *declarativeconfig.DeclarativeConfig) (*declarativeconfig.DeclarativeConfig, error) {
-	declcfg, err := fbcutil.RenderRefs(ctx, f.Refs)
+func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *declarativeconfig.DeclarativeConfig, skipTLSVerify bool, useHTTP bool) (*declarativeconfig.DeclarativeConfig, error) {
+	declcfg, err := fbcutil.RenderRefs(ctx, f.Refs, skipTLSVerify, useHTTP)
 	if err != nil {
 		return nil, err
 	}
@@ -245,6 +245,10 @@ func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *dec
 	if len(declcfg.Bundles) < 1 {
 		return nil, fmt.Errorf("bundle image should contain at least one bundle blob")
 	}
+
+	extraDeclConfig := &declarativeconfig.DeclarativeConfig{}
+	// declcfg contains all the bundles we need to insert to form the new FBC
+	entries := []declarativeconfig.ChannelEntry{} // Used when generating a new channel
 
 	// Checking if the existing file-based catalog (before upgrade) contains the bundle and channel that we intend to insert.
 	// If the bundle already exists, we error out. If the channel already exists, we store the index of the channel. This
@@ -270,6 +274,8 @@ func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *dec
 				return nil, err
 			}
 
+			extraDeclConfig.Channels = append(extraDeclConfig.Channels, channel)
+
 			break // We only want to search through the specific channel
 		}
 	}
@@ -280,12 +286,10 @@ func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *dec
 		existingBundles[bundle.Name] = bundle.Package
 	}
 
-	// declcfg contains all the bundles we need to insert to form the new FBC
-	entries := []declarativeconfig.ChannelEntry{} // Used when generating a new channel
 	for i, bundle := range declcfg.Bundles {
 		// if it is not present in the bundles array or belongs to a different package, we can add it
 		if _, present := existingBundles[bundle.Name]; !present || existingBundles[bundle.Name] != bundle.Package {
-			originalDeclCfg.Bundles = append(originalDeclCfg.Bundles, bundle)
+			extraDeclConfig.Bundles = append(extraDeclConfig.Bundles, bundle)
 		}
 
 		// constructing a new entry to add
@@ -300,7 +304,7 @@ func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *dec
 
 		// either add it to a new channel or an existing channel
 		if channelExists {
-			originalDeclCfg.Channels[channelIndex].Entries = append(originalDeclCfg.Channels[channelIndex].Entries, entry)
+			extraDeclConfig.Channels[channelIndex].Entries = []declarativeconfig.ChannelEntry{entry}
 		} else {
 			entries = append(entries, entry)
 		}
@@ -308,33 +312,27 @@ func upgradeFBC(ctx context.Context, f *fbcutil.FBCContext, originalDeclCfg *dec
 
 	// create a new channel if it does not exist
 	if !channelExists {
-		originalDeclCfg.Channels = append(originalDeclCfg.Channels, declarativeconfig.Channel{
+		channel := declarativeconfig.Channel{
 			Schema:  fbcutil.SchemaChannel,
 			Name:    f.ChannelName,
 			Package: f.Package,
 			Entries: entries,
-		})
-	}
-
-	// check if package already exists
-	packagePresent := false
-	for _, packageName := range originalDeclCfg.Packages {
-		if packageName.Name == f.Package {
-			packagePresent = true
-			break
 		}
+		extraDeclConfig.Channels = []declarativeconfig.Channel{channel}
 	}
 
-	// only add the new package if it does not already exist
-	if !packagePresent {
-		originalDeclCfg.Packages = append(originalDeclCfg.Packages, declarativeconfig.Package{
-			Schema:         fbcutil.SchemaPackage,
-			Name:           f.Package,
-			DefaultChannel: f.ChannelName,
-		})
+	// always add the package as we are starting with a new empty DeclarativeConfig
+	packageBlob := declarativeconfig.Package{
+		Schema:         fbcutil.SchemaPackage,
+		Name:           f.Package,
+		DefaultChannel: f.ChannelName,
 	}
+	extraDeclConfig.Packages = []declarativeconfig.Package{packageBlob}
 
-	return originalDeclCfg, nil
+	// copy over any other FBC metadata
+	extraDeclConfig.Others = originalDeclCfg.Others
+
+	return extraDeclConfig, nil
 }
 
 // UpdateCatalog links a new registry pod in catalog source by updating the address and annotations,
@@ -389,7 +387,7 @@ func (c IndexImageCatalogCreator) UpdateCatalog(ctx context.Context, cs *v1alpha
 			}
 
 			// Upgrading when installed traditionally by OLM
-			upgradedFBC, err := handleTraditionalUpgrade(ctx, c.IndexImage, c.BundleImage, subscription.Spec.Channel)
+			upgradedFBC, err := handleTraditionalUpgrade(ctx, c.IndexImage, c.BundleImage, subscription.Spec.Channel, c.SkipTLSVerify, c.UseHTTP)
 			if err != nil {
 				return fmt.Errorf("unable to upgrade bundle: %v", err)
 			}
