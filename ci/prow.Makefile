@@ -36,7 +36,7 @@ test-subcommand: patch
 
 ci-images:
 	docker build -f ci/dockerfiles/builder.Dockerfile -t osdk-builder .
-	docker build -f release/ansible/upstream.Dockerfile -t osdk-ansible .
+	docker build -f release/ansible/Dockerfile.rhel8 -t osdk-ansible .
 	docker build -f test/ansible/build/Dockerfile -t osdk-ansible-full-e2e test/ansible/
 	docker build -f ci/dockerfiles/ansible-molecule.Dockerfile -t osdk-ansible-molecule .
 
