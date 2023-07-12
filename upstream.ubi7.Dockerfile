@@ -1,1 +1,0 @@
-release/ansible/upstream.Dockerfile
