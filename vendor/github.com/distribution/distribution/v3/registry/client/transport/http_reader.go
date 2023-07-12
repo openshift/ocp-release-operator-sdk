@@ -1,6 +1,8 @@
 package transport
 
 import (
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -8,6 +10,10 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
+	"unicode"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 var (
@@ -20,17 +26,17 @@ var (
 )
 
 // ReadSeekCloser combines io.ReadSeeker with io.Closer.
-type ReadSeekCloser interface {
-	io.ReadSeeker
-	io.Closer
-}
+//
+// Deprecated: use [io.ReadSeekCloser].
+type ReadSeekCloser = io.ReadSeekCloser
 
 // NewHTTPReadSeeker handles reading from an HTTP endpoint using a GET
 // request. When seeking and starting a read from a non-zero offset
 // the a "Range" header will be added which sets the offset.
+//
 // TODO(dmcgowan): Move this into a separate utility package
-func NewHTTPReadSeeker(ctx context.Context, client *http.Client, url string, errorHandler func(*http.Response) error) ReadSeekCloser {
-	return &httpReadSeeker{
+func NewHTTPReadSeeker(ctx context.Context, client *http.Client, url string, errorHandler func(*http.Response) error) *HTTPReadSeeker {
+	return &HTTPReadSeeker{
 		ctx:          ctx,
 		client:       client,
 		url:          url,
@@ -38,7 +44,8 @@ func NewHTTPReadSeeker(ctx context.Context, client *http.Client, url string, err
 	}
 }
 
-type httpReadSeeker struct {
+// HTTPReadSeeker implements an [io.ReadSeekCloser].
+type HTTPReadSeeker struct {
 	ctx    context.Context
 	client *http.Client
 	url    string
@@ -63,7 +70,7 @@ type httpReadSeeker struct {
 	err        error
 }
 
-func (hrs *httpReadSeeker) Read(p []byte) (n int, err error) {
+func (hrs *HTTPReadSeeker) Read(p []byte) (n int, err error) {
 	if hrs.err != nil {
 		return 0, hrs.err
 	}
@@ -92,7 +99,7 @@ func (hrs *httpReadSeeker) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (hrs *httpReadSeeker) Seek(offset int64, whence int) (int64, error) {
+func (hrs *HTTPReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	if hrs.err != nil {
 		return 0, hrs.err
 	}
@@ -135,7 +142,7 @@ func (hrs *httpReadSeeker) Seek(offset int64, whence int) (int64, error) {
 	return hrs.seekOffset, err
 }
 
-func (hrs *httpReadSeeker) Close() error {
+func (hrs *HTTPReadSeeker) Close() error {
 	if hrs.err != nil {
 		return hrs.err
 	}
@@ -152,7 +159,7 @@ func (hrs *httpReadSeeker) Close() error {
 	return nil
 }
 
-func (hrs *httpReadSeeker) reset() {
+func (hrs *HTTPReadSeeker) reset() {
 	if hrs.err != nil {
 		return
 	}
@@ -162,7 +169,7 @@ func (hrs *httpReadSeeker) reset() {
 	}
 }
 
-func (hrs *httpReadSeeker) reader() (io.Reader, error) {
+func (hrs *HTTPReadSeeker) reader() (io.Reader, error) {
 	if hrs.err != nil {
 		return nil, hrs.err
 	}
@@ -171,7 +178,7 @@ func (hrs *httpReadSeeker) reader() (io.Reader, error) {
 		return hrs.rc, nil
 	}
 
-	req, err := http.NewRequestWithContext(hrs.ctx, "GET", hrs.url, nil)
+	req, err := http.NewRequestWithContext(hrs.ctx, http.MethodGet, hrs.url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +190,7 @@ func (hrs *httpReadSeeker) reader() (io.Reader, error) {
 		// context.GetLogger(hrs.context).Infof("Range: %s", req.Header.Get("Range"))
 	}
 
-	req.Header.Add("Accept-Encoding", "identity")
+	req.Header.Add("Accept-Encoding", "zstd, gzip, deflate")
 	resp, err := hrs.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -240,7 +247,35 @@ func (hrs *httpReadSeeker) reader() (io.Reader, error) {
 		} else {
 			hrs.size = -1
 		}
-		hrs.rc = resp.Body
+
+		body := resp.Body
+		encoding := strings.FieldsFunc(resp.Header.Get("Content-Encoding"), func(r rune) bool {
+			return unicode.IsSpace(r) || r == ','
+		})
+		for i := len(encoding) - 1; i >= 0; i-- {
+			algorithm := strings.ToLower(encoding[i])
+			switch algorithm {
+			case "zstd":
+				r, err := zstd.NewReader(body)
+				if err != nil {
+					return nil, err
+				}
+				body = r.IOReadCloser()
+			case "gzip":
+				body, err = gzip.NewReader(body)
+				if err != nil {
+					return nil, err
+				}
+			case "deflate":
+				body = flate.NewReader(body)
+			case "":
+				// no content-encoding applied, use raw body
+			default:
+				return nil, errors.New("unsupported Content-Encoding algorithm: " + algorithm)
+			}
+		}
+
+		hrs.rc = body
 	} else {
 		defer resp.Body.Close()
 		if hrs.errorHandler != nil {

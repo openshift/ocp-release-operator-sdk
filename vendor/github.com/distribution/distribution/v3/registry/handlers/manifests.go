@@ -11,7 +11,7 @@ import (
 	dcontext "github.com/distribution/distribution/v3/context"
 	"github.com/distribution/distribution/v3/manifest/manifestlist"
 	"github.com/distribution/distribution/v3/manifest/ocischema"
-	"github.com/distribution/distribution/v3/manifest/schema1"
+	"github.com/distribution/distribution/v3/manifest/schema1" //nolint:staticcheck // Ignore SA1019: "github.com/distribution/distribution/v3/manifest/schema1" is deprecated, as it's used for backward compatibility.
 	"github.com/distribution/distribution/v3/manifest/schema2"
 	"github.com/distribution/distribution/v3/reference"
 	"github.com/distribution/distribution/v3/registry/api/errcode"
@@ -49,23 +49,23 @@ func manifestDispatcher(ctx *Context, r *http.Request) http.Handler {
 	manifestHandler := &manifestHandler{
 		Context: ctx,
 	}
-	reference := getReference(ctx)
-	dgst, err := digest.Parse(reference)
+	ref := getReference(ctx)
+	dgst, err := digest.Parse(ref)
 	if err != nil {
 		// We just have a tag
-		manifestHandler.Tag = reference
+		manifestHandler.Tag = ref
 	} else {
 		manifestHandler.Digest = dgst
 	}
 
 	mhandler := handlers.MethodHandler{
-		"GET":  http.HandlerFunc(manifestHandler.GetManifest),
-		"HEAD": http.HandlerFunc(manifestHandler.GetManifest),
+		http.MethodGet:  http.HandlerFunc(manifestHandler.GetManifest),
+		http.MethodHead: http.HandlerFunc(manifestHandler.GetManifest),
 	}
 
 	if !ctx.readOnly {
-		mhandler["PUT"] = http.HandlerFunc(manifestHandler.PutManifest)
-		mhandler["DELETE"] = http.HandlerFunc(manifestHandler.DeleteManifest)
+		mhandler[http.MethodPut] = http.HandlerFunc(manifestHandler.PutManifest)
+		mhandler[http.MethodDelete] = http.HandlerFunc(manifestHandler.DeleteManifest)
 	}
 
 	return mhandler
@@ -260,7 +260,7 @@ func (imh *manifestHandler) convertSchema2Manifest(schema2Manifest *schema2.Dese
 		}
 	}
 
-	builder := schema1.NewConfigManifestBuilder(imh.Repository.Blobs(imh), imh.Context.App.trustKey, ref, configJSON)
+	builder := schema1.NewConfigManifestBuilder(imh.Repository.Blobs(imh), imh.Context.App.trustKey, ref, configJSON) //nolint:staticcheck // Ignore SA1019: "github.com/distribution/distribution/v3/manifest/schema1" is deprecated, as it's used for backward compatibility.
 	for _, d := range schema2Manifest.Layers {
 		if err := builder.AppendReference(d); err != nil {
 			imh.Errors = append(imh.Errors, v2.ErrorCodeManifestInvalid.WithDetail(err))
@@ -272,7 +272,7 @@ func (imh *manifestHandler) convertSchema2Manifest(schema2Manifest *schema2.Dese
 		imh.Errors = append(imh.Errors, v2.ErrorCodeManifestInvalid.WithDetail(err))
 		return nil, err
 	}
-	imh.Digest = digest.FromBytes(manifest.(*schema1.SignedManifest).Canonical)
+	imh.Digest = digest.FromBytes(manifest.(*schema1.SignedManifest).Canonical) //nolint:staticcheck // Ignore SA1019: "github.com/distribution/distribution/v3/manifest/schema1" is deprecated, as it's used for backward compatibility.
 
 	return manifest, nil
 }
@@ -421,7 +421,7 @@ func (imh *manifestHandler) applyResourcePolicy(manifest distribution.Manifest) 
 
 	var class string
 	switch m := manifest.(type) {
-	case *schema1.SignedManifest:
+	case *schema1.SignedManifest: //nolint:staticcheck // Ignore SA1019: "github.com/distribution/distribution/v3/manifest/schema1" is deprecated, as it's used for backward compatibility.
 		class = imageClass
 	case *schema2.DeserializedManifest:
 		switch m.Config.MediaType {
@@ -479,7 +479,6 @@ func (imh *manifestHandler) applyResourcePolicy(manifest distribution.Manifest) 
 	}
 
 	return nil
-
 }
 
 // DeleteManifest removes the manifest with the given digest or the tag with the given name from the registry.
