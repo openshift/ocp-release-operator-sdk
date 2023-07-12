@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/distribution/distribution/v3/registry/api/errcode"
@@ -40,7 +39,7 @@ func (e *UnexpectedHTTPResponseError) Error() string {
 
 func parseHTTPErrorResponse(statusCode int, r io.Reader) error {
 	var errors errcode.Errors
-	body, err := ioutil.ReadAll(r)
+	body, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}
@@ -55,6 +54,8 @@ func parseHTTPErrorResponse(statusCode int, r io.Reader) error {
 		switch statusCode {
 		case http.StatusUnauthorized:
 			return errcode.ErrorCodeUnauthorized.WithMessage(detailsErr.Details)
+		case http.StatusForbidden:
+			return errcode.ErrorCodeDenied.WithMessage(detailsErr.Details)
 		case http.StatusTooManyRequests:
 			return errcode.ErrorCodeTooManyRequests.WithMessage(detailsErr.Details)
 		default:

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -79,7 +78,7 @@ func (d *driver) GetContent(ctx context.Context, path string) ([]byte, error) {
 	}
 	defer rc.Close()
 
-	return ioutil.ReadAll(rc)
+	return io.ReadAll(rc)
 }
 
 // PutContent stores the []byte content at a location designated by "path".
@@ -127,7 +126,7 @@ func (d *driver) reader(ctx context.Context, path string, offset int64) (io.Read
 		return nil, fmt.Errorf("%q is a directory", path)
 	}
 
-	return ioutil.NopCloser(found.(*file).sectionReader(offset)), nil
+	return io.NopCloser(found.(*file).sectionReader(offset)), nil
 }
 
 // Writer returns a FileWriter which will store the content written to it
@@ -190,7 +189,6 @@ func (d *driver) List(ctx context.Context, path string) ([]string, error) {
 	}
 
 	entries, err := found.(*dir).list(normalized)
-
 	if err != nil {
 		switch err {
 		case errNotExists:
@@ -253,6 +251,8 @@ func (d *driver) Walk(ctx context.Context, path string, f storagedriver.WalkFn) 
 type writer struct {
 	d         *driver
 	f         *file
+	buffer    []byte
+	buffSize  int
 	closed    bool
 	committed bool
 	cancelled bool
@@ -276,8 +276,17 @@ func (w *writer) Write(p []byte) (int, error) {
 
 	w.d.mutex.Lock()
 	defer w.d.mutex.Unlock()
+	if cap(w.buffer) < len(p)+w.buffSize {
+		data := make([]byte, len(w.buffer), len(p)+w.buffSize)
+		copy(data, w.buffer)
+		w.buffer = data
+	}
 
-	return w.f.WriteAt(p, int64(len(w.f.data)))
+	w.buffer = w.buffer[:w.buffSize+len(p)]
+	n := copy(w.buffer[w.buffSize:w.buffSize+len(p)], p)
+	w.buffSize += n
+
+	return n, nil
 }
 
 func (w *writer) Size() int64 {
@@ -292,10 +301,12 @@ func (w *writer) Close() error {
 		return fmt.Errorf("already closed")
 	}
 	w.closed = true
+	w.flush()
+
 	return nil
 }
 
-func (w *writer) Cancel() error {
+func (w *writer) Cancel(ctx context.Context) error {
 	if w.closed {
 		return fmt.Errorf("already closed")
 	} else if w.committed {
@@ -318,5 +329,16 @@ func (w *writer) Commit() error {
 		return fmt.Errorf("already cancelled")
 	}
 	w.committed = true
+	w.flush()
+
 	return nil
+}
+
+func (w *writer) flush() {
+	w.d.mutex.Lock()
+	defer w.d.mutex.Unlock()
+
+	w.f.WriteAt(w.buffer, int64(len(w.f.data)))
+	w.buffer = []byte{}
+	w.buffSize = 0
 }

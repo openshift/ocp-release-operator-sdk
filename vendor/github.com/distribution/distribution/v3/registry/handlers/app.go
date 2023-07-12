@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -272,6 +273,9 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			if app.redis == nil {
 				panic("redis configuration required to use for layerinfo cache")
 			}
+			if _, ok := cc["blobdescriptorsize"]; ok {
+				dcontext.GetLogger(app).Warnf("blobdescriptorsize parameter is not supported with redis cache")
+			}
 			cacheProvider := rediscache.NewRedisBlobDescriptorCacheProvider(app.redis)
 			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
 			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
@@ -280,7 +284,17 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 			}
 			dcontext.GetLogger(app).Infof("using redis blob descriptor cache")
 		case "inmemory":
-			cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider()
+			blobDescriptorSize := memorycache.DefaultSize
+			configuredSize, ok := cc["blobdescriptorsize"]
+			if ok {
+				// Since Parameters is not strongly typed, render to a string and convert back
+				blobDescriptorSize, err = strconv.Atoi(fmt.Sprint(configuredSize))
+				if err != nil {
+					panic(fmt.Sprintf("invalid blobdescriptorsize value %s: %s", configuredSize, err))
+				}
+			}
+
+			cacheProvider := memorycache.NewInMemoryBlobDescriptorCacheProvider(blobDescriptorSize)
 			localOptions := append(options, storage.BlobDescriptorCacheProvider(cacheProvider))
 			app.registry, err = storage.NewRegistry(app, app.driver, localOptions...)
 			if err != nil {
@@ -631,13 +645,6 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx = dcontext.WithLogger(ctx, dcontext.GetRequestLogger(ctx))
 	r = r.WithContext(ctx)
 
-	defer func() {
-		status, ok := ctx.Value("http.response.status").(int)
-		if ok && status >= 200 && status <= 399 {
-			dcontext.GetResponseLogger(r.Context()).Infof("response completed")
-		}
-	}()
-
 	// Set a header with the Docker Distribution API Version for all responses.
 	w.Header().Add("Docker-Distribution-API-Version", "registry/2.0")
 	app.router.ServeHTTP(w, r)
@@ -664,6 +671,18 @@ func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
 
 		context := app.context(w, r)
 
+		defer func() {
+			// Automated error response handling here. Handlers may return their
+			// own errors if they need different behavior (such as range errors
+			// for layer upload).
+			if context.Errors.Len() > 0 {
+				_ = errcode.ServeJSON(w, context.Errors)
+				app.logError(context, context.Errors)
+			} else if status, ok := context.Value("http.response.status").(int); ok && status >= 200 && status <= 399 {
+				dcontext.GetResponseLogger(context).Infof("response completed")
+			}
+		}()
+
 		if err := app.authorized(w, r, context); err != nil {
 			dcontext.GetLogger(context).Warnf("error authorizing context: %v", err)
 			return
@@ -689,7 +708,6 @@ func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
 				return
 			}
 			repository, err := app.registry.Repository(context, nameRef)
-
 			if err != nil {
 				dcontext.GetLogger(context).Errorf("error resolving repository: %v", err)
 
@@ -727,16 +745,7 @@ func (app *App) dispatcher(dispatch dispatchFunc) http.Handler {
 		}
 
 		dispatch(context, r).ServeHTTP(w, r)
-		// Automated error response handling here. Handlers may return their
-		// own errors if they need different behavior (such as range errors
-		// for layer upload).
-		if context.Errors.Len() > 0 {
-			if err := errcode.ServeJSON(w, context.Errors); err != nil {
-				dcontext.GetLogger(context).Errorf("error serving error json: %v (from %v)", err, context.Errors)
-			}
 
-			app.logError(context, context.Errors)
-		}
 	})
 }
 
@@ -824,7 +833,7 @@ func (app *App) authorized(w http.ResponseWriter, r *http.Request, context *Cont
 		if fromRepo := r.FormValue("from"); fromRepo != "" {
 			// mounting a blob from one repository to another requires pull (GET)
 			// access to the source repository.
-			accessRecords = appendAccessRecords(accessRecords, "GET", fromRepo)
+			accessRecords = appendAccessRecords(accessRecords, http.MethodGet, fromRepo)
 		}
 	} else {
 		// Only allow the name not to be set on the base route.
@@ -913,13 +922,13 @@ func appendAccessRecords(records []auth.Access, method string, repo string) []au
 	}
 
 	switch method {
-	case "GET", "HEAD":
+	case http.MethodGet, http.MethodHead:
 		records = append(records,
 			auth.Access{
 				Resource: resource,
 				Action:   "pull",
 			})
-	case "POST", "PUT", "PATCH":
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
 		records = append(records,
 			auth.Access{
 				Resource: resource,
@@ -929,7 +938,7 @@ func appendAccessRecords(records []auth.Access, method string, repo string) []au
 				Resource: resource,
 				Action:   "push",
 			})
-	case "DELETE":
+	case http.MethodDelete:
 		records = append(records,
 			auth.Access{
 				Resource: resource,
@@ -969,7 +978,6 @@ func applyRegistryMiddleware(ctx context.Context, registry distribution.Namespac
 		registry = rmw
 	}
 	return registry, nil
-
 }
 
 // applyRepoMiddleware wraps a repository with the configured middlewares

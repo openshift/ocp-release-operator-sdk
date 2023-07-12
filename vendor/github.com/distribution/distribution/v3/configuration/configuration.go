@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"strings"
@@ -43,6 +42,9 @@ type Configuration struct {
 		// Hooks allows users to configure the log hooks, to enabling the
 		// sequent handling behavior, when defined levels of log message emit.
 		Hooks []LogHook `yaml:"hooks,omitempty"`
+
+		// ReportCaller allows user to configure the log to report the caller
+		ReportCaller bool `yaml:"reportcaller,omitempty"`
 	}
 
 	// Loglevel is the level at which registry operations are logged.
@@ -198,18 +200,31 @@ type Configuration struct {
 		} `yaml:"pool,omitempty"`
 	} `yaml:"redis,omitempty"`
 
-	Health Health `yaml:"health,omitempty"`
+	Health  Health  `yaml:"health,omitempty"`
+	Catalog Catalog `yaml:"catalog,omitempty"`
 
 	Proxy Proxy `yaml:"proxy,omitempty"`
 
 	// Compatibility is used for configurations of working with older or deprecated features.
 	Compatibility struct {
-		// Schema1 configures how schema1 manifests will be handled
+		// Schema1 configures how schema1 manifests will be handled.
+		//
+		// Deprecated: Docker Image Manifest v2, Schema 1 is deprecated since
+		// 2015. These options should only be used if you need to provide
+		// backward compatibility.
 		Schema1 struct {
 			// TrustKey is the signing key to use for adding the signature to
 			// schema1 manifests.
+			//
+			// Deprecated: Docker Image Manifest v2, Schema 1 is deprecated since
+			// 2015. These options should only be used if you need to provide
+			// backward compatibility.
 			TrustKey string `yaml:"signingkeyfile,omitempty"`
-			// Enabled determines if schema1 manifests should be pullable
+			// Enabled determines if schema1 manifests should be pullable.
+			//
+			// Deprecated: Docker Image Manifest v2, Schema 1 is deprecated since
+			// 2015. These options should only be used if you need to provide
+			// backward compatibility.
 			Enabled bool `yaml:"enabled,omitempty"`
 		} `yaml:"schema1,omitempty"`
 	} `yaml:"compatibility,omitempty"`
@@ -247,6 +262,16 @@ type Configuration struct {
 			Classes []string `yaml:"classes"`
 		} `yaml:"repository,omitempty"`
 	} `yaml:"policy,omitempty"`
+}
+
+// Catalog is composed of MaxEntries.
+// Catalog endpoint (/v2/_catalog) configuration, it provides the configuration
+// options to control the maximum number of entries returned by the catalog endpoint.
+type Catalog struct {
+	// Max number of entries returned by the catalog endpoint. Requesting n entries
+	// to the catalog endpoint will return at most MaxEntries entries.
+	// An empty or a negative value will set a default of 1000 maximum entries by default.
+	MaxEntries int `yaml:"maxentries,omitempty"`
 }
 
 // LogHook is composed of hook Level and Type.
@@ -589,7 +614,7 @@ type Events struct {
 	IncludeReferences bool `yaml:"includereferences"` // include reference data in manifest events
 }
 
-//Ignore configures mediaTypes and actions of the event, that it won't be propagated
+// Ignore configures mediaTypes and actions of the event, that it won't be propagated
 type Ignore struct {
 	MediaTypes []string `yaml:"mediatypes"` // target media types to ignore
 	Actions    []string `yaml:"actions"`    // ignore action types
@@ -654,7 +679,7 @@ type Proxy struct {
 // Configuration.Abc may be replaced by the value of REGISTRY_ABC,
 // Configuration.Abc.Xyz may be replaced by the value of REGISTRY_ABC_XYZ, and so forth
 func Parse(rd io.Reader) (*Configuration, error) {
-	in, err := ioutil.ReadAll(rd)
+	in, err := io.ReadAll(rd)
 	if err != nil {
 		return nil, err
 	}
@@ -675,6 +700,11 @@ func Parse(rd io.Reader) (*Configuration, error) {
 					if v0_1.Loglevel != Loglevel("") {
 						v0_1.Loglevel = Loglevel("")
 					}
+
+					if v0_1.Catalog.MaxEntries <= 0 {
+						v0_1.Catalog.MaxEntries = 1000
+					}
+
 					if v0_1.Storage.Type() == "" {
 						return nil, errors.New("no storage configuration provided")
 					}

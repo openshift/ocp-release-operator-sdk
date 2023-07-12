@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -72,13 +71,16 @@ var defaultCipherSuites = []uint16{
 	tls.TLS_AES_256_GCM_SHA384,
 }
 
-// maps tls version strings to constants
-var defaultTLSVersionStr = "tls1.2"
+const defaultTLSVersionStr = "tls1.2"
+
+// tlsVersions maps user-specified values to tls version constants.
 var tlsVersions = map[string]uint16{
-	// user specified values
 	"tls1.2": tls.VersionTLS12,
 	"tls1.3": tls.VersionTLS13,
 }
+
+// defaultLogFormatter is the default formatter to use for logs.
+const defaultLogFormatter = "text"
 
 // this channel gets notified when process receives signal. It is global to ease unit testing
 var quit = make(chan os.Signal, 1)
@@ -89,7 +91,6 @@ var ServeCmd = &cobra.Command{
 	Short: "`serve` stores and distributes Docker images",
 	Long:  "`serve` stores and distributes Docker images.",
 	Run: func(cmd *cobra.Command, args []string) {
-
 		// setup context
 		ctx := dcontext.WithVersion(dcontext.Background(), version.Version)
 
@@ -99,29 +100,12 @@ var ServeCmd = &cobra.Command{
 			cmd.Usage()
 			os.Exit(1)
 		}
-
-		if config.HTTP.Debug.Addr != "" {
-			go func(addr string) {
-				logrus.Infof("debug server listening %v", addr)
-				if err := http.ListenAndServe(addr, nil); err != nil {
-					logrus.Fatalf("error listening on debug interface: %v", err)
-				}
-			}(config.HTTP.Debug.Addr)
-		}
-
 		registry, err := NewRegistry(ctx, config)
 		if err != nil {
 			logrus.Fatalln(err)
 		}
 
-		if config.HTTP.Debug.Prometheus.Enabled {
-			path := config.HTTP.Debug.Prometheus.Path
-			if path == "" {
-				path = "/metrics"
-			}
-			logrus.Info("providing prometheus metrics on ", path)
-			http.Handle(path, metrics.Handler())
-		}
+		configureDebugServer(config)
 
 		if err = registry.ListenAndServe(); err != nil {
 			logrus.Fatalln(err)
@@ -130,6 +114,7 @@ var ServeCmd = &cobra.Command{
 }
 
 // A Registry represents a complete instance of the registry.
+//
 // TODO(aaronl): It might make sense for Registry to become an interface.
 type Registry struct {
 	config *configuration.Configuration
@@ -236,11 +221,10 @@ func (registry *Registry) ListenAndServe() error {
 		}
 
 		tlsConf := &tls.Config{
-			ClientAuth:               tls.NoClientCert,
-			NextProtos:               nextProtos(config),
-			MinVersion:               tlsMinVersion,
-			PreferServerCipherSuites: true,
-			CipherSuites:             tlsCipherSuites,
+			ClientAuth:   tls.NoClientCert,
+			NextProtos:   nextProtos(config),
+			MinVersion:   tlsMinVersion,
+			CipherSuites: tlsCipherSuites,
 		}
 
 		if config.HTTP.TLS.LetsEncrypt.CacheFile != "" {
@@ -267,7 +251,7 @@ func (registry *Registry) ListenAndServe() error {
 			pool := x509.NewCertPool()
 
 			for _, ca := range config.HTTP.TLS.ClientCAs {
-				caPem, err := ioutil.ReadFile(ca)
+				caPem, err := os.ReadFile(ca)
 				if err != nil {
 					return err
 				}
@@ -277,7 +261,7 @@ func (registry *Registry) ListenAndServe() error {
 				}
 			}
 
-			for _, subj := range pool.Subjects() {
+			for _, subj := range pool.Subjects() { //nolint:staticcheck // FIXME(thaJeztah): ignore SA1019: ac.(*accessController).rootCerts.Subjects has been deprecated since Go 1.18: if s was returned by SystemCertPool, Subjects will not include the system roots. (staticcheck)
 				dcontext.GetLogger(registry.app).Debugf("CA Subject: %s", string(subj))
 			}
 
@@ -316,6 +300,29 @@ func (registry *Registry) ListenAndServe() error {
 	}
 }
 
+func configureDebugServer(config *configuration.Configuration) {
+	if config.HTTP.Debug.Addr != "" {
+		go func(addr string) {
+			logrus.Infof("debug server listening %v", addr)
+			if err := http.ListenAndServe(addr, nil); err != nil {
+				logrus.Fatalf("error listening on debug interface: %v", err)
+			}
+		}(config.HTTP.Debug.Addr)
+		configurePrometheus(config)
+	}
+}
+
+func configurePrometheus(config *configuration.Configuration) {
+	if config.HTTP.Debug.Prometheus.Enabled {
+		path := config.HTTP.Debug.Prometheus.Path
+		if path == "" {
+			path = "/metrics"
+		}
+		logrus.Info("providing prometheus metrics on ", path)
+		http.Handle(path, metrics.Handler())
+	}
+}
+
 func configureReporting(app *handlers.App) http.Handler {
 	var handler http.Handler = app
 
@@ -343,10 +350,11 @@ func configureReporting(app *handlers.App) http.Handler {
 // configuration.
 func configureLogging(ctx context.Context, config *configuration.Configuration) (context.Context, error) {
 	logrus.SetLevel(logLevel(config.Log.Level))
+	logrus.SetReportCaller(config.Log.ReportCaller)
 
 	formatter := config.Log.Formatter
 	if formatter == "" {
-		formatter = "text" // default formatter
+		formatter = defaultLogFormatter
 	}
 
 	switch formatter {
@@ -364,16 +372,10 @@ func configureLogging(ctx context.Context, config *configuration.Configuration) 
 			Formatter: &logrus.JSONFormatter{TimestampFormat: time.RFC3339Nano},
 		})
 	default:
-		// just let the library use default on empty string.
-		if config.Log.Formatter != "" {
-			return ctx, fmt.Errorf("unsupported logging formatter: %q", config.Log.Formatter)
-		}
+		return ctx, fmt.Errorf("unsupported logging formatter: %q", formatter)
 	}
 
-	if config.Log.Formatter != "" {
-		logrus.Debugf("using %q logging formatter", config.Log.Formatter)
-	}
-
+	logrus.Debugf("using %q logging formatter", formatter)
 	if len(config.Log.Fields) > 0 {
 		// build up the static fields, if present.
 		var fields []interface{}
