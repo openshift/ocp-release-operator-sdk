@@ -8,6 +8,7 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make -f ci/prow.Makefile patch build
 
+# create base image
 FROM registry.ci.openshift.org/ocp/4.14:base
 
 RUN mkdir -p /etc/ansible \
@@ -20,18 +21,20 @@ ENV HOME=/opt/ansible \
     USER_NAME=ansible \
     USER_UID=1001
 
+# get artifacts from cachito
+COPY $REMOTE_SOURCE/cachito-gomod-with-deps/app $REMOTE_SOURCE_DIR
+WORKDIR $REMOTE_SOURCE_DIR/app
+
 RUN yum install -y \
       ansible \
       ansible-runner \
       ansible-runner-http \
-      python3-kubernetes \
-      python3-openshift \
-      python3-oauthlib \
-      python3-requests-oauthlib \
-      python3-jmespath \
       tini \
- && yum clean all \
- && rm -rf /var/cache/yum
+    && yum clean all \
+    && rm -rf /var/cache/yum
+
+RUN source cachito.env && \
+    python -m pip install --no-cache-dir -r .
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator /usr/local/bin/ansible-operator
 COPY release/ansible/ansible_collections ${HOME}/.ansible/collections/ansible_collections
@@ -44,7 +47,6 @@ RUN /usr/local/bin/user_setup
 RUN mkdir -p ${HOME}/.ansible/tmp \
  && chown -R ${USER_UID}:0 ${HOME} \
  && chmod -R ug+rwx ${HOME}
-
 
 WORKDIR ${HOME}
 USER ${USER_UID}
