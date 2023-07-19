@@ -22,8 +22,8 @@ ENV HOME=/opt/ansible \
     USER_UID=1001
 
 # get artifacts from cachito
-COPY $REMOTE_SOURCE/cachito-gomod-with-deps/app $REMOTE_SOURCE_DIR
-WORKDIR $REMOTE_SOURCE_DIR/app
+COPY $REMOTE_SOURCES/cachito-gomod-with-deps/app $REMOTE_SOURCES_DIR
+WORKDIR $REMOTE_SOURCES_DIR/app
 
 RUN yum install -y \
       ansible \
