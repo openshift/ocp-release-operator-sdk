@@ -1,14 +1,12 @@
 apiVersion: test.example.com/v1alpha1
-kind: InventoryTest
+kind: FinalizerConcurrencyTest
 metadata:
   labels:
-    app.kubernetes.io/name: inventorytest
-    app.kubernetes.io/instance: inventorytest-sample
+    app.kubernetes.io/name: finalizerconcurrencytest
+    app.kubernetes.io/instance: finalizerconcurrencytest-sample
     app.kubernetes.io/part-of: advanced-molecule-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: advanced-molecule-operator
-  name: inventorytest-sample
-  annotations:
-    "ansible.sdk.operatorframework.io/verbosity": "0"
+  name: finalizerconcurrencytest-sample
 spec:
-  size: 3
+  # TODO(user): Add fields here

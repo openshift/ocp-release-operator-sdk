@@ -1,6 +1,12 @@
 apiVersion: test.example.com/v1alpha1
 kind: ReconciliationTest
 metadata:
+  labels:
+    app.kubernetes.io/name: reconciliationtest
+    app.kubernetes.io/instance: reconciliationtest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
   name: reconciliationtest-sample
 spec:
   # TODO(user): Add fields here
