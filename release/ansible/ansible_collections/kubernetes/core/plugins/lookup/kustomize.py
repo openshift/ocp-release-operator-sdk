@@ -3,15 +3,15 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-DOCUMENTATION = '''
-    lookup: kustomize
+DOCUMENTATION = """
+    name: kustomize
 
     short_description: Build a set of kubernetes resources using a 'kustomization.yaml' file.
 
     version_added: "2.2.0"
 
     author:
-      - Aubin Bikouo <@abikouo>
+      - Aubin Bikouo (@abikouo)
     notes:
       - If both kustomize and kubectl are part of the PATH, kustomize will be used by the plugin.
     description:
@@ -33,7 +33,7 @@ DOCUMENTATION = '''
 
     requirements:
       - "python >= 3.6"
-'''
+"""
 
 EXAMPLES = """
 - name: Run lookup using kustomize
@@ -52,29 +52,16 @@ EXAMPLES = """
 RETURN = """
   _list:
     description:
-      - One ore more object definitions returned from the tool execution.
-    type: complex
-    contains:
-      api_version:
-        description: The versioned schema of this representation of an object.
-        returned: success
-        type: str
-      kind:
-        description: Represents the REST resource this object represents.
-        returned: success
-        type: str
+      - YAML string for the object definitions returned from the tool execution.
+    type: str
+    sample:
+      kind: ConfigMap
+      apiVersion: v1
       metadata:
-        description: Standard object metadata. Includes name, namespace, annotations, labels, etc.
-        returned: success
-        type: complex
-      spec:
-        description: Specific attributes of the object. Will vary based on the I(api_version) and I(kind).
-        returned: success
-        type: complex
-      status:
-        description: Current status details for the object.
-        returned: success
-        type: complex
+        name: my-config-map
+        namespace: default
+      data:
+        key1: val1
 """
 
 from ansible.errors import AnsibleLookupError
@@ -91,7 +78,7 @@ def get_binary_from_path(name, opt_dirs=None):
         if opt_dirs is not None:
             if not isinstance(opt_dirs, list):
                 opt_dirs = [opt_dirs]
-            opt_arg['opt_dirs'] = opt_dirs
+            opt_arg["opt_dirs"] = opt_dirs
         bin_path = get_bin_path(name, **opt_arg)
         return bin_path
     except ValueError:
@@ -104,30 +91,41 @@ def run_command(command):
 
 
 class LookupModule(LookupBase):
-
-    def run(self, terms, variables=None, dir=".", binary_path=None, opt_dirs=None, **kwargs):
+    def run(
+        self, terms, variables=None, dir=".", binary_path=None, opt_dirs=None, **kwargs
+    ):
         executable_path = binary_path
         if executable_path is None:
             executable_path = get_binary_from_path(name="kustomize", opt_dirs=opt_dirs)
             if executable_path is None:
-                executable_path = get_binary_from_path(name="kubectl", opt_dirs=opt_dirs)
+                executable_path = get_binary_from_path(
+                    name="kubectl", opt_dirs=opt_dirs
+                )
 
             # validate that at least one tool was found
             if executable_path is None:
-                raise AnsibleLookupError("Failed to find required executable 'kubectl' and 'kustomize' in paths")
+                raise AnsibleLookupError(
+                    "Failed to find required executable 'kubectl' and 'kustomize' in paths"
+                )
 
         # check input directory
         kustomization_dir = dir
 
         command = [executable_path]
-        if executable_path.endswith('kustomize'):
-            command += ['build', kustomization_dir]
-        elif executable_path.endswith('kubectl'):
-            command += ['kustomize', kustomization_dir]
+        if executable_path.endswith("kustomize"):
+            command += ["build", kustomization_dir]
+        elif executable_path.endswith("kubectl"):
+            command += ["kustomize", kustomization_dir]
         else:
-            raise AnsibleLookupError("unexpected tool provided as parameter {0}, expected one of kustomize, kubectl.".format(executable_path))
+            raise AnsibleLookupError(
+                "unexpected tool provided as parameter {0}, expected one of kustomize, kubectl.".format(
+                    executable_path
+                )
+            )
 
         (out, err) = run_command(command)
         if err:
-            raise AnsibleLookupError("kustomize command failed with: {0}".format(err.decode("utf-8")))
-        return [out.decode('utf-8')]
+            raise AnsibleLookupError(
+                "kustomize command failed with: {0}".format(err.decode("utf-8"))
+            )
+        return [out.decode("utf-8")]

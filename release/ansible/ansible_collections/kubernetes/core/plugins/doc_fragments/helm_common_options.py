@@ -6,13 +6,14 @@
 
 # Options for common Helm modules
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
 class ModuleDocFragment(object):
 
-    DOCUMENTATION = r'''
+    DOCUMENTATION = r"""
 options:
   binary_path:
     description:
@@ -29,7 +30,8 @@ options:
     description:
       - Helm option to specify kubeconfig path to use.
       - If the value is not specified in the task, the value of environment variable C(K8S_AUTH_KUBECONFIG) will be used instead.
-    type: path
+      - The configuration can be provided as dictionary. Added in version 2.4.0.
+    type: raw
     aliases: [ kubeconfig_path ]
   host:
     description:
@@ -56,4 +58,4 @@ options:
     type: path
     aliases: [ ssl_ca_cert ]
     version_added: "1.2.0"
-'''
+"""

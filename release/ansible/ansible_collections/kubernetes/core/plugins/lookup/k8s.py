@@ -3,18 +3,18 @@
 #
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-DOCUMENTATION = '''
-    lookup: k8s
+DOCUMENTATION = """
+    name: k8s
 
     short_description: Query the K8s API
 
     author:
-      - Chris Houseknecht <@chouseknecht>
-      - Fabian von Feilitzsch <@fabianvf>
+      - Chris Houseknecht (@chouseknecht)
+      - Fabian von Feilitzsch (@fabianvf)
 
     description:
       - Uses the Kubernetes Python client to fetch a specific object by name, all matching objects within a
@@ -117,7 +117,7 @@ DOCUMENTATION = '''
       - "python >= 3.6"
       - "kubernetes >= 12.0.0"
       - "PyYAML >= 3.11"
-'''
+"""
 
 EXAMPLES = """
 - name: Fetch a list of namespaces
@@ -159,39 +159,52 @@ RETURN = """
   _list:
     description:
       - One ore more object definitions returned from the API.
-    type: complex
-    contains:
-      api_version:
-        description: The versioned schema of this representation of an object.
-        returned: success
-        type: str
-      kind:
-        description: Represents the REST resource this object represents.
-        returned: success
-        type: str
-      metadata:
-        description: Standard object metadata. Includes name, namespace, annotations, labels, etc.
-        returned: success
-        type: complex
-      spec:
-        description: Specific attributes of the object. Will vary based on the I(api_version) and I(kind).
-        returned: success
-        type: complex
-      status:
-        description: Current status details for the object.
-        returned: success
-        type: complex
+    type: list
+    elements: dict
+    sample:
+        - kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            creationTimestamp: "2022-03-04T13:59:49Z"
+            name: my-config-map
+            namespace: default
+            resourceVersion: "418"
+            uid: 5714b011-d090-4eac-8272-a0ea82ec0abd
+          data:
+            key1: val1
 """
+
+import os
 
 from ansible.errors import AnsibleError
 from ansible.module_utils.common._collections_compat import KeysView
-from ansible.plugins.lookup import LookupBase
+from ansible.module_utils.common.validation import check_type_bool
 
-from ansible_collections.kubernetes.core.plugins.module_utils.common import K8sAnsibleMixin, get_api_client
+from ansible_collections.kubernetes.core.plugins.module_utils.k8s.client import (
+    get_api_client,
+)
+from ansible_collections.kubernetes.core.plugins.module_utils.k8s.resource import (
+    create_definitions,
+)
 
+try:
+    enable_turbo_mode = check_type_bool(os.environ.get("ENABLE_TURBO_MODE"))
+except TypeError:
+    enable_turbo_mode = False
+
+if enable_turbo_mode:
+    try:
+        from ansible_collections.cloud.common.plugins.plugin_utils.turbo.lookup import (
+            TurboLookupBase as LookupBase,
+        )
+    except ImportError:
+        from ansible.plugins.lookup import LookupBase  # noqa: F401
+else:
+    from ansible.plugins.lookup import LookupBase  # noqa: F401
 
 try:
     from kubernetes.dynamic.exceptions import NotFoundError
+
     HAS_K8S_MODULE_HELPER = True
     k8s_import_exception = None
 except ImportError as e:
@@ -199,13 +212,14 @@ except ImportError as e:
     k8s_import_exception = e
 
 
-class KubernetesLookup(K8sAnsibleMixin):
-
+class KubernetesLookup(object):
     def __init__(self):
 
         if not HAS_K8S_MODULE_HELPER:
             raise Exception(
-                "Requires the Kubernetes Python client. Try `pip install kubernetes`. Detail: {0}".format(k8s_import_exception)
+                "Requires the Kubernetes Python client. Try `pip install kubernetes`. Detail: {0}".format(
+                    k8s_import_exception
+                )
             )
 
         self.kind = None
@@ -226,31 +240,38 @@ class KubernetesLookup(K8sAnsibleMixin):
         self.params = kwargs
         self.client = get_api_client(**kwargs)
 
-        cluster_info = kwargs.get('cluster_info')
-        if cluster_info == 'version':
-            return [self.client.version]
-        if cluster_info == 'api_groups':
+        cluster_info = kwargs.get("cluster_info")
+        if cluster_info == "version":
+            return [self.client.client.version]
+        if cluster_info == "api_groups":
             if isinstance(self.client.resources.api_groups, KeysView):
                 return [list(self.client.resources.api_groups)]
             return [self.client.resources.api_groups]
 
-        self.kind = kwargs.get('kind')
-        self.name = kwargs.get('resource_name')
-        self.namespace = kwargs.get('namespace')
-        self.api_version = kwargs.get('api_version', 'v1')
-        self.label_selector = kwargs.get('label_selector')
-        self.field_selector = kwargs.get('field_selector')
-        self.include_uninitialized = kwargs.get('include_uninitialized', False)
+        self.kind = kwargs.get("kind")
+        self.name = kwargs.get("resource_name")
+        self.namespace = kwargs.get("namespace")
+        self.api_version = kwargs.get("api_version", "v1")
+        self.label_selector = kwargs.get("label_selector")
+        self.field_selector = kwargs.get("field_selector")
+        self.include_uninitialized = kwargs.get("include_uninitialized", False)
 
-        resource_definition = kwargs.get('resource_definition')
-        src = kwargs.get('src')
+        resource_definition = kwargs.get("resource_definition")
+        src = kwargs.get("src")
         if src:
-            resource_definition = self.load_resource_definitions(src)[0]
+            definitions = create_definitions(params=dict(src=src))
+            if definitions:
+                self.kind = definitions[0].kind
+                self.name = definitions[0].name
+                self.namespace = definitions[0].namespace
+                self.api_version = definitions[0].api_version or "v1"
         if resource_definition:
-            self.kind = resource_definition.get('kind', self.kind)
-            self.api_version = resource_definition.get('apiVersion', self.api_version)
-            self.name = resource_definition.get('metadata', {}).get('name', self.name)
-            self.namespace = resource_definition.get('metadata', {}).get('namespace', self.namespace)
+            self.kind = resource_definition.get("kind", self.kind)
+            self.api_version = resource_definition.get("apiVersion", self.api_version)
+            self.name = resource_definition.get("metadata", {}).get("name", self.name)
+            self.namespace = resource_definition.get("metadata", {}).get(
+                "namespace", self.namespace
+            )
 
         if not self.kind:
             raise AnsibleError(
@@ -258,19 +279,26 @@ class KubernetesLookup(K8sAnsibleMixin):
                 "using the 'resource_definition' parameter."
             )
 
-        resource = self.find_resource(self.kind, self.api_version, fail=True)
+        resource = self.client.resource(self.kind, self.api_version)
         try:
-            k8s_obj = resource.get(name=self.name, namespace=self.namespace, label_selector=self.label_selector, field_selector=self.field_selector)
+            params = dict(
+                name=self.name,
+                namespace=self.namespace,
+                label_selector=self.label_selector,
+                field_selector=self.field_selector,
+            )
+            k8s_obj = self.client.get(resource, **params)
         except NotFoundError:
             return []
 
         if self.name:
             return [k8s_obj.to_dict()]
 
-        return k8s_obj.to_dict().get('items')
+        return k8s_obj.to_dict().get("items")
 
 
 class LookupModule(LookupBase):
-
-    def run(self, terms, variables=None, **kwargs):
+    def _run(self, terms, variables=None, **kwargs):
         return KubernetesLookup().run(terms, variables=variables, **kwargs)
+
+    run = _run if not hasattr(LookupBase, "run_on_daemon") else LookupBase.run_on_daemon

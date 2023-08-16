@@ -7,6 +7,7 @@ resources:
 - bases/test.example.com_casetests.yaml
 - bases/test.example.com_collectiontests.yaml
 - bases/test.example.com_clusterannotationtests.yaml
+- bases/test.example.com_finalizerconcurrencytests.yaml
 - bases/test.example.com_reconciliationtests.yaml
 - bases/test.example.com_selectortests.yaml
 - bases/test.example.com_subresourcestests.yaml

@@ -35,6 +35,7 @@ provisioner:
   env:
     K8S_AUTH_KUBECONFIG: ${MOLECULE_EPHEMERAL_DIRECTORY}/kubeconfig
     KUBECONFIG: ${MOLECULE_EPHEMERAL_DIRECTORY}/kubeconfig
+    ANSIBLE_VERBOSITY: 5
 verifier:
   name: ansible
   lint: |

@@ -4,10 +4,11 @@
 # Copyright: (c) 2020, Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: helm_repository
 
@@ -64,9 +65,63 @@ options:
     default: present
     aliases: [ state ]
     type: str
-'''
+  pass_credentials:
+    description:
+      - Pass credentials to all domains.
+    required: false
+    default: false
+    type: bool
+    version_added: 2.3.0
+  host:
+    description:
+    - Provide a URL for accessing the API. Can also be specified via C(K8S_AUTH_HOST) environment variable.
+    type: str
+    version_added: "2.3.0"
+  api_key:
+    description:
+    - Token used to authenticate with the API. Can also be specified via C(K8S_AUTH_API_KEY) environment variable.
+    type: str
+    version_added: "2.3.0"
+  validate_certs:
+    description:
+    - Whether or not to verify the API server's SSL certificates. Can also be specified via C(K8S_AUTH_VERIFY_SSL)
+      environment variable.
+    type: bool
+    aliases: [ verify_ssl ]
+    default: True
+    version_added: "2.3.0"
+  ca_cert:
+    description:
+    - Path to a CA certificate used to authenticate with the API. The full certificate chain must be provided to
+      avoid certificate validation errors. Can also be specified via C(K8S_AUTH_SSL_CA_CERT) environment variable.
+    type: path
+    aliases: [ ssl_ca_cert ]
+    version_added: "2.3.0"
+  context:
+    description:
+      - Helm option to specify which kubeconfig context to use.
+      - If the value is not specified in the task, the value of environment variable C(K8S_AUTH_CONTEXT) will be used instead.
+    type: str
+    aliases: [ kube_context ]
+    version_added: "2.4.0"
+  kubeconfig:
+    description:
+      - Helm option to specify kubeconfig path to use.
+      - If the value is not specified in the task, the value of environment variable C(K8S_AUTH_KUBECONFIG) will be used instead.
+      - The configuration can be provided as dictionary.
+    type: raw
+    aliases: [ kubeconfig_path ]
+    version_added: "2.4.0"
+  force_update:
+    description:
+    - Whether or not to replace (overwrite) the repo if it already exists.
+    type: bool
+    aliases: [ force ]
+    default: False
+    version_added: "2.4.0"
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Add a repository
   kubernetes.core.helm_repository:
     name: stable
@@ -76,9 +131,9 @@ EXAMPLES = r'''
   kubernetes.core.helm_repository:
     name: redhat-charts
     repo_url: https://redhat-developer.github.com/redhat-helm-charts
-'''
+"""
 
-RETURN = r'''
+RETURN = r"""
 stdout:
   type: str
   description: Full `helm` command stdout, in case you want to display it or examine the event log
@@ -109,55 +164,80 @@ msg:
   description: Error message returned by `helm` command
   returned: on failure
   sample: 'Repository already have a repository named bitnami'
-'''
+"""
 
 import traceback
+import copy
 
 try:
     import yaml
+
     IMP_YAML = True
+    IMP_YAML_ERR = None
 except ImportError:
     IMP_YAML_ERR = traceback.format_exc()
     IMP_YAML = False
 
-from ansible.module_utils.basic import AnsibleModule, missing_required_lib
-from ansible_collections.kubernetes.core.plugins.module_utils.helm import run_helm
+from ansible.module_utils.basic import missing_required_lib
+from ansible_collections.kubernetes.core.plugins.module_utils.helm import (
+    AnsibleHelmModule,
+)
+from ansible_collections.kubernetes.core.plugins.module_utils.helm_args_common import (
+    HELM_AUTH_ARG_SPEC,
+    HELM_AUTH_MUTUALLY_EXCLUSIVE,
+)
 
 
 # Get repository from all repositories added
 def get_repository(state, repo_name):
     if state is not None:
         for repository in state:
-            if repository['name'] == repo_name:
+            if repository["name"] == repo_name:
                 return repository
     return None
 
 
 # Get repository status
-def get_repository_status(module, command, repository_name):
-    list_command = command + " repo list --output=yaml"
+def get_repository_status(module, repository_name):
+    list_command = module.get_helm_binary() + " repo list --output=yaml"
 
-    rc, out, err = run_helm(module, list_command, fails_on_error=False)
+    rc, out, err = module.run_helm_command(list_command, fails_on_error=False)
 
     # no repo => rc=1 and 'no repositories to show' in output
     if rc == 1 and "no repositories to show" in err:
         return None
     elif rc != 0:
         module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=list_command
+            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+                rc, out, err
+            ),
+            command=list_command,
         )
 
     return get_repository(yaml.safe_load(out), repository_name)
 
 
 # Install repository
-def install_repository(command, repository_name, repository_url, repository_username, repository_password):
+def install_repository(
+    command,
+    repository_name,
+    repository_url,
+    repository_username,
+    repository_password,
+    pass_credentials,
+    force_update,
+):
     install_command = command + " repo add " + repository_name + " " + repository_url
 
     if repository_username is not None and repository_password is not None:
         install_command += " --username=" + repository_username
         install_command += " --password=" + repository_password
+
+    if pass_credentials:
+        install_command += " --pass-credentials"
+
+    if force_update:
+        install_command += " --force-update"
 
     return install_command
 
@@ -169,24 +249,32 @@ def delete_repository(command, repository_name):
     return remove_command
 
 
+def argument_spec():
+    arg_spec = copy.deepcopy(HELM_AUTH_ARG_SPEC)
+    arg_spec.update(
+        dict(
+            repo_name=dict(type="str", aliases=["name"], required=True),
+            repo_url=dict(type="str", aliases=["url"]),
+            repo_username=dict(type="str", aliases=["username"]),
+            repo_password=dict(type="str", aliases=["password"], no_log=True),
+            repo_state=dict(
+                default="present", choices=["present", "absent"], aliases=["state"]
+            ),
+            pass_credentials=dict(type="bool", default=False, no_log=True),
+            force_update=dict(type="bool", default=False, aliases=["force"]),
+        )
+    )
+    return arg_spec
+
+
 def main():
     global module
 
-    module = AnsibleModule(
-        argument_spec=dict(
-            binary_path=dict(type='path'),
-            repo_name=dict(type='str', aliases=['name'], required=True),
-            repo_url=dict(type='str', aliases=['url']),
-            repo_username=dict(type='str', aliases=['username']),
-            repo_password=dict(type='str', aliases=['password'], no_log=True),
-            repo_state=dict(default='present', choices=['present', 'absent'], aliases=['state']),
-        ),
-        required_together=[
-            ['repo_username', 'repo_password']
-        ],
-        required_if=[
-            ('repo_state', 'present', ['repo_url']),
-        ],
+    module = AnsibleHelmModule(
+        argument_spec=argument_spec(),
+        required_together=[["repo_username", "repo_password"]],
+        required_if=[("repo_state", "present", ["repo_url"])],
+        mutually_exclusive=HELM_AUTH_MUTUALLY_EXCLUSIVE,
         supports_check_mode=True,
     )
 
@@ -195,48 +283,58 @@ def main():
 
     changed = False
 
-    bin_path = module.params.get('binary_path')
-    repo_name = module.params.get('repo_name')
-    repo_url = module.params.get('repo_url')
-    repo_username = module.params.get('repo_username')
-    repo_password = module.params.get('repo_password')
-    repo_state = module.params.get('repo_state')
+    repo_name = module.params.get("repo_name")
+    repo_url = module.params.get("repo_url")
+    repo_username = module.params.get("repo_username")
+    repo_password = module.params.get("repo_password")
+    repo_state = module.params.get("repo_state")
+    pass_credentials = module.params.get("pass_credentials")
+    force_update = module.params.get("force_update")
 
-    if bin_path is not None:
-        helm_cmd = bin_path
-    else:
-        helm_cmd = module.get_bin_path('helm', required=True)
+    helm_cmd = module.get_helm_binary()
 
-    repository_status = get_repository_status(module, helm_cmd, repo_name)
+    repository_status = get_repository_status(module, repo_name)
 
     if repo_state == "absent" and repository_status is not None:
         helm_cmd = delete_repository(helm_cmd, repo_name)
         changed = True
     elif repo_state == "present":
-        if repository_status is None:
-            helm_cmd = install_repository(helm_cmd, repo_name, repo_url, repo_username, repo_password)
+        if repository_status is None or force_update:
+            helm_cmd = install_repository(
+                helm_cmd,
+                repo_name,
+                repo_url,
+                repo_username,
+                repo_password,
+                pass_credentials,
+                force_update,
+            )
             changed = True
-        elif repository_status['url'] != repo_url:
-            module.fail_json(msg="Repository already have a repository named {0}".format(repo_name))
+        elif repository_status["url"] != repo_url:
+            module.fail_json(
+                msg="Repository already have a repository named {0}".format(repo_name)
+            )
 
     if module.check_mode:
         module.exit_json(changed=changed)
     elif not changed:
         module.exit_json(changed=False, repo_name=repo_name, repo_url=repo_url)
 
-    rc, out, err = run_helm(module, helm_cmd)
+    rc, out, err = module.run_helm_command(helm_cmd)
 
     if repo_password is not None:
-        helm_cmd = helm_cmd.replace(repo_password, '******')
+        helm_cmd = helm_cmd.replace(repo_password, "******")
 
     if rc != 0:
         module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            command=helm_cmd
+            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+                rc, out, err
+            ),
+            command=helm_cmd,
         )
 
     module.exit_json(changed=changed, stdout=out, stderr=err, command=helm_cmd)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

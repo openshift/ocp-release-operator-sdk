@@ -5,13 +5,14 @@
 
 # Options for authenticating with the API.
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
 class ModuleDocFragment(object):
 
-    DOCUMENTATION = r'''
+    DOCUMENTATION = r"""
 options:
   host:
     description:
@@ -27,6 +28,7 @@ options:
       options are provided, the Kubernetes client will attempt to load the default
       configuration file from I(~/.kube/config). Can also be specified via K8S_AUTH_KUBECONFIG environment
       variable.
+    - Multiple Kubernetes config file can be provided using separator ';' for Windows platform or ':' for others platforms.
     - The kubernetes configuration can be provided as dictionary. This feature requires a python kubernetes client version >= 17.17.0. Added in version 2.2.0.
     type: raw
   context:
@@ -76,6 +78,14 @@ options:
     - The URL of an HTTP proxy to use for the connection. Can also be specified via K8S_AUTH_PROXY environment variable.
     - Please note that this module does not pick up typical proxy settings from the environment (e.g. HTTP_PROXY).
     type: str
+  no_proxy:
+    description:
+    - The comma separated list of hosts/domains/IP/CIDR that shouldn't go through proxy. Can also be specified via K8S_AUTH_NO_PROXY environment variable.
+    - Please note that this module does not pick up typical proxy settings from the environment (e.g. NO_PROXY).
+    - This feature requires kubernetes>=19.15.0. When kubernetes library is less than 19.15.0, it fails even no_proxy set in correct.
+    - example value is "localhost,.local,.example.com,127.0.0.1,127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    type: str
+    version_added: 2.3.0
   proxy_headers:
     description:
     - The Header used for the HTTP proxy.
@@ -110,8 +120,21 @@ options:
     - Please note that the current version of the k8s python client library does not support setting this flag to True yet.
     - "The fix for this k8s python library is here: https://github.com/kubernetes-client/python-base/pull/169"
     type: bool
+  impersonate_user:
+    description:
+    - Username to impersonate for the operation.
+    - Can also be specified via K8S_AUTH_IMPERSONATE_USER environment.
+    type: str
+    version_added: 2.3.0
+  impersonate_groups:
+    description:
+    - Group(s) to impersonate for the operation.
+    - "Can also be specified via K8S_AUTH_IMPERSONATE_GROUPS environment. Example: Group1,Group2"
+    type: list
+    elements: str
+    version_added: 2.3.0
 notes:
   - "To avoid SSL certificate validation errors when C(validate_certs) is I(True), the full
     certificate chain for the API server must be provided via C(ca_cert) or in the
     kubeconfig file."
-'''
+"""
