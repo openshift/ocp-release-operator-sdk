@@ -1,0 +1,31 @@
+{
+ "collection_info": {
+  "namespace": "cloud",
+  "name": "common",
+  "version": "2.1.1",
+  "authors": [
+   "Ansible (https://github.com/ansible)"
+  ],
+  "readme": "README.md",
+  "tags": [
+   "cloud",
+   "virtualization"
+  ],
+  "description": "Set of common files for the cloud collections",
+  "license": [],
+  "license_file": "LICENSE",
+  "dependencies": {},
+  "repository": "https://github.com/ansible-collections/cloud.common",
+  "documentation": null,
+  "homepage": "https://github.com/ansible-collections/cloud.common",
+  "issues": "https://github.com/ansible-collections/cloud.common/issues"
+ },
+ "file_manifest_file": {
+  "name": "FILES.json",
+  "ftype": "file",
+  "chksum_type": "sha256",
+  "chksum_sha256": "7a4d1b90a43b5541853f807f4bcb1653279b0e1df6b18a107ccfc6b6ae965ee3",
+  "format": 1
+ },
+ "format": 1
+}
