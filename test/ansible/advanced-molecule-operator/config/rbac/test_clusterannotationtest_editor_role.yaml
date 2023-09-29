@@ -1,0 +1,31 @@
+# permissions for end users to edit clusterannotationtests.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: clusterannotationtest-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: advanced-molecule-operator
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: clusterannotationtest-editor-role
+rules:
+- apiGroups:
+  - test.example.com
+  resources:
+  - clusterannotationtests
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - test.example.com
+  resources:
+  - clusterannotationtests/status
+  verbs:
+  - get

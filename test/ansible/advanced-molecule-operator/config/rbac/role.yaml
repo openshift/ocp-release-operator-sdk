@@ -123,6 +123,23 @@ rules:
       - update
       - watch
   ##
+  ## Rules for test.example.com/v1alpha1, Kind: FinalizerConcurrencyTest
+  ##
+  - apiGroups:
+      - test.example.com
+    resources:
+      - finalizerconcurrencytests
+      - finalizerconcurrencytests/status
+      - finalizerconcurrencytests/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  ##
   ## Rules for test.example.com/v1alpha1, Kind: ReconciliationTest
   ##
   - apiGroups:

@@ -23,7 +23,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/sergi/go-diff v1.2.0
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.9.3
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
@@ -41,7 +41,7 @@ require (
 	k8s.io/cli-runtime v0.26.2
 	k8s.io/client-go v0.26.2
 	k8s.io/kubectl v0.26.2
-	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
+	k8s.io/utils v0.0.0-20230711102312-30195339c3c7
 	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/controller-tools v0.11.3
 	sigs.k8s.io/kubebuilder/v3 v3.9.1

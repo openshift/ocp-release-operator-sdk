@@ -5,13 +5,14 @@
 
 # Options for providing an object configuration
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
 class ModuleDocFragment(object):
 
-    DOCUMENTATION = r'''
+    DOCUMENTATION = r"""
 options:
   resource_definition:
     description:
@@ -28,6 +29,7 @@ options:
     - Reads from the local file system. To read from the Ansible controller's file system, including vaulted files, use the file lookup
       plugin or template lookup plugin, combined with the from_yaml filter, and pass the result to
       I(resource_definition). See Examples below.
+    - The URL to manifest files that can be used to create the resource. Added in version 2.4.0.
     - Mutually exclusive with I(template) in case of M(kubernetes.core.k8s) module.
     type: path
-'''
+"""

@@ -14,8 +14,9 @@
 
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 
 class ApplyException(Exception):
-    """ Could not apply patch """
+    """Could not apply patch"""

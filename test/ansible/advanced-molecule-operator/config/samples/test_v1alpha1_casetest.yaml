@@ -1,6 +1,12 @@
 apiVersion: test.example.com/v1alpha1
 kind: CaseTest
 metadata:
+  labels:
+    app.kubernetes.io/name: casetest
+    app.kubernetes.io/instance: casetest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
   name: casetest-sample
 spec:
   # TODO(user): Add fields here

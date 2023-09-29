@@ -1,0 +1,12 @@
+apiVersion: test.example.com/v1alpha1
+kind: FinalizerConcurrencyTest
+metadata:
+  labels:
+    app.kubernetes.io/name: finalizerconcurrencytest
+    app.kubernetes.io/instance: finalizerconcurrencytest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
+  name: finalizerconcurrencytest-sample
+spec:
+  # TODO(user): Add fields here

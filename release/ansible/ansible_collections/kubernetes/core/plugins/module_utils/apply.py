@@ -14,13 +14,23 @@
 
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 from collections import OrderedDict
 import json
 
 from ansible.module_utils.common.dict_transformations import dict_merge
-from ansible_collections.kubernetes.core.plugins.module_utils.exceptions import ApplyException
+from ansible_collections.kubernetes.core.plugins.module_utils.exceptions import (
+    ApplyException,
+)
+from ansible_collections.kubernetes.core.plugins.module_utils.k8s.core import (
+    gather_versions,
+)
+from ansible_collections.kubernetes.core.plugins.module_utils.version import (
+    LooseVersion,
+)
+
 
 try:
     from kubernetes.dynamic.exceptions import NotFoundError
@@ -28,50 +38,52 @@ except ImportError:
     pass
 
 
-LAST_APPLIED_CONFIG_ANNOTATION = 'kubectl.kubernetes.io/last-applied-configuration'
+LAST_APPLIED_CONFIG_ANNOTATION = "kubectl.kubernetes.io/last-applied-configuration"
 
 POD_SPEC_SUFFIXES = {
-    'containers': 'name',
-    'initContainers': 'name',
-    'ephemeralContainers': 'name',
-    'volumes': 'name',
-    'imagePullSecrets': 'name',
-    'containers.volumeMounts': 'mountPath',
-    'containers.volumeDevices': 'devicePath',
-    'containers.env': 'name',
-    'containers.ports': 'containerPort',
-    'initContainers.volumeMounts': 'mountPath',
-    'initContainers.volumeDevices': 'devicePath',
-    'initContainers.env': 'name',
-    'initContainers.ports': 'containerPort',
-    'ephemeralContainers.volumeMounts': 'mountPath',
-    'ephemeralContainers.volumeDevices': 'devicePath',
-    'ephemeralContainers.env': 'name',
-    'ephemeralContainers.ports': 'containerPort',
+    "containers": "name",
+    "initContainers": "name",
+    "ephemeralContainers": "name",
+    "volumes": "name",
+    "imagePullSecrets": "name",
+    "containers.volumeMounts": "mountPath",
+    "containers.volumeDevices": "devicePath",
+    "containers.env": "name",
+    "containers.ports": "containerPort",
+    "initContainers.volumeMounts": "mountPath",
+    "initContainers.volumeDevices": "devicePath",
+    "initContainers.env": "name",
+    "initContainers.ports": "containerPort",
+    "ephemeralContainers.volumeMounts": "mountPath",
+    "ephemeralContainers.volumeDevices": "devicePath",
+    "ephemeralContainers.env": "name",
+    "ephemeralContainers.ports": "containerPort",
 }
 
 POD_SPEC_PREFIXES = [
-    'Pod.spec',
-    'Deployment.spec.template.spec',
-    'DaemonSet.spec.template.spec',
-    'StatefulSet.spec.template.spec',
-    'Job.spec.template.spec',
-    'Cronjob.spec.jobTemplate.spec.template.spec',
+    "Pod.spec",
+    "Deployment.spec.template.spec",
+    "DaemonSet.spec.template.spec",
+    "StatefulSet.spec.template.spec",
+    "Job.spec.template.spec",
+    "Cronjob.spec.jobTemplate.spec.template.spec",
 ]
 
 # patch merge keys taken from generated.proto files under
 # staging/src/k8s.io/api in kubernetes/kubernetes
 STRATEGIC_MERGE_PATCH_KEYS = {
-    'Service.spec.ports': 'port',
-    'ServiceAccount.secrets': 'name',
-    'ValidatingWebhookConfiguration.webhooks': 'name',
-    'MutatingWebhookConfiguration.webhooks': 'name',
+    "Service.spec.ports": "port",
+    "ServiceAccount.secrets": "name",
+    "ValidatingWebhookConfiguration.webhooks": "name",
+    "MutatingWebhookConfiguration.webhooks": "name",
 }
 
 STRATEGIC_MERGE_PATCH_KEYS.update(
-    {"%s.%s" % (prefix, key): value
-     for prefix in POD_SPEC_PREFIXES
-     for key, value in POD_SPEC_SUFFIXES.items()}
+    {
+        "%s.%s" % (prefix, key): value
+        for prefix in POD_SPEC_PREFIXES
+        for key, value in POD_SPEC_SUFFIXES.items()
+    }
 )
 
 
@@ -79,21 +91,28 @@ def annotate(desired):
     return dict(
         metadata=dict(
             annotations={
-                LAST_APPLIED_CONFIG_ANNOTATION: json.dumps(desired, separators=(',', ':'), indent=None, sort_keys=True)
+                LAST_APPLIED_CONFIG_ANNOTATION: json.dumps(
+                    desired, separators=(",", ":"), indent=None, sort_keys=True
+                )
             }
         )
     )
 
 
 def apply_patch(actual, desired):
-    last_applied = actual['metadata'].get('annotations', {}).get(LAST_APPLIED_CONFIG_ANNOTATION)
+    last_applied = (
+        actual["metadata"].get("annotations", {}).get(LAST_APPLIED_CONFIG_ANNOTATION)
+    )
 
     if last_applied:
         # ensure that last_applied doesn't come back as a dict of unicode key/value pairs
         # json.loads can be used if we stop supporting python 2
         last_applied = json.loads(last_applied)
-        patch = merge(dict_merge(last_applied, annotate(last_applied)),
-                      dict_merge(desired, annotate(desired)), actual)
+        patch = merge(
+            dict_merge(last_applied, annotate(last_applied)),
+            dict_merge(desired, annotate(desired)),
+            actual,
+        )
         if patch:
             return actual, patch
         else:
@@ -102,24 +121,52 @@ def apply_patch(actual, desired):
         return actual, dict_merge(desired, annotate(desired))
 
 
-def apply_object(resource, definition):
+def apply_object(resource, definition, server_side=False):
     try:
-        actual = resource.get(name=definition['metadata']['name'], namespace=definition['metadata'].get('namespace'))
+        actual = resource.get(
+            name=definition["metadata"]["name"],
+            namespace=definition["metadata"].get("namespace"),
+        )
+        if server_side:
+            return actual, None
     except NotFoundError:
         return None, dict_merge(definition, annotate(definition))
     return apply_patch(actual.to_dict(), definition)
 
 
-def k8s_apply(resource, definition):
+def k8s_apply(resource, definition, **kwargs):
     existing, desired = apply_object(resource, definition)
+    server_side = kwargs.get("server_side", False)
+    if server_side:
+        versions = gather_versions()
+        body = definition
+        if LooseVersion(versions["kubernetes"]) < LooseVersion("25.0.0"):
+            body = json.dumps(definition).encode()
+        # server_side_apply is forces content_type to 'application/apply-patch+yaml'
+        return resource.server_side_apply(
+            body=body,
+            name=definition["metadata"]["name"],
+            namespace=definition["metadata"].get("namespace"),
+            force_conflicts=kwargs.get("force_conflicts"),
+            field_manager=kwargs.get("field_manager"),
+            dry_run=kwargs.get("dry_run"),
+        )
     if not existing:
-        return resource.create(body=desired, namespace=definition['metadata'].get('namespace'))
+        return resource.create(
+            body=desired, namespace=definition["metadata"].get("namespace"), **kwargs
+        )
     if existing == desired:
-        return resource.get(name=definition['metadata']['name'], namespace=definition['metadata'].get('namespace'))
-    return resource.patch(body=desired,
-                          name=definition['metadata']['name'],
-                          namespace=definition['metadata'].get('namespace'),
-                          content_type='application/merge-patch+json')
+        return resource.get(
+            name=definition["metadata"]["name"],
+            namespace=definition["metadata"].get("namespace"),
+        )
+    return resource.patch(
+        body=desired,
+        name=definition["metadata"]["name"],
+        namespace=definition["metadata"].get("namespace"),
+        content_type="application/merge-patch+json",
+        **kwargs
+    )
 
 
 # The patch is the difference from actual to desired without deletions, plus deletions
@@ -128,7 +175,7 @@ def k8s_apply(resource, definition):
 # deletions, and then apply delta to deletions as a patch, which should be strictly additive.
 def merge(last_applied, desired, actual, position=None):
     deletions = get_deletions(last_applied, desired)
-    delta = get_delta(last_applied, actual, desired, position or desired['kind'])
+    delta = get_delta(last_applied, actual, desired, position or desired["kind"])
     return dict_merge(deletions, delta)
 
 
@@ -138,7 +185,9 @@ def list_to_dict(lst, key, position):
         try:
             result[item[key]] = item
         except KeyError:
-            raise ApplyException("Expected key '%s' not found in position %s" % (key, position))
+            raise ApplyException(
+                "Expected key '%s' not found in position %s" % (key, position)
+            )
     return result
 
 
@@ -157,7 +206,12 @@ def list_merge(last_applied, actual, desired, position):
             if key not in actual_dict or key not in last_applied_dict:
                 result.append(desired_dict[key])
             else:
-                patch = merge(last_applied_dict[key], desired_dict[key], actual_dict[key], position)
+                patch = merge(
+                    last_applied_dict[key],
+                    desired_dict[key],
+                    actual_dict[key],
+                    position,
+                )
                 result.append(dict_merge(actual_dict[key], patch))
         for key in actual_dict:
             if key not in desired_dict and key not in last_applied_dict:
@@ -197,11 +251,11 @@ def recursive_list_diff(list1, list2, position=None):
 
 def recursive_diff(dict1, dict2, position=None):
     if not position:
-        if 'kind' in dict1 and dict1.get('kind') == dict2.get('kind'):
-            position = dict1['kind']
+        if "kind" in dict1 and dict1.get("kind") == dict2.get("kind"):
+            position = dict1["kind"]
     left = dict((k, v) for (k, v) in dict1.items() if k not in dict2)
     right = dict((k, v) for (k, v) in dict2.items() if k not in dict1)
-    for k in (set(dict1.keys()) & set(dict2.keys())):
+    for k in set(dict1.keys()) & set(dict2.keys()):
         if position:
             this_position = "%s.%s" % (position, k)
         if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
@@ -246,11 +300,15 @@ def get_delta(last_applied, actual, desired, position=None):
         if actual_value is None:
             patch[k] = desired_value
         elif isinstance(desired_value, dict):
-            p = get_delta(last_applied.get(k, {}), actual_value, desired_value, this_position)
+            p = get_delta(
+                last_applied.get(k, {}), actual_value, desired_value, this_position
+            )
             if p:
                 patch[k] = p
         elif isinstance(desired_value, list):
-            p = list_merge(last_applied.get(k, []), actual_value, desired_value, this_position)
+            p = list_merge(
+                last_applied.get(k, []), actual_value, desired_value, this_position
+            )
             if p:
                 patch[k] = [item for item in p if item is not None]
         elif actual_value != desired_value:

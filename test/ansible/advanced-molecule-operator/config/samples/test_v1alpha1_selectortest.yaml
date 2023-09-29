@@ -1,6 +1,12 @@
 apiVersion: test.example.com/v1alpha1
 kind: SelectorTest
 metadata:
+  labels:
+    app.kubernetes.io/name: selectortest
+    app.kubernetes.io/instance: selectortest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
   name: selectortest-sample
 spec:
   # TODO(user): Add fields here

@@ -31,8 +31,6 @@
         command: '{{ exec_command }}'
       register: exec_result
 
-    - debug: var=exec_result
-
     - name: Get logs from busybox pod
       k8s_log:
         name: '{{ meta.name }}-busybox'

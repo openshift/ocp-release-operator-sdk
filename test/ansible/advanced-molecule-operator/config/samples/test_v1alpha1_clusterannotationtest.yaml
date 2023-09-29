@@ -1,6 +1,12 @@
 apiVersion: test.example.com/v1alpha1
 kind: ClusterAnnotationTest
 metadata:
+  labels:
+    app.kubernetes.io/name: clusterannotationtest
+    app.kubernetes.io/instance: clusterannotationtest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
   name: clusterannotationtest-sample
 spec:
   # TODO(user): Add fields here
