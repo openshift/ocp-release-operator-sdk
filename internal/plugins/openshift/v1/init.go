@@ -84,6 +84,11 @@ var imageSubstitutions = map[string][]substitution{
 			regexp.MustCompile(`gcr.io/distroless/static:[^ \n]+`),
 			"registry.access.redhat.com/ubi8/ubi-minimal:" + ubiMinimalVersion,
 		},
+		// Hybrid Helm
+		{
+			regexp.MustCompile(`registry.access.redhat.com/ubi8/ubi-micro:[^ \n]+`),
+			"registry.access.redhat.com/ubi8/ubi-micro:" + ubiMinimalVersion,
+		},
 	},
 }
 

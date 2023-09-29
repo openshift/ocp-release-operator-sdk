@@ -67,6 +67,8 @@ FROM foo/helm-operator:latest
 FROM gcr.io/distroless/static:nonroot
 FROM gcr.io/distroless/static:latest
 FROM distroless/static:latest
+
+FROM registry.access.redhat.com/ubi8/ubi-micro:8.1
 `
 
 const dockerfileAllExp = `FROM foo:bar
@@ -86,6 +88,8 @@ FROM foo/helm-operator:latest
 FROM registry.access.redhat.com/ubi8/ubi-minimal:` + ubiMinimalVersion + `
 FROM registry.access.redhat.com/ubi8/ubi-minimal:` + ubiMinimalVersion + `
 FROM distroless/static:latest
+
+FROM registry.access.redhat.com/ubi8/ubi-micro:` + ubiMinimalVersion + `
 `
 
 const proxyPatch = `apiVersion: apps/v1

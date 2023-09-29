@@ -1,6 +1,12 @@
 apiVersion: test.example.com/v1alpha1
 kind: ArgsTest
 metadata:
+  labels:
+    app.kubernetes.io/name: argstest
+    app.kubernetes.io/instance: argstest-sample
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: advanced-molecule-operator
   name: argstest-sample
 spec:
   # TODO(user): Add fields here

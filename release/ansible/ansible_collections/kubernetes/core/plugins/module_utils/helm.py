@@ -7,138 +7,31 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-from contextlib import contextmanager
 import os
 import tempfile
 import traceback
+import re
+import json
+import copy
 
 from ansible.module_utils.basic import missing_required_lib
-
+from ansible.module_utils.six import string_types
+from ansible_collections.kubernetes.core.plugins.module_utils.version import (
+    LooseVersion,
+)
+from ansible.module_utils.basic import AnsibleModule
 
 try:
     import yaml
+
     HAS_YAML = True
+    YAML_IMP_ERR = None
 except ImportError:
     YAML_IMP_ERR = traceback.format_exc()
     HAS_YAML = False
 
 
-@contextmanager
-def prepare_helm_environ_update(module):
-    environ_update = {}
-    file_to_cleam_up = None
-    kubeconfig_path = module.params.get('kubeconfig')
-    if module.params.get('context') is not None:
-        environ_update["HELM_KUBECONTEXT"] = module.params.get('context')
-    if module.params.get('release_namespace'):
-        environ_update["HELM_NAMESPACE"] = module.params.get('release_namespace')
-    if module.params.get("api_key"):
-        environ_update["HELM_KUBETOKEN"] = module.params["api_key"]
-    if module.params.get("host"):
-        environ_update["HELM_KUBEAPISERVER"] = module.params["host"]
-    if module.params.get("validate_certs") is False or module.params.get("ca_cert"):
-        kubeconfig_path = write_temp_kubeconfig(
-            module.params["host"],
-            validate_certs=module.params["validate_certs"],
-            ca_cert=module.params["ca_cert"])
-        file_to_cleam_up = kubeconfig_path
-    if kubeconfig_path is not None:
-        environ_update["KUBECONFIG"] = kubeconfig_path
-
-    try:
-        yield environ_update
-    finally:
-        if file_to_cleam_up:
-            os.remove(file_to_cleam_up)
-
-
-def run_helm(module, command, fails_on_error=True):
-    if not HAS_YAML:
-        module.fail_json(msg=missing_required_lib("PyYAML"), exception=YAML_IMP_ERR)
-
-    with prepare_helm_environ_update(module) as environ_update:
-        rc, out, err = module.run_command(command, environ_update=environ_update)
-    if fails_on_error and rc != 0:
-        module.fail_json(
-            msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(rc, out, err),
-            stdout=out,
-            stderr=err,
-            command=command,
-        )
-    return rc, out, err
-
-
-def get_values(module, command, release_name):
-    """
-    Get Values from deployed release
-    """
-    if not HAS_YAML:
-        module.fail_json(msg=missing_required_lib("PyYAML"), exception=YAML_IMP_ERR)
-
-    get_command = command + " get values --output=yaml " + release_name
-
-    rc, out, err = run_helm(module, get_command)
-    # Helm 3 return "null" string when no values are set
-    if out.rstrip("\n") == "null":
-        return {}
-    return yaml.safe_load(out)
-
-
-def write_temp_kubeconfig(server, validate_certs=True, ca_cert=None):
-    # Workaround until https://github.com/helm/helm/pull/8622 is merged
-    content = {
-        "apiVersion": "v1",
-        "kind": "Config",
-        "clusters": [
-            {
-                "cluster": {
-                    "server": server,
-                },
-                "name": "generated-cluster"
-            }
-        ],
-        "contexts": [
-            {
-                "context": {
-                    "cluster": "generated-cluster"
-                },
-                "name": "generated-context"
-            }
-        ],
-        "current-context": "generated-context"
-    }
-
-    if not validate_certs:
-        content["clusters"][0]["cluster"]["insecure-skip-tls-verify"] = True
-    if ca_cert:
-        content["clusters"][0]["cluster"]["certificate-authority"] = ca_cert
-
-    _fd, file_name = tempfile.mkstemp()
-    with os.fdopen(_fd, 'w') as fp:
-        yaml.dump(content, fp)
-    return file_name
-
-
-def get_helm_plugin_list(module, helm_bin=None):
-    """
-    Return `helm plugin list`
-    """
-    if not helm_bin:
-        return []
-    helm_plugin_list = helm_bin + " list"
-    rc, out, err = run_helm(module, helm_plugin_list)
-    if rc != 0 or (out == '' and err == ''):
-        module.fail_json(
-            msg="Failed to get Helm plugin info",
-            command=helm_plugin_list,
-            stdout=out,
-            stderr=err,
-            rc=rc,
-        )
-    return (rc, out, err)
-
-
-def parse_helm_plugin_list(module, output=None):
+def parse_helm_plugin_list(output=None):
     """
     Parse `helm plugin list`, return list of plugins
     """
@@ -149,12 +42,262 @@ def parse_helm_plugin_list(module, output=None):
     for line in output:
         if line.startswith("NAME"):
             continue
-        name, version, description = line.split('\t', 3)
+        name, version, description = line.split("\t", 3)
         name = name.strip()
         version = version.strip()
         description = description.strip()
-        if name == '':
+        if name == "":
             continue
         ret.append((name, version, description))
 
     return ret
+
+
+def write_temp_kubeconfig(server, validate_certs=True, ca_cert=None, kubeconfig=None):
+    # Workaround until https://github.com/helm/helm/pull/8622 is merged
+    content = {
+        "apiVersion": "v1",
+        "kind": "Config",
+        "clusters": [{"cluster": {"server": server}, "name": "generated-cluster"}],
+        "contexts": [
+            {"context": {"cluster": "generated-cluster"}, "name": "generated-context"}
+        ],
+        "current-context": "generated-context",
+    }
+    if kubeconfig:
+        content = copy.deepcopy(kubeconfig)
+
+    for cluster in content["clusters"]:
+        if server:
+            cluster["cluster"]["server"] = server
+        if not validate_certs:
+            cluster["cluster"]["insecure-skip-tls-verify"] = True
+        if ca_cert:
+            cluster["cluster"]["certificate-authority"] = ca_cert
+    return content
+
+
+class AnsibleHelmModule(object):
+
+    """
+    An Ansible module class for Kubernetes.core helm modules
+    """
+
+    def __init__(self, **kwargs):
+
+        self._module = None
+        if "module" in kwargs:
+            self._module = kwargs.get("module")
+        else:
+            self._module = AnsibleModule(**kwargs)
+
+        self.helm_env = None
+
+    def __getattr__(self, name):
+        return getattr(self._module, name)
+
+    @property
+    def params(self):
+        return self._module.params
+
+    def _prepare_helm_environment(self):
+        param_to_env_mapping = [
+            ("context", "HELM_KUBECONTEXT"),
+            ("release_namespace", "HELM_NAMESPACE"),
+            ("api_key", "HELM_KUBETOKEN"),
+            ("host", "HELM_KUBEAPISERVER"),
+        ]
+
+        env_update = {}
+        for p, env in param_to_env_mapping:
+            if self.params.get(p):
+                env_update[env] = self.params.get(p)
+
+        kubeconfig_content = None
+        kubeconfig = self.params.get("kubeconfig")
+        if kubeconfig:
+            if isinstance(kubeconfig, string_types):
+                with open(kubeconfig) as fd:
+                    kubeconfig_content = yaml.safe_load(fd)
+            elif isinstance(kubeconfig, dict):
+                kubeconfig_content = kubeconfig
+
+        if self.params.get("ca_cert"):
+            ca_cert = self.params.get("ca_cert")
+            if LooseVersion(self.get_helm_version()) < LooseVersion("3.5.0"):
+                # update certs from kubeconfig
+                kubeconfig_content = write_temp_kubeconfig(
+                    server=self.params.get("host"),
+                    ca_cert=ca_cert,
+                    kubeconfig=kubeconfig_content,
+                )
+            else:
+                env_update["HELM_KUBECAFILE"] = ca_cert
+
+        if self.params.get("validate_certs") is False:
+            validate_certs = self.params.get("validate_certs")
+            if LooseVersion(self.get_helm_version()) < LooseVersion("3.10.0"):
+                # update certs from kubeconfig
+                kubeconfig_content = write_temp_kubeconfig(
+                    server=self.params.get("host"),
+                    validate_certs=validate_certs,
+                    kubeconfig=kubeconfig_content,
+                )
+            else:
+                env_update["HELM_KUBEINSECURE_SKIP_TLS_VERIFY"] = "true"
+
+        if kubeconfig_content:
+            fd, kubeconfig_path = tempfile.mkstemp()
+            with os.fdopen(fd, "w") as fp:
+                json.dump(kubeconfig_content, fp)
+
+            env_update["KUBECONFIG"] = kubeconfig_path
+            self.add_cleanup_file(kubeconfig_path)
+
+        return env_update
+
+    @property
+    def env_update(self):
+        if self.helm_env is None:
+            self.helm_env = self._prepare_helm_environment()
+        return self.helm_env
+
+    def run_helm_command(self, command, fails_on_error=True):
+        if not HAS_YAML:
+            self.fail_json(msg=missing_required_lib("PyYAML"), exception=YAML_IMP_ERR)
+
+        rc, out, err = self.run_command(command, environ_update=self.env_update)
+        if fails_on_error and rc != 0:
+            self.fail_json(
+                msg="Failure when executing Helm command. Exited {0}.\nstdout: {1}\nstderr: {2}".format(
+                    rc, out, err
+                ),
+                stdout=out,
+                stderr=err,
+                command=command,
+            )
+        return rc, out, err
+
+    def get_helm_binary(self):
+        return self.params.get("binary_path") or self.get_bin_path(
+            "helm", required=True
+        )
+
+    def get_helm_version(self):
+
+        command = self.get_helm_binary() + " version"
+        rc, out, err = self.run_command(command)
+        m = re.match(r'version.BuildInfo{Version:"v([0-9\.]*)",', out)
+        if m:
+            return m.group(1)
+        m = re.match(r'Client: &version.Version{SemVer:"v([0-9\.]*)", ', out)
+        if m:
+            return m.group(1)
+        return None
+
+    def get_values(self, release_name, get_all=False):
+        """
+        Get Values from deployed release
+        """
+        if not HAS_YAML:
+            self.fail_json(msg=missing_required_lib("PyYAML"), exception=YAML_IMP_ERR)
+
+        get_command = (
+            self.get_helm_binary() + " get values --output=yaml " + release_name
+        )
+
+        if get_all:
+            get_command += " -a"
+
+        rc, out, err = self.run_helm_command(get_command)
+        # Helm 3 return "null" string when no values are set
+        if out.rstrip("\n") == "null":
+            return {}
+        return yaml.safe_load(out)
+
+    def parse_yaml_content(self, content):
+
+        if not HAS_YAML:
+            self.fail_json(msg=missing_required_lib("yaml"), exception=HAS_YAML)
+
+        try:
+            return list(yaml.safe_load_all(content))
+        except (IOError, yaml.YAMLError) as exc:
+            self.fail_json(
+                msg="Error parsing YAML content: {0}".format(exc), raw_data=content
+            )
+
+    def get_manifest(self, release_name):
+
+        command = [
+            self.get_helm_binary(),
+            "get",
+            "manifest",
+            release_name,
+        ]
+        rc, out, err = self.run_helm_command(" ".join(command))
+        if rc != 0:
+            self.fail_json(msg=err)
+        return self.parse_yaml_content(out)
+
+    def get_notes(self, release_name):
+
+        command = [
+            self.get_helm_binary(),
+            "get",
+            "notes",
+            release_name,
+        ]
+        rc, out, err = self.run_helm_command(" ".join(command))
+        if rc != 0:
+            self.fail_json(msg=err)
+        return out
+
+    def get_hooks(self, release_name):
+        command = [
+            self.get_helm_binary(),
+            "get",
+            "hooks",
+            release_name,
+        ]
+        rc, out, err = self.run_helm_command(" ".join(command))
+        if rc != 0:
+            self.fail_json(msg=err)
+        return self.parse_yaml_content(out)
+
+    def get_helm_plugin_list(self):
+        """
+        Return `helm plugin list`
+        """
+        helm_plugin_list = self.get_helm_binary() + " plugin list"
+        rc, out, err = self.run_helm_command(helm_plugin_list)
+        if rc != 0 or (out == "" and err == ""):
+            self.fail_json(
+                msg="Failed to get Helm plugin info",
+                command=helm_plugin_list,
+                stdout=out,
+                stderr=err,
+                rc=rc,
+            )
+        return (rc, out, err, helm_plugin_list)
+
+    def get_helm_set_values_args(self, set_values):
+        if any(v.get("value_type") == "json" for v in set_values):
+            if LooseVersion(self.get_helm_version()) < LooseVersion("3.10.0"):
+                self.fail_json(
+                    msg="This module requires helm >= 3.10.0, to use set_values parameter with value type set to 'json'. current version is {0}".format(
+                        self.get_helm_version()
+                    )
+                )
+
+        options = []
+        for opt in set_values:
+            value_type = opt.get("value_type", "raw")
+            value = opt.get("value")
+
+            if value_type == "raw":
+                options.append("--set " + value)
+            else:
+                options.append("--set-{0} '{1}'".format(value_type, value))
+
+        return " ".join(options)

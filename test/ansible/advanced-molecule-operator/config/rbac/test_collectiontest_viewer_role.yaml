@@ -1,0 +1,27 @@
+# permissions for end users to view collectiontests.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: collectiontest-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: advanced-molecule-operator
+    app.kubernetes.io/part-of: advanced-molecule-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: collectiontest-viewer-role
+rules:
+- apiGroups:
+  - test.example.com
+  resources:
+  - collectiontests
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - test.example.com
+  resources:
+  - collectiontests/status
+  verbs:
+  - get
