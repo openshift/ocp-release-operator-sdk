@@ -84,10 +84,40 @@ var imageSubstitutions = map[string][]substitution{
 			regexp.MustCompile(`gcr.io/distroless/static:[^ \n]+`),
 			"registry.access.redhat.com/ubi8/ubi-minimal:" + ubiMinimalVersion,
 		},
+		// Go - for https://access.redhat.com/security/cve/CVE-2023-44487 &&
+		// https://access.redhat.com/security/cve/CVE-2023-39325 .
+		// This will ensure all Go projects have their Dockerfile updated to use
+		// Go 1.20+ as the builder image. This should be removed when the default
+		// scaffolds are updated to be Go 1.20+
+		{
+			regexp.MustCompile(`golang:[^ \n]+`),
+			"golang:1.20",
+		},
 		// Hybrid Helm
 		{
 			regexp.MustCompile(`registry.access.redhat.com/ubi8/ubi-micro:[^ \n]+`),
 			"registry.access.redhat.com/ubi8/ubi-micro:" + ubiMinimalVersion,
+		},
+	},
+
+	filepath.Join("go.mod"): {
+		// Go - for https://access.redhat.com/security/cve/CVE-2023-44487 &&
+		// https://access.redhat.com/security/cve/CVE-2023-39325 .
+		// This will ensure all Go projects have their go.mod updated to use
+		// golang.org/x/net v0.17.0. This should be removed when the default
+		// scaffolds are updated to use this by default
+		{
+			regexp.MustCompile(`golang.org/x/net [^ \n]+`),
+			"golang.org/x/net v0.17.0",
+		},
+		// Go - for https://access.redhat.com/security/cve/CVE-2023-44487 &&
+		// https://access.redhat.com/security/cve/CVE-2023-39325 .
+		// This will ensure all Go projects have their go.mod updated to use
+		// go 1.20+. This should be removed when the default
+		// scaffolds are updated to use this by default
+		{
+			regexp.MustCompile(`go 1.[^2\n]+`),
+			"go 1.20",
 		},
 	},
 }
