@@ -17,10 +17,11 @@ limitations under the License.
 // Package v1 contains API types that are common to all versions.
 //
 // The package contains two categories of types:
-// - external (serialized) types that lack their own version (e.g TypeMeta)
-// - internal (never-serialized) types that are needed by several different
-//   api groups, and so live here, to avoid duplication and/or import loops
-//   (e.g. LabelSelector).
+//   - external (serialized) types that lack their own version (e.g TypeMeta)
+//   - internal (never-serialized) types that are needed by several different
+//     api groups, and so live here, to avoid duplication and/or import loops
+//     (e.g. LabelSelector).
+//
 // In the future, we will probably move these categories of objects into
 // separate packages.
 package v1
@@ -522,6 +523,15 @@ type DeleteOptions struct {
 	DryRun []string `json:"dryRun,omitempty" protobuf:"bytes,5,rep,name=dryRun"`
 }
 
+const (
+	// FieldValidationIgnore ignores unknown/duplicate fields
+	FieldValidationIgnore = "Ignore"
+	// FieldValidationWarn responds with a warning, but successfully serve the request
+	FieldValidationWarn = "Warn"
+	// FieldValidationStrict fails the request on unknown/duplicate fields
+	FieldValidationStrict = "Strict"
+)
+
 // +k8s:conversion-gen:explicit-from=net/url.Values
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -544,6 +554,19 @@ type CreateOptions struct {
 	// as defined by https://golang.org/pkg/unicode/#IsPrint.
 	// +optional
 	FieldManager string `json:"fieldManager,omitempty" protobuf:"bytes,3,name=fieldManager"`
+
+	// fieldValidation determines how the server should respond to
+	// unknown/duplicate fields in the object in the request.
+	// Introduced as alpha in 1.23, older servers or servers with the
+	// `ServerSideFieldValidation` feature disabled will discard valid values
+	// specified in  this param and not perform any server side field validation.
+	// Valid values are:
+	// - Ignore: ignores unknown/duplicate fields.
+	// - Warn: responds with a warning for each
+	// unknown/duplicate field, but successfully serves the request.
+	// - Strict: fails the request on unknown/duplicate fields.
+	// +optional
+	FieldValidation string `json:"fieldValidation,omitempty" protobuf:"bytes,4,name=fieldValidation"`
 }
 
 // +k8s:conversion-gen:explicit-from=net/url.Values
@@ -577,6 +600,19 @@ type PatchOptions struct {
 	// types (JsonPatch, MergePatch, StrategicMergePatch).
 	// +optional
 	FieldManager string `json:"fieldManager,omitempty" protobuf:"bytes,3,name=fieldManager"`
+
+	// fieldValidation determines how the server should respond to
+	// unknown/duplicate fields in the object in the request.
+	// Introduced as alpha in 1.23, older servers or servers with the
+	// `ServerSideFieldValidation` feature disabled will discard valid values
+	// specified in  this param and not perform any server side field validation.
+	// Valid values are:
+	// - Ignore: ignores unknown/duplicate fields.
+	// - Warn: responds with a warning for each
+	// unknown/duplicate field, but successfully serves the request.
+	// - Strict: fails the request on unknown/duplicate fields.
+	// +optional
+	FieldValidation string `json:"fieldValidation,omitempty" protobuf:"bytes,4,name=fieldValidation"`
 }
 
 // ApplyOptions may be provided when applying an API object.
@@ -632,6 +668,19 @@ type UpdateOptions struct {
 	// as defined by https://golang.org/pkg/unicode/#IsPrint.
 	// +optional
 	FieldManager string `json:"fieldManager,omitempty" protobuf:"bytes,2,name=fieldManager"`
+
+	// fieldValidation determines how the server should respond to
+	// unknown/duplicate fields in the object in the request.
+	// Introduced as alpha in 1.23, older servers or servers with the
+	// `ServerSideFieldValidation` feature disabled will discard valid values
+	// specified in  this param and not perform any server side field validation.
+	// Valid values are:
+	// - Ignore: ignores unknown/duplicate fields.
+	// - Warn: responds with a warning for each
+	// unknown/duplicate field, but successfully serves the request.
+	// - Strict: fails the request on unknown/duplicate fields.
+	// +optional
+	FieldValidation string `json:"fieldValidation,omitempty" protobuf:"bytes,3,name=fieldValidation"`
 }
 
 // Preconditions must be fulfilled before an operation (update, delete, etc.) is carried out.
@@ -1384,17 +1433,18 @@ type PartialObjectMetadataList struct {
 // Condition contains details for one aspect of the current state of this API Resource.
 // ---
 // This struct is intended for direct use as an array at the field path .status.conditions.  For example,
-// type FooStatus struct{
-//     // Represents the observations of a foo's current state.
-//     // Known .status.conditions.type are: "Available", "Progressing", and "Degraded"
-//     // +patchMergeKey=type
-//     // +patchStrategy=merge
-//     // +listType=map
-//     // +listMapKey=type
-//     Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 //
-//     // other fields
-// }
+//	type FooStatus struct{
+//	    // Represents the observations of a foo's current state.
+//	    // Known .status.conditions.type are: "Available", "Progressing", and "Degraded"
+//	    // +patchMergeKey=type
+//	    // +patchStrategy=merge
+//	    // +listType=map
+//	    // +listMapKey=type
+//	    Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+//
+//	    // other fields
+//	}
 type Condition struct {
 	// type of condition in CamelCase or in foo.example.com/CamelCase.
 	// ---

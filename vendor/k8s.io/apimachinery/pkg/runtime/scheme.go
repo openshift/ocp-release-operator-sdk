@@ -99,34 +99,12 @@ func NewScheme() *Scheme {
 		versionPriority:           map[string][]string{},
 		schemeName:                naming.GetNameFromCallsite(internalPackages...),
 	}
-	s.converter = conversion.NewConverter(s.nameFunc)
+	s.converter = conversion.NewConverter(nil)
 
 	// Enable couple default conversions by default.
 	utilruntime.Must(RegisterEmbeddedConversions(s))
 	utilruntime.Must(RegisterStringConversions(s))
 	return s
-}
-
-// nameFunc returns the name of the type that we wish to use to determine when two types attempt
-// a conversion. Defaults to the go name of the type if the type is not registered.
-func (s *Scheme) nameFunc(t reflect.Type) string {
-	// find the preferred names for this type
-	gvks, ok := s.typeToGVK[t]
-	if !ok {
-		return t.Name()
-	}
-
-	for _, gvk := range gvks {
-		internalGV := gvk.GroupVersion()
-		internalGV.Version = APIVersionInternal // this is hacky and maybe should be passed in
-		internalGVK := internalGV.WithKind(gvk.Kind)
-
-		if internalType, exists := s.gvkToType[internalGVK]; exists {
-			return s.typeToGVK[internalType][0].Kind
-		}
-	}
-
-	return gvks[0].Kind
 }
 
 // Converter allows access to the converter for the scheme
@@ -140,7 +118,8 @@ func (s *Scheme) Converter() *conversion.Converter {
 // API group and version that would never be updated.
 //
 // TODO: there is discussion about removing unversioned and replacing it with objects that are manifest into
-//   every version with particular schemas. Resolve this method at that point.
+//
+//	every version with particular schemas. Resolve this method at that point.
 func (s *Scheme) AddUnversionedTypes(version schema.GroupVersion, types ...Object) {
 	s.addObservedVersion(version)
 	s.AddKnownTypes(version, types...)
