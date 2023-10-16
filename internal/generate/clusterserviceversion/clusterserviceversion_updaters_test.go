@@ -375,45 +375,46 @@ var _ = Describe("findMatchingDeploymentAndServiceForWebhook", func() {
 	})
 
 	Context("crdGroups", func() {
-		path1 := "/whPath"
-		port1 := new(int32)
-		*port1 = 2311
-		crdToConfigPath := map[string]apiextv1.WebhookConversion{
-			"crd-test-1": {
-				ClientConfig: &apiextv1.WebhookClientConfig{
-					Service: &apiextv1.ServiceReference{
-						Path: &path1,
-						Port: port1,
+		It("should return the proper service port path to crd mapping", func() {
+			path1 := "/whPath"
+			port1 := new(int32)
+			*port1 = 2311
+			crdToConfigPath := map[string]apiextv1.WebhookConversion{
+				"crd-test-1": {
+					ClientConfig: &apiextv1.WebhookClientConfig{
+						Service: &apiextv1.ServiceReference{
+							Path: &path1,
+							Port: port1,
+						},
 					},
 				},
-			},
 
-			"crd-test-2": {
-				ClientConfig: &apiextv1.WebhookClientConfig{
-					Service: &apiextv1.ServiceReference{
-						Path: &path1,
-						Port: port1,
+				"crd-test-2": {
+					ClientConfig: &apiextv1.WebhookClientConfig{
+						Service: &apiextv1.ServiceReference{
+							Path: &path1,
+							Port: port1,
+						},
 					},
 				},
-			},
-		}
+			}
 
-		val := crdGroups(crdToConfigPath)
+			val := crdGroups(crdToConfigPath)
 
-		Expect(len(val)).To(BeEquivalentTo(1))
+			Expect(len(val)).To(BeEquivalentTo(1))
 
-		test := serviceportPath{
-			Port: port1,
-			Path: path1,
-		}
+			test := serviceportPath{
+				Port: port1,
+				Path: path1,
+			}
 
-		g := val[test]
+			g := val[test]
 
-		Expect(g).NotTo(BeNil())
-		Expect(len(g)).To(BeEquivalentTo(2))
-		Expect(g).To(ContainElement("crd-test-2"))
-		Expect(g).To(ContainElement("crd-test-1"))
-
+			Expect(g).NotTo(BeNil())
+			Expect(len(g)).To(BeEquivalentTo(2))
+			Expect(g).To(ContainElement("crd-test-2"))
+			Expect(g).To(ContainElement("crd-test-1"))
+		})
 	})
 
 })
