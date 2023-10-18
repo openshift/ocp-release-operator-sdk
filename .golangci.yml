@@ -11,7 +11,6 @@ linters:
     - maligned
     - ineffassign
     - goconst
-    - goimports
     - errcheck
     - dupl
     - unparam

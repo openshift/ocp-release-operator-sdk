@@ -21,20 +21,22 @@ import (
 
 var _ = Describe("Migrating packagemanifests to bundle command", func() {
 	Describe("NewCmd", func() {
-		cmd := NewCmd()
-		Expect(cmd).NotTo(BeNil())
+		It("should successfully return a new pkgManToBundleCmd", func() {
+			cmd := NewCmd()
+			Expect(cmd).NotTo(BeNil())
 
-		flag := cmd.Flags().Lookup("output-dir")
-		Expect(flag).NotTo(BeNil())
-		Expect(flag.Usage).ToNot(Equal(""))
-		Expect(flag.DefValue).To(Equal("bundles"))
+			flag := cmd.Flags().Lookup("output-dir")
+			Expect(flag).NotTo(BeNil())
+			Expect(flag.Usage).ToNot(Equal(""))
+			Expect(flag.DefValue).To(Equal("bundles"))
 
-		flag = cmd.Flags().Lookup("image-tag-base")
-		Expect(flag).NotTo(BeNil())
-		Expect(flag.Usage).ToNot(Equal(""))
+			flag = cmd.Flags().Lookup("image-tag-base")
+			Expect(flag).NotTo(BeNil())
+			Expect(flag.Usage).ToNot(Equal(""))
 
-		flag = cmd.Flags().Lookup("build-cmd")
-		Expect(flag).NotTo(BeNil())
-		Expect(flag.Usage).ToNot(Equal(""))
+			flag = cmd.Flags().Lookup("build-cmd")
+			Expect(flag).NotTo(BeNil())
+			Expect(flag.Usage).ToNot(Equal(""))
+		})
 	})
 })
