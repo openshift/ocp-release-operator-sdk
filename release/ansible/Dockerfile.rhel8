@@ -24,7 +24,6 @@ ENV HOME=/opt/ansible \
 
 # get artifacts from cachito
 COPY $REMOTE_SOURCES $REMOTE_SOURCES_DIR
-WORKDIR $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app
 
 # install dependencies
 RUN yum install -y \
@@ -37,7 +36,8 @@ RUN yum install -y \
 
 # enable cachito and install python requirements then perform a cleanup
 RUN source $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/cachito.env && \
-    python -m pip install --no-cache-dir . && \
+    python -m pip install --no-cache-dir -U setuptools && \
+    python -m pip install --no-cache-dir $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app/release/ansible && \
     rm -rf $REMOTE_SOURCES_DIR
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator /usr/local/bin/ansible-operator
