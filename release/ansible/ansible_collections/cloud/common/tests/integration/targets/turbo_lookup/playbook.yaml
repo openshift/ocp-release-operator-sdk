@@ -1,5 +1,5 @@
 - hosts: localhost
-  gather_facts: no
+  gather_facts: false
 
   environment:
     ANSIBLE_TURBO_LOOKUP_TTL: 1
@@ -9,7 +9,7 @@
     - name: variables definition
       set_fact:
         var00: "{{ lookup('cloud.common.turbo_demo', wantlist=True) }}"
-        var01: "{{ lookup('cloud.common.turbo_demo', wantlist=True) }}"  
+        var01: "{{ lookup('cloud.common.turbo_demo', wantlist=True) }}"
 
     - pause:
         seconds: 2
@@ -20,7 +20,7 @@
         var11: "{{ lookup('cloud.common.turbo_demo', wantlist=True) }}"
       environment:
         ANSIBLE_TURBO_LOOKUP_TTL: 4
- 
+
     - pause:
         seconds: 2
 
@@ -45,7 +45,7 @@
 
 
 - hosts: localhost
-  gather_facts: no
+  gather_facts: false
 
   vars:
     turbo_play_var: "simple ansible playbook variable"
@@ -79,5 +79,3 @@
         - '["2.9", "2.10"] in var0'
         - '["2.9", "2.10"] in var1'
         - '["2.9", "2.10"] in var2'
-    
-    

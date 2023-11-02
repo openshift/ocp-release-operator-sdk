@@ -28,7 +28,6 @@
 import os
 
 from ansible.plugins.lookup import LookupBase
-from ansible.module_utils.six import string_types
 import ansible_collections.cloud.common.plugins.module_utils.turbo.common
 from ansible_collections.cloud.common.plugins.module_utils.turbo.exceptions import (
     EmbeddedModuleUnexpectedFailure,
@@ -44,7 +43,7 @@ def get_server_ttl(variables):
     for env_var in variables.get("environment", []):
         value = env_var.get("ANSIBLE_TURBO_LOOKUP_TTL", None)
         test_var_int = [
-            isinstance(value, string_types) and value.isnumeric(),
+            isinstance(value, str) and value.isnumeric(),
             isinstance(value, int),
         ]
         if value is not None and any(test_var_int):
@@ -75,12 +74,14 @@ class TurboLookupBase(LookupBase):
                 idx = name.find(lookup_plugins)
                 if idx != -1:
                     name = name[:idx]
+
             self.__socket_path = os.environ[
                 "HOME"
             ] + "/.ansible/tmp/turbo_lookup.{0}.socket".format(name)
         return self.__socket_path
 
     def execute(self, terms, variables=None, **kwargs):
+        result = None
         with ansible_collections.cloud.common.plugins.module_utils.turbo.common.connect(
             socket_path=self.socket_path, ttl=self._ttl, plugin="lookup"
         ) as turbo_socket:
@@ -88,4 +89,5 @@ class TurboLookupBase(LookupBase):
             (result, errors) = turbo_socket.communicate(content)
             if errors:
                 raise EmbeddedModuleUnexpectedFailure(errors)
+
             return result

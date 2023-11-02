@@ -8,7 +8,7 @@ More content may be included later.
 
 # Requirements
 
-- ansible_turbo.module requires Python 3.6 and Ansible 2.9 or greater.
+- ansible_turbo.module requires Python 3.6 and Ansible 2.13.0 or greater.
 
 ## Ansible Turbo Module
 
@@ -173,7 +173,9 @@ You can use the `--help` argument to get a list of the optional parameters.
 
 See [CHANGELOG.rst](https://github.com/ansible-collections/cloud.common/blob/main/CHANGELOG.rst).
 
-## Releasing, Versioning and Deprecation
+## Testing, Releasing, Versioning and Deprecation
+
+This collection is tested using GitHub Actions. To know more about CI, refer to [CI.md](https://github.com/ansible-collections/cloud.common/blob/main/CI.md).
 
 This collection follows [Semantic Versioning](https://semver.org/). More details on versioning can be found [in the Ansible docs](https://docs.ansible.com/ansible/latest/dev_guide/developing_collections.html#collection-versions).
 
@@ -198,3 +200,5 @@ If you encounter abusive behavior violating the [Ansible Code of Conduct](https:
 GNU General Public License v3.0 or later.
 
 See [LICENSE](https://www.gnu.org/licenses/gpl-3.0.txt) to see the full text.
+
+The files in plugins/module_utils and plugins/plugin_utils directories are also licensed with a BSD license.
