@@ -37,18 +37,11 @@ RUN mkdir -p ${HOME}/.ansible/tmp \
 
 # get artifacts from cachito
 COPY $REMOTE_SOURCES $REMOTE_SOURCES_DIR
-WORKDIR $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app
-
-# install dependencies
-RUN dnf install -y \
-      python39 \
-      tini \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
 
 # enable cachito and install python requirements then perform a cleanup
 RUN source $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/cachito.env && \
-    python3 -m pip install --no-cache-dir . && \
+    python3 -m pip install --no-cache-dir -U setuptools && \
+    python3 -m pip install --no-cache-dir REMOTE_SOURCES_DIR/cachito-gomod-with-deps-app/release/ansible && \
     rm -rf $REMOTE_SOURCES_DIR
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator /usr/local/bin/ansible-operator
