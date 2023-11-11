@@ -5,6 +5,42 @@ cloud.common Release Notes
 .. contents:: Topics
 
 
+v2.1.4
+======
+
+Release Summary
+---------------
+
+This release includes several bugfixes for lookup plugins.
+
+Bugfixes
+--------
+
+- Ensure result is always defined in lookup plugins (https://github.com/ansible-collections/cloud.common/pull/116/files).
+- Fix lookup modules failing on Ansible 2.15 (https://github.com/ansible-collections/cloud.common/pull/130).
+
+v2.1.3
+======
+
+Minor Changes
+-------------
+
+- sanity - fix sanity errors (https://github.com/ansible-collections/cloud.common/issues/106)
+- units - ensure tests/units follow the Ansible-defined unit tests structure (https://github.com/ansible-collections/cloud.common/issues/89)
+
+Bugfixes
+--------
+
+- module_utils/turbo/server - import needed library into the right place (https://github.com/ansible-collections/cloud.common/pull/120)
+
+v2.1.2
+======
+
+Bugfixes
+--------
+
+- Ensure we don't shutdown the server when we've still got some ongoing tasks (https://github.com/ansible-collections/cloud.common/pull/109).
+
 v2.1.1
 ======
 

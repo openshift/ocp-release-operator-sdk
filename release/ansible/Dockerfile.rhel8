@@ -5,8 +5,8 @@ ENV GO111MODULE=on \
 
 # we need to patch the Makefile prior to building
 COPY . /go/src/github.com/operator-framework/operator-sdk
-RUN cd /go/src/github.com/operator-framework/operator-sdk \
- && make -f ci/prow.Makefile patch build
+WORKDIR /go/src/github.com/operator-framework/operator-sdk
+RUN make -f ci/prow.Makefile patch build
 
 # create base image
 FROM registry.ci.openshift.org/ocp/4.15:base
@@ -22,23 +22,26 @@ ENV HOME=/opt/ansible \
     USER_NAME=ansible \
     USER_UID=1001
 
-# get artifacts from cachito
-COPY $REMOTE_SOURCES $REMOTE_SOURCES_DIR
-WORKDIR $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/app
-
 # install dependencies
 RUN dnf install -y \
       python39 \
-      ansible \
-      ansible-runner \
-      ansible-runner-http \
       tini \
     && dnf clean all \
-    && rm -rf /var/cache/dnf
+    && rm -rf /var/cache/dnf \
+    && alternatives --set python3 /usr/bin/python3.9
+
+# Ensure directory permissions are properly set
+RUN mkdir -p ${HOME}/.ansible/tmp \
+    && chown -R ${USER_UID}:0 ${HOME} \
+    && chmod -R ug+rwx ${HOME}
+
+# get artifacts from cachito
+COPY $REMOTE_SOURCES $REMOTE_SOURCES_DIR
 
 # enable cachito and install python requirements then perform a cleanup
 RUN source $REMOTE_SOURCES_DIR/cachito-gomod-with-deps/cachito.env && \
-    python3.9 -m pip install --no-cache-dir . && \
+    python3 -m pip install --no-cache-dir -U setuptools && \
+    python3 -m pip install --no-cache-dir REMOTE_SOURCES_DIR/cachito-gomod-with-deps-app/release/ansible && \
     rm -rf $REMOTE_SOURCES_DIR
 
 COPY --from=builder /go/src/github.com/operator-framework/operator-sdk/build/ansible-operator /usr/local/bin/ansible-operator
@@ -47,11 +50,6 @@ COPY release/ansible/bin /usr/local/bin
 
 RUN /usr/local/bin/user_setup
 
-# Ensure directory permissions are properly set
-RUN mkdir -p ${HOME}/.ansible/tmp \
- && chown -R ${USER_UID}:0 ${HOME} \
- && chmod -R ug+rwx ${HOME}
-
-WORKDIR ${HOME}
 USER ${USER_UID}
+WORKDIR ${HOME}
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/ansible-operator", "run", "--watches-file=./watches.yaml"]
