@@ -44,9 +44,9 @@ jobs:
         fetch-depth: 0
 
     - name: install
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
-        go-version: 1.19
+        go-version-file: "go.mod"
 
     - name: gpg init
       if: ${{ github.event_name != 'pull_request' }}
@@ -73,14 +73,14 @@ jobs:
     environment: deploy
     strategy:
       matrix:
-        id: ["operator-sdk", "helm-operator", "scorecard-test", "ansible-operator"]
+        id: ["operator-sdk", "helm-operator", "scorecard-test"]
     steps:
 
     - name: set up qemu
       uses: docker/setup-qemu-action@v2
 
     - name: set up buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: quay.io login
       if: ${{ github.event_name != 'pull_request' }}
@@ -126,7 +126,7 @@ jobs:
       uses: docker/setup-qemu-action@v2
 
     - name: set up buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: quay.io login
       if: ${{ github.event_name != 'pull_request' }}

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	OlmVersionForTestSuite = "0.25.0"
+	OlmVersionForTestSuite = "0.26.0"
 )
 
 var makefilePackagemanifestsFragment = `
@@ -89,9 +89,5 @@ func (tc TestContext) GenerateBundle() error {
 		return err
 	}
 
-	if err := tc.Make("bundle", "IMG="+tc.ImageName); err != nil {
-		return err
-	}
-
-	return nil
+	return tc.Make("bundle", "IMG="+tc.ImageName)
 }

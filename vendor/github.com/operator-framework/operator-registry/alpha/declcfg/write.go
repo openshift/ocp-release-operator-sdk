@@ -377,6 +377,12 @@ func writeToEncoder(cfg DeclarativeConfig, enc encoder) error {
 		pkgNames.Insert(pkgName)
 		othersByPackage[pkgName] = append(othersByPackage[pkgName], o)
 	}
+	deprecationsByPackage := map[string][]Deprecation{}
+	for _, d := range cfg.Deprecations {
+		pkgName := d.Package
+		pkgNames.Insert(pkgName)
+		deprecationsByPackage[pkgName] = append(deprecationsByPackage[pkgName], d)
+	}
 
 	for _, pName := range pkgNames.List() {
 		if len(pName) == 0 {
@@ -418,6 +424,23 @@ func writeToEncoder(cfg DeclarativeConfig, enc encoder) error {
 				return err
 			}
 		}
+
+		//
+		// Normally we would order the deprecations, but it really doesn't make sense since
+		// - there will be 0 or 1 of them for any given package
+		// - they have no other useful field for ordering
+		//
+		// validation is typically via conversion to a model.Model and invoking model.Package.Validate()
+		// It's possible that a user of the object could create a slice containing more then 1
+		// Deprecation object for a package, and it would bypass validation if this
+		// function gets called without conversion.
+		//
+		deprecations := deprecationsByPackage[pName]
+		for _, d := range deprecations {
+			if err := enc.Encode(d); err != nil {
+				return err
+			}
+		}
 	}
 
 	for _, o := range othersByPackage[""] {
@@ -425,6 +448,7 @@ func writeToEncoder(cfg DeclarativeConfig, enc encoder) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
