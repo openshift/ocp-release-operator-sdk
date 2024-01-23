@@ -3,3 +3,8 @@
 .
 .idea
 gomega.iml
+<<<<<<< HEAD
+=======
+TODO
+.vscode
+>>>>>>> ef22b1c6a (Bump go-git)

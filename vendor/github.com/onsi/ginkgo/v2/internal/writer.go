@@ -101,3 +101,12 @@ func (w *Writer) Printf(format string, a ...interface{}) {
 func (w *Writer) Println(a ...interface{}) {
 	fmt.Fprintln(w, a...)
 }
+<<<<<<< HEAD
+=======
+
+func GinkgoLogrFunc(writer *Writer) logr.Logger {
+	return funcr.New(func(prefix, args string) {
+		writer.Printf("%s\n", args)
+	}, funcr.Options{})
+}
+>>>>>>> ef22b1c6a (Bump go-git)

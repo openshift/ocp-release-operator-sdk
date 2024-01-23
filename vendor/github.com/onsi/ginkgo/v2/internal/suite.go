@@ -10,6 +10,7 @@ import (
 	"github.com/onsi/ginkgo/v2/internal/parallel_support"
 	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/ginkgo/v2/types"
+	"golang.org/x/net/context"
 )
 
 type Phase uint
@@ -20,9 +21,13 @@ const (
 	PhaseRun
 )
 
+var PROGRESS_REPORTER_DEADLING = 5 * time.Second
+
 type Suite struct {
 	tree               *TreeNode
 	topLevelContainers Nodes
+
+	*ProgressReporterManager
 
 	phase Phase
 
@@ -61,8 +66,9 @@ type Suite struct {
 
 func NewSuite() *Suite {
 	return &Suite{
-		tree:  &TreeNode{},
-		phase: PhaseBuildTopLevel,
+		tree:                    &TreeNode{},
+		phase:                   PhaseBuildTopLevel,
+		ProgressReporterManager: NewProgressReporterManager(),
 
 		selectiveLock: &sync.Mutex{},
 	}
@@ -225,7 +231,9 @@ func (suite *Suite) pushCleanupNode(node Node) error {
 
 	node.NodeIDWhereCleanupWasGenerated = suite.currentNode.ID
 	node.NestingLevel = suite.currentNode.NestingLevel
+	suite.selectiveLock.Lock()
 	suite.cleanupNodes = append(suite.cleanupNodes, node)
+	suite.selectiveLock.Unlock()
 
 	return nil
 }
@@ -270,8 +278,18 @@ func (suite *Suite) generateProgressReport(fullReport bool) types.ProgressReport
 	suite.selectiveLock.Lock()
 	defer suite.selectiveLock.Unlock()
 
+<<<<<<< HEAD
 	stepCursor := suite.progressStepCursor
 
+=======
+	deadline, cancel := context.WithTimeout(context.Background(), PROGRESS_REPORTER_DEADLING)
+	defer cancel()
+	var additionalReports []string
+	if suite.currentSpecContext != nil {
+		additionalReports = append(additionalReports, suite.currentSpecContext.QueryProgressReporters(deadline, suite.failer)...)
+	}
+	additionalReports = append(additionalReports, suite.QueryProgressReporters(deadline, suite.failer)...)
+>>>>>>> ef22b1c6a (Bump go-git)
 	gwOutput := suite.currentSpecReport.CapturedGinkgoWriterOutput + string(suite.writer.Bytes())
 	pr, err := NewProgressReport(suite.isRunningInParallel(), suite.currentSpecReport, suite.currentNode, suite.currentNodeStartTime, stepCursor, gwOutput, suite.config.SourceRoots, fullReport)
 
@@ -711,11 +729,76 @@ func (suite *Suite) runNode(node Node, interruptChannel chan interface{}, text s
 			}
 			failure.Message, failure.Location, failure.ForwardedPanic = failureFromRun.Message, failureFromRun.Location, failureFromRun.ForwardedPanic
 			return outcome, failure
+<<<<<<< HEAD
 		case <-interruptChannel:
 			reason, includeProgressReport := suite.interruptHandler.InterruptMessage()
 			failure.Message, failure.Location = reason, node.CodeLocation
 			if includeProgressReport {
 				failure.ProgressReport = suite.generateProgressReport(true).WithoutCapturedGinkgoWriterOutput()
+=======
+		case <-deadlineChannel:
+			// we're out of time - the outcome is a timeout and we capture the failure and progress report
+			outcome = types.SpecStateTimedout
+			failure.Message, failure.Location, failure.TimelineLocation = fmt.Sprintf("A %s timeout occurred", timeoutInPlay), node.CodeLocation, suite.generateTimelineLocation()
+			failure.ProgressReport = suite.generateProgressReport(false).WithoutCapturedGinkgoWriterOutput()
+			failure.ProgressReport.Message = fmt.Sprintf("{{bold}}This is the Progress Report generated when the %s timeout occurred:{{/}}", timeoutInPlay)
+			deadlineChannel = nil
+			suite.reporter.EmitFailure(outcome, failure)
+
+			// tell the spec to stop.  it's important we generate the progress report first to make sure we capture where
+			// the spec is actually stuck
+			sc.cancel()
+			//and now we wait for the grace period
+			gracePeriodChannel = time.After(gracePeriod)
+		case <-interruptStatus.Channel:
+			interruptStatus = suite.interruptHandler.Status()
+			// ignore interruption from other process if we are cleaning up or reporting
+			if interruptStatus.Cause == interrupt_handler.InterruptCauseAbortByOtherProcess &&
+				node.NodeType.Is(types.NodeTypesAllowedDuringReportInterrupt|types.NodeTypesAllowedDuringCleanupInterrupt) {
+				continue
+			}
+
+			deadlineChannel = nil // don't worry about deadlines, time's up now
+
+			failureTimelineLocation := suite.generateTimelineLocation()
+			progressReport := suite.generateProgressReport(true)
+
+			if outcome == types.SpecStateInvalid {
+				outcome = types.SpecStateInterrupted
+				failure.Message, failure.Location, failure.TimelineLocation = interruptStatus.Message(), node.CodeLocation, failureTimelineLocation
+				if interruptStatus.ShouldIncludeProgressReport() {
+					failure.ProgressReport = progressReport.WithoutCapturedGinkgoWriterOutput()
+					failure.ProgressReport.Message = "{{bold}}This is the Progress Report generated when the interrupt was received:{{/}}"
+				}
+				suite.reporter.EmitFailure(outcome, failure)
+			}
+
+			progressReport = progressReport.WithoutOtherGoroutines()
+			sc.cancel()
+
+			if interruptStatus.Level == interrupt_handler.InterruptLevelBailOut {
+				if interruptStatus.ShouldIncludeProgressReport() {
+					progressReport.Message = fmt.Sprintf("{{bold}}{{orange}}%s{{/}}\n{{bold}}{{red}}Final interrupt received{{/}}; Ginkgo will not run any cleanup or reporting nodes and will terminate as soon as possible.\nHere's a current progress report:", interruptStatus.Message())
+					suite.emitProgressReport(progressReport)
+				}
+				return outcome, failure
+			}
+			if interruptStatus.ShouldIncludeProgressReport() {
+				if interruptStatus.Level == interrupt_handler.InterruptLevelCleanupAndReport {
+					progressReport.Message = fmt.Sprintf("{{bold}}{{orange}}%s{{/}}\nFirst interrupt received; Ginkgo will run any cleanup and reporting nodes but will skip all remaining specs.  {{bold}}Interrupt again to skip cleanup{{/}}.\nHere's a current progress report:", interruptStatus.Message())
+				} else if interruptStatus.Level == interrupt_handler.InterruptLevelReportOnly {
+					progressReport.Message = fmt.Sprintf("{{bold}}{{orange}}%s{{/}}\nSecond interrupt received; Ginkgo will run any reporting nodes but will skip all remaining specs and cleanup nodes.  {{bold}}Interrupt again to bail immediately{{/}}.\nHere's a current progress report:", interruptStatus.Message())
+				}
+				suite.emitProgressReport(progressReport)
+			}
+
+			if gracePeriodChannel == nil {
+				// we haven't given grace yet... so let's
+				gracePeriodChannel = time.After(gracePeriod)
+			} else {
+				// we've already given grace.  time's up.  now.
+				return outcome, failure
+>>>>>>> ef22b1c6a (Bump go-git)
 			}
 			return types.SpecStateInterrupted, failure
 		case <-emitProgressNow:

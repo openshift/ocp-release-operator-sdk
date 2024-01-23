@@ -26,6 +26,7 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/tools/go/ast/astutil"
+	"golang.org/x/tools/internal/event"
 	"golang.org/x/tools/internal/gocommand"
 	"golang.org/x/tools/internal/gopathwalk"
 )
@@ -519,7 +520,7 @@ func (p *pass) addCandidate(imp *ImportInfo, pkg *packageInfo) {
 var fixImports = fixImportsDefault
 
 func fixImportsDefault(fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv) error {
-	fixes, err := getFixes(fset, f, filename, env)
+	fixes, err := getFixes(context.Background(), fset, f, filename, env)
 	if err != nil {
 		return err
 	}
@@ -529,7 +530,7 @@ func fixImportsDefault(fset *token.FileSet, f *ast.File, filename string, env *P
 
 // getFixes gets the import fixes that need to be made to f in order to fix the imports.
 // It does not modify the ast.
-func getFixes(fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv) ([]*ImportFix, error) {
+func getFixes(ctx context.Context, fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv) ([]*ImportFix, error) {
 	abs, err := filepath.Abs(filename)
 	if err != nil {
 		return nil, err
@@ -583,7 +584,7 @@ func getFixes(fset *token.FileSet, f *ast.File, filename string, env *ProcessEnv
 
 	// Go look for candidates in $GOPATH, etc. We don't necessarily load
 	// the real exports of sibling imports, so keep assuming their contents.
-	if err := addExternalCandidates(p, p.missingRefs, filename); err != nil {
+	if err := addExternalCandidates(ctx, p, p.missingRefs, filename); err != nil {
 		return nil, err
 	}
 
@@ -1031,7 +1032,10 @@ type scanCallback struct {
 	exportsLoaded func(pkg *pkg, exports []string)
 }
 
-func addExternalCandidates(pass *pass, refs references, filename string) error {
+func addExternalCandidates(ctx context.Context, pass *pass, refs references, filename string) error {
+	ctx, done := event.Start(ctx, "imports.addExternalCandidates")
+	defer done()
+
 	var mu sync.Mutex
 	found := make(map[string][]pkgDistance)
 	callback := &scanCallback{

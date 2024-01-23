@@ -11,10 +11,14 @@ import (
 	"github.com/onsi/ginkgo/v2/internal/parallel_support"
 )
 
+<<<<<<< HEAD
 const TIMEOUT_REPEAT_INTERRUPT_MAXIMUM_DURATION = 30 * time.Second
 const TIMEOUT_REPEAT_INTERRUPT_FRACTION_OF_TIMEOUT = 10
 const ABORT_POLLING_INTERVAL = 500 * time.Millisecond
 const ABORT_REPEAT_INTERRUPT_DURATION = 30 * time.Second
+=======
+var ABORT_POLLING_INTERVAL = 500 * time.Millisecond
+>>>>>>> ef22b1c6a (Bump go-git)
 
 type InterruptCause uint
 
@@ -52,6 +56,7 @@ type InterruptHandlerInterface interface {
 }
 
 type InterruptHandler struct {
+<<<<<<< HEAD
 	c                           chan interface{}
 	lock                        *sync.Mutex
 	interrupted                 bool
@@ -59,15 +64,34 @@ type InterruptHandler struct {
 	interruptCause              InterruptCause
 	client                      parallel_support.Client
 	stop                        chan interface{}
+=======
+	c                 chan interface{}
+	lock              *sync.Mutex
+	level             InterruptLevel
+	cause             InterruptCause
+	client            parallel_support.Client
+	stop              chan interface{}
+	signals           []os.Signal
+	requestAbortCheck chan interface{}
+>>>>>>> ef22b1c6a (Bump go-git)
 }
 
 func NewInterruptHandler(timeout time.Duration, client parallel_support.Client) *InterruptHandler {
 	handler := &InterruptHandler{
+<<<<<<< HEAD
 		c:           make(chan interface{}),
 		lock:        &sync.Mutex{},
 		interrupted: false,
 		stop:        make(chan interface{}),
 		client:      client,
+=======
+		c:                 make(chan interface{}),
+		lock:              &sync.Mutex{},
+		stop:              make(chan interface{}),
+		requestAbortCheck: make(chan interface{}),
+		client:            client,
+		signals:           signals,
+>>>>>>> ef22b1c6a (Bump go-git)
 	}
 	handler.registerForInterrupts(timeout)
 	return handler
@@ -101,6 +125,12 @@ func (handler *InterruptHandler) registerForInterrupts(timeout time.Duration) {
 				case <-pollTicker.C:
 					if handler.client.ShouldAbort() {
 						abortChannel <- true
+						pollTicker.Stop()
+						return
+					}
+				case <-handler.requestAbortCheck:
+					if handler.client.ShouldAbort() {
+						close(abortChannel)
 						pollTicker.Stop()
 						return
 					}
@@ -165,13 +195,29 @@ func (handler *InterruptHandler) registerForInterrupts(timeout time.Duration) {
 
 func (handler *InterruptHandler) Status() InterruptStatus {
 	handler.lock.Lock()
+<<<<<<< HEAD
 	defer handler.lock.Unlock()
 
 	return InterruptStatus{
 		Interrupted: handler.interrupted,
 		Channel:     handler.c,
 		Cause:       handler.interruptCause,
+=======
+	status := InterruptStatus{
+		Level:   handler.level,
+		Channel: handler.c,
+		Cause:   handler.cause,
+>>>>>>> ef22b1c6a (Bump go-git)
 	}
+	handler.lock.Unlock()
+
+	if handler.client != nil && handler.client.ShouldAbort() && !status.Interrupted() {
+		close(handler.requestAbortCheck)
+		<-status.Channel
+		return handler.Status()
+	}
+
+	return status
 }
 
 func (handler *InterruptHandler) SetInterruptPlaceholderMessage(message string) {

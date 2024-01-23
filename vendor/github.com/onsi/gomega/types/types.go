@@ -70,6 +70,14 @@ type AsyncAssertion interface {
 	WithOffset(offset int) AsyncAssertion
 	WithTimeout(interval time.Duration) AsyncAssertion
 	WithPolling(interval time.Duration) AsyncAssertion
+<<<<<<< HEAD
+=======
+	Within(timeout time.Duration) AsyncAssertion
+	ProbeEvery(interval time.Duration) AsyncAssertion
+	WithContext(ctx context.Context) AsyncAssertion
+	WithArguments(argsToForward ...interface{}) AsyncAssertion
+	MustPassRepeatedly(count int) AsyncAssertion
+>>>>>>> ef22b1c6a (Bump go-git)
 }
 
 // Assertions are returned by Ω and Expect and enable assertions against Gomega matchers

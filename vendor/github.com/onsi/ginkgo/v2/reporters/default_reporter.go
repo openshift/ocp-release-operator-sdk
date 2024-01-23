@@ -12,6 +12,7 @@ import (
 	"io"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/onsi/ginkgo/v2/formatter"
@@ -23,13 +24,19 @@ type DefaultReporter struct {
 	writer io.Writer
 
 	// managing the emission stream
-	lastChar                 string
+	lastCharWasNewline       bool
 	lastEmissionWasDelimiter bool
 
 	// rendering
 	specDenoter  string
 	retryDenoter string
 	formatter    formatter.Formatter
+<<<<<<< HEAD
+=======
+
+	runningInParallel bool
+	lock              *sync.Mutex
+>>>>>>> ef22b1c6a (Bump go-git)
 }
 
 func NewDefaultReporterUnderTest(conf types.ReporterConfig, writer io.Writer) *DefaultReporter {
@@ -44,12 +51,13 @@ func NewDefaultReporter(conf types.ReporterConfig, writer io.Writer) *DefaultRep
 		conf:   conf,
 		writer: writer,
 
-		lastChar:                 "\n",
+		lastCharWasNewline:       true,
 		lastEmissionWasDelimiter: false,
 
 		specDenoter:  "•",
 		retryDenoter: "↺",
 		formatter:    formatter.NewWithNoColorBool(conf.NoColor),
+		lock:         &sync.Mutex{},
 	}
 	if runtime.GOOS == "windows" {
 		reporter.specDenoter = "+"
@@ -384,6 +392,7 @@ func (r *DefaultReporter) emitProgressReport(indent uint, emitGinkgoWriterOutput
 	}
 }
 
+<<<<<<< HEAD
 func (r *DefaultReporter) emitGinkgoWriterOutput(indent uint, output string, limit int) {
 	r.emitBlock(r.fi(indent, "{{gray}}Begin Captured GinkgoWriter Output >>{{/}}"))
 	if limit == 0 {
@@ -398,6 +407,49 @@ func (r *DefaultReporter) emitGinkgoWriterOutput(indent uint, output string, lim
 				r.emitBlock(r.fi(indent+1, "%s", line))
 			}
 		}
+=======
+func (r *DefaultReporter) EmitReportEntry(entry types.ReportEntry) {
+	if r.conf.Verbosity().LT(types.VerbosityLevelVerbose) || entry.Visibility == types.ReportEntryVisibilityNever {
+		return
+	}
+	r.emitReportEntry(1, entry)
+}
+
+func (r *DefaultReporter) emitReportEntry(indent uint, entry types.ReportEntry) {
+	r.emitBlock(r.fi(indent, "{{bold}}"+entry.Name+"{{gray}} "+fmt.Sprintf("- %s @ %s{{/}}", entry.Location, entry.Time.Format(types.GINKGO_TIME_FORMAT))))
+	if representation := entry.StringRepresentation(); representation != "" {
+		r.emitBlock(r.fi(indent+1, representation))
+	}
+}
+
+func (r *DefaultReporter) EmitSpecEvent(event types.SpecEvent) {
+	v := r.conf.Verbosity()
+	if v.Is(types.VerbosityLevelVeryVerbose) || (v.Is(types.VerbosityLevelVerbose) && (r.conf.ShowNodeEvents || !event.IsOnlyVisibleAtVeryVerbose())) {
+		r.emitSpecEvent(1, event, r.conf.Verbosity().Is(types.VerbosityLevelVeryVerbose))
+	}
+}
+
+func (r *DefaultReporter) emitSpecEvent(indent uint, event types.SpecEvent, includeLocation bool) {
+	location := ""
+	if includeLocation {
+		location = fmt.Sprintf("- %s ", event.CodeLocation.String())
+	}
+	switch event.SpecEventType {
+	case types.SpecEventInvalid:
+		return
+	case types.SpecEventByStart:
+		r.emitBlock(r.fi(indent, "{{bold}}STEP:{{/}} %s {{gray}}%s@ %s{{/}}", event.Message, location, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	case types.SpecEventByEnd:
+		r.emitBlock(r.fi(indent, "{{bold}}END STEP:{{/}} %s {{gray}}%s@ %s (%s){{/}}", event.Message, location, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT), event.Duration.Round(time.Millisecond)))
+	case types.SpecEventNodeStart:
+		r.emitBlock(r.fi(indent, "> Enter {{bold}}[%s]{{/}} %s {{gray}}%s@ %s{{/}}", event.NodeType.String(), event.Message, location, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	case types.SpecEventNodeEnd:
+		r.emitBlock(r.fi(indent, "< Exit {{bold}}[%s]{{/}} %s {{gray}}%s@ %s (%s){{/}}", event.NodeType.String(), event.Message, location, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT), event.Duration.Round(time.Millisecond)))
+	case types.SpecEventSpecRepeat:
+		r.emitBlock(r.fi(indent, "\n{{bold}}Attempt #%d {{green}}Passed{{/}}{{bold}}.  Repeating %s{{/}} {{gray}}@ %s{{/}}\n\n", event.Attempt, r.retryDenoter, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+	case types.SpecEventSpecRetry:
+		r.emitBlock(r.fi(indent, "\n{{bold}}Attempt #%d {{red}}Failed{{/}}{{bold}}.  Retrying %s{{/}} {{gray}}@ %s{{/}}\n\n", event.Attempt, r.retryDenoter, event.TimelineLocation.Time.Format(types.GINKGO_TIME_FORMAT)))
+>>>>>>> ef22b1c6a (Bump go-git)
 	}
 	r.emitBlock(r.fi(indent, "{{gray}}<< End Captured GinkgoWriter Output{{/}}"))
 }
@@ -457,31 +509,46 @@ func (r *DefaultReporter) emitSource(indent uint, fc types.FunctionCall) {
 
 /* Emitting to the writer */
 func (r *DefaultReporter) emit(s string) {
-	if len(s) > 0 {
-		r.lastChar = s[len(s)-1:]
-		r.lastEmissionWasDelimiter = false
-		r.writer.Write([]byte(s))
-	}
+	r._emit(s, false, false)
 }
 
 func (r *DefaultReporter) emitBlock(s string) {
-	if len(s) > 0 {
-		if r.lastChar != "\n" {
-			r.emit("\n")
-		}
-		r.emit(s)
-		if r.lastChar != "\n" {
-			r.emit("\n")
-		}
-	}
+	r._emit(s, true, false)
 }
 
+<<<<<<< HEAD
 func (r *DefaultReporter) emitDelimiter() {
 	if r.lastEmissionWasDelimiter {
 		return
 	}
 	r.emitBlock(r.f("{{gray}}%s{{/}}", strings.Repeat("-", 30)))
 	r.lastEmissionWasDelimiter = true
+=======
+func (r *DefaultReporter) emitDelimiter(indent uint) {
+	r._emit(r.fi(indent, "{{gray}}%s{{/}}", strings.Repeat("-", 30)), true, true)
+}
+
+// a bit ugly - but we're trying to minimize locking on this hot codepath
+func (r *DefaultReporter) _emit(s string, block bool, isDelimiter bool) {
+	if len(s) == 0 {
+		return
+	}
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	if isDelimiter && r.lastEmissionWasDelimiter {
+		return
+	}
+	if block && !r.lastCharWasNewline {
+		r.writer.Write([]byte("\n"))
+	}
+	r.lastCharWasNewline = (s[len(s)-1:] == "\n")
+	r.writer.Write([]byte(s))
+	if block && !r.lastCharWasNewline {
+		r.writer.Write([]byte("\n"))
+		r.lastCharWasNewline = true
+	}
+	r.lastEmissionWasDelimiter = isDelimiter
+>>>>>>> ef22b1c6a (Bump go-git)
 }
 
 /* Rendering text */

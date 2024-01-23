@@ -77,6 +77,10 @@ type Labels []string
 type PollProgressInterval time.Duration
 type PollProgressAfter time.Duration
 
+func (l Labels) MatchesLabelFilter(query string) bool {
+	return types.MustParseLabelFilter(query)(l)
+}
+
 func UnionOfLabels(labels ...Labels) Labels {
 	out := Labels{}
 	seen := map[string]bool{}
@@ -667,6 +671,38 @@ func (n Nodes) FirstNodeMarkedOrdered() Node {
 	return Node{}
 }
 
+<<<<<<< HEAD
+=======
+func (n Nodes) IndexOfFirstNodeMarkedOrdered() int {
+	for i := range n {
+		if n[i].MarkedOrdered {
+			return i
+		}
+	}
+	return -1
+}
+
+func (n Nodes) GetMaxFlakeAttempts() int {
+	maxFlakeAttempts := 0
+	for i := range n {
+		if n[i].FlakeAttempts > 0 {
+			maxFlakeAttempts = n[i].FlakeAttempts
+		}
+	}
+	return maxFlakeAttempts
+}
+
+func (n Nodes) GetMaxMustPassRepeatedly() int {
+	maxMustPassRepeatedly := 0
+	for i := range n {
+		if n[i].MustPassRepeatedly > 0 {
+			maxMustPassRepeatedly = n[i].MustPassRepeatedly
+		}
+	}
+	return maxMustPassRepeatedly
+}
+
+>>>>>>> ef22b1c6a (Bump go-git)
 func unrollInterfaceSlice(args interface{}) []interface{} {
 	v := reflect.ValueOf(args)
 	if v.Kind() != reflect.Slice {

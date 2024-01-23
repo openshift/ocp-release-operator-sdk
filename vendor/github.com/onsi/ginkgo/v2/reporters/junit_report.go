@@ -14,6 +14,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -21,6 +22,30 @@ import (
 	"github.com/onsi/ginkgo/v2/types"
 )
 
+<<<<<<< HEAD
+=======
+type JunitReportConfig struct {
+	// Spec States for which no timeline should be emitted for system-err
+	// set this to types.SpecStatePassed|types.SpecStateSkipped|types.SpecStatePending to only match failing specs
+	OmitTimelinesForSpecState types.SpecState
+
+	// Enable OmitFailureMessageAttr to prevent failure messages appearing in the "message" attribute of the Failure and Error tags
+	OmitFailureMessageAttr bool
+
+	//Enable OmitCapturedStdOutErr to prevent captured stdout/stderr appearing in system-out
+	OmitCapturedStdOutErr bool
+
+	// Enable OmitSpecLabels to prevent labels from appearing in the spec name
+	OmitSpecLabels bool
+
+	// Enable OmitLeafNodeType to prevent the spec leaf node type from appearing in the spec name
+	OmitLeafNodeType bool
+
+	// Enable OmitSuiteSetupNodes to prevent the creation of testcase entries for setup nodes
+	OmitSuiteSetupNodes bool
+}
+
+>>>>>>> ef22b1c6a (Bump go-git)
 type JUnitTestSuites struct {
 	XMLName xml.Name `xml:"testsuites"`
 	// Tests maps onto the total number of specs in all test suites (this includes any suite nodes such as BeforeSuite)
@@ -157,6 +182,9 @@ func GenerateJUnitReport(report types.Report, dst string) error {
 		},
 	}
 	for _, spec := range report.SpecReports {
+		if config.OmitSuiteSetupNodes && spec.LeafNodeType != types.NodeTypeIt {
+			continue
+		}
 		name := fmt.Sprintf("[%s]", spec.LeafNodeType)
 		if spec.FullText() != "" {
 			name = name + " " + spec.FullText()
@@ -229,6 +257,9 @@ func GenerateJUnitReport(report types.Report, dst string) error {
 		TestSuites: []JUnitTestSuite{suite},
 	}
 
+	if err := os.MkdirAll(path.Dir(dst), 0770); err != nil {
+		return err
+	}
 	f, err := os.Create(dst)
 	if err != nil {
 		return err
@@ -266,6 +297,9 @@ func MergeAndCleanupJUnitReports(sources []string, dst string) ([]string, error)
 		mergedReport.TestSuites = append(mergedReport.TestSuites, report.TestSuites...)
 	}
 
+	if err := os.MkdirAll(path.Dir(dst), 0770); err != nil {
+		return messages, err
+	}
 	f, err := os.Create(dst)
 	if err != nil {
 		return messages, err
@@ -286,7 +320,12 @@ func interruptDescriptionForUnstructuredReporters(failure types.Failure) string 
 }
 
 func systemErrForUnstructuredReporters(spec types.SpecReport) string {
+	return RenderTimeline(spec, true)
+}
+
+func RenderTimeline(spec types.SpecReport, noColor bool) string {
 	out := &strings.Builder{}
+<<<<<<< HEAD
 	gw := spec.CapturedGinkgoWriterOutput
 	cursor := 0
 	for _, pr := range spec.ProgressReports {
@@ -306,6 +345,9 @@ func systemErrForUnstructuredReporters(spec types.SpecReport) string {
 		out.WriteString(gw[cursor:])
 	}
 
+=======
+	NewDefaultReporter(types.ReporterConfig{NoColor: noColor, VeryVerbose: true}, out).emitTimeline(0, spec, spec.Timeline())
+>>>>>>> ef22b1c6a (Bump go-git)
 	return out.String()
 }
 

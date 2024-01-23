@@ -22,6 +22,9 @@ import (
 	exec "golang.org/x/sys/execabs"
 
 	"golang.org/x/tools/internal/event"
+	"golang.org/x/tools/internal/event/keys"
+	"golang.org/x/tools/internal/event/label"
+	"golang.org/x/tools/internal/event/tag"
 )
 
 // An Runner will run go command invocations and serialize
@@ -51,9 +54,19 @@ func (runner *Runner) initialize() {
 // 1.14: go: updating go.mod: existing contents have changed since last read
 var modConcurrencyError = regexp.MustCompile(`go:.*go.mod.*contents have changed`)
 
+// verb is an event label for the go command verb.
+var verb = keys.NewString("verb", "go command verb")
+
+func invLabels(inv Invocation) []label.Label {
+	return []label.Label{verb.Of(inv.Verb), tag.Directory.Of(inv.WorkingDir)}
+}
+
 // Run is a convenience wrapper around RunRaw.
 // It returns only stdout and a "friendly" error.
 func (runner *Runner) Run(ctx context.Context, inv Invocation) (*bytes.Buffer, error) {
+	ctx, done := event.Start(ctx, "gocommand.Runner.Run", invLabels(inv)...)
+	defer done()
+
 	stdout, _, friendly, _ := runner.RunRaw(ctx, inv)
 	return stdout, friendly
 }
@@ -61,6 +74,9 @@ func (runner *Runner) Run(ctx context.Context, inv Invocation) (*bytes.Buffer, e
 // RunPiped runs the invocation serially, always waiting for any concurrent
 // invocations to complete first.
 func (runner *Runner) RunPiped(ctx context.Context, inv Invocation, stdout, stderr io.Writer) error {
+	ctx, done := event.Start(ctx, "gocommand.Runner.RunPiped", invLabels(inv)...)
+	defer done()
+
 	_, err := runner.runPiped(ctx, inv, stdout, stderr)
 	return err
 }
@@ -68,6 +84,8 @@ func (runner *Runner) RunPiped(ctx context.Context, inv Invocation, stdout, stde
 // RunRaw runs the invocation, serializing requests only if they fight over
 // go.mod changes.
 func (runner *Runner) RunRaw(ctx context.Context, inv Invocation) (*bytes.Buffer, *bytes.Buffer, error, error) {
+	ctx, done := event.Start(ctx, "gocommand.Runner.RunRaw", invLabels(inv)...)
+	defer done()
 	// Make sure the runner is always initialized.
 	runner.initialize()
 
@@ -242,8 +260,87 @@ var DebugHangingGoCommands = false
 
 // runCmdContext is like exec.CommandContext except it sends os.Interrupt
 // before os.Kill.
+<<<<<<< HEAD
 func runCmdContext(ctx context.Context, cmd *exec.Cmd) error {
 	if err := cmd.Start(); err != nil {
+=======
+func runCmdContext(ctx context.Context, cmd *exec.Cmd) (err error) {
+	// If cmd.Stdout is not an *os.File, the exec package will create a pipe and
+	// copy it to the Writer in a goroutine until the process has finished and
+	// either the pipe reaches EOF or command's WaitDelay expires.
+	//
+	// However, the output from 'go list' can be quite large, and we don't want to
+	// keep reading (and allocating buffers) if we've already decided we don't
+	// care about the output. We don't want to wait for the process to finish, and
+	// we don't wait to wait for the WaitDelay to expire either.
+	//
+	// Instead, if cmd.Stdout requires a copying goroutine we explicitly replace
+	// it with a pipe (which is an *os.File), which we can close in order to stop
+	// copying output as soon as we realize we don't care about it.
+	var stdoutW *os.File
+	if cmd.Stdout != nil {
+		if _, ok := cmd.Stdout.(*os.File); !ok {
+			var stdoutR *os.File
+			stdoutR, stdoutW, err = os.Pipe()
+			if err != nil {
+				return err
+			}
+			prevStdout := cmd.Stdout
+			cmd.Stdout = stdoutW
+
+			stdoutErr := make(chan error, 1)
+			go func() {
+				_, err := io.Copy(prevStdout, stdoutR)
+				if err != nil {
+					err = fmt.Errorf("copying stdout: %w", err)
+				}
+				stdoutErr <- err
+			}()
+			defer func() {
+				// We started a goroutine to copy a stdout pipe.
+				// Wait for it to finish, or terminate it if need be.
+				var err2 error
+				select {
+				case err2 = <-stdoutErr:
+					stdoutR.Close()
+				case <-ctx.Done():
+					stdoutR.Close()
+					// Per https://pkg.go.dev/os#File.Close, the call to stdoutR.Close
+					// should cause the Read call in io.Copy to unblock and return
+					// immediately, but we still need to receive from stdoutErr to confirm
+					// that it has happened.
+					<-stdoutErr
+					err2 = ctx.Err()
+				}
+				if err == nil {
+					err = err2
+				}
+			}()
+
+			// Per https://pkg.go.dev/os/exec#Cmd, “If Stdout and Stderr are the
+			// same writer, and have a type that can be compared with ==, at most
+			// one goroutine at a time will call Write.”
+			//
+			// Since we're starting a goroutine that writes to cmd.Stdout, we must
+			// also update cmd.Stderr so that it still holds.
+			func() {
+				defer func() { recover() }()
+				if cmd.Stderr == prevStdout {
+					cmd.Stderr = cmd.Stdout
+				}
+			}()
+		}
+	}
+
+	err = cmd.Start()
+	if stdoutW != nil {
+		// The child process has inherited the pipe file,
+		// so close the copy held in this process.
+		stdoutW.Close()
+		stdoutW = nil
+	}
+	if err != nil {
+>>>>>>> ef22b1c6a (Bump go-git)
 		return err
 	}
 	resChan := make(chan error, 1)
