@@ -745,7 +745,7 @@ github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/s
 github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/hack
 github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/rbac
 github.com/operator-framework/helm-operator-plugins/pkg/plugins/util
-# github.com/operator-framework/java-operator-plugins v0.5.1
+# github.com/operator-framework/java-operator-plugins v0.5.1-0.20220621191241-d474ba0c3de5
 ## explicit; go 1.17
 github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha
 github.com/operator-framework/java-operator-plugins/pkg/quarkus/v1alpha/scaffolds
