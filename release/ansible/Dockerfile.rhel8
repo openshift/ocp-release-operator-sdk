@@ -1,4 +1,5 @@
-FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.21-openshift-4.16 AS builder
+# FROM registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.21-openshift-4.16 AS builder
+FROMT registry.ci.openshift.org/ocp/builder:rhel-8-golang-1.21-builder-multi-openshift-4.16
 
 ENV GO111MODULE=on \
     GOFLAGS=-mod=vendor
@@ -8,7 +9,8 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make -f ci/prow.Makefile patch build
 
-FROM registry.ci.openshift.org/ocp/4.16:base
+# FROM registry.ci.openshift.org/ocp/4.16:base
+FROM registry.ci.openshift.org/ocp/builder:rhel-8-openshift-enterprise-base-4.16.multi
 
 RUN mkdir -p /etc/ansible \
     && echo "localhost ansible_connection=local" > /etc/ansible/hosts \
