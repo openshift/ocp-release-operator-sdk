@@ -4,6 +4,26 @@ Kubernetes Collection Release Notes
 
 .. contents:: Topics
 
+v2.4.2
+======
+
+Release Summary
+---------------
+
+fix resource discovery when complex subresources present
+
+Bugfixes
+--------
+
+- Resolve Collections util resource discovery fails when complex subresources present (https://github.com/ansible-collections/kubernetes.core/pull/676).
+
+v2.4.1
+======
+
+Release Summary
+---------------
+
+The kubernetes.core 2.4.1 release includes several trivial bug fixes related to code sanity.
 
 v2.4.0
 ======
