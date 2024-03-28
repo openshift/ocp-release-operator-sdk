@@ -134,7 +134,7 @@ func (c Client) InstallVersion(ctx context.Context, namespace, version string) (
 	return &status, nil
 }
 
-func (c Client) UninstallVersion(ctx context.Context, namespace, version string) error {
+func (c Client) UninstallVersion(ctx context.Context, _, version string) error {
 	resources, err := c.getResources(ctx, version)
 	if err != nil {
 		return fmt.Errorf("failed to get resources: %v", err)
@@ -148,13 +148,10 @@ func (c Client) UninstallVersion(ctx context.Context, namespace, version string)
 	}
 
 	log.Infof("Uninstalling resources for version %q", version)
-	if err := c.DoDelete(ctx, objs...); err != nil {
-		return err
-	}
-	return nil
+	return c.DoDelete(ctx, objs...)
 }
 
-func (c Client) GetStatus(ctx context.Context, namespace, version string) (*olmresourceclient.Status, error) {
+func (c Client) GetStatus(ctx context.Context, _, version string) (*olmresourceclient.Status, error) {
 	resources, err := c.getResources(ctx, version)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resources: %v", err)

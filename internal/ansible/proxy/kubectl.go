@@ -160,7 +160,7 @@ type server struct {
 
 type responder struct{}
 
-func (r *responder) Error(w http.ResponseWriter, req *http.Request, err error) {
+func (r *responder) Error(w http.ResponseWriter, _ *http.Request, err error) {
 	log.Error(err, "Error while proxying request")
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }

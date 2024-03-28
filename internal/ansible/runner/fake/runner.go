@@ -56,7 +56,7 @@ func (r *runResult) Stdout() (string, error) {
 }
 
 // Run - runs the fake runner.
-func (r *Runner) Run(_ string, u *unstructured.Unstructured, _ string) (runner.RunResult, error) {
+func (r *Runner) Run(_ string, _ *unstructured.Unstructured, _ string) (runner.RunResult, error) {
 	if r.Error != nil {
 		return nil, r.Error
 	}
