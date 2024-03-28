@@ -159,9 +159,5 @@ func (p *createAPISubcommand) Scaffold(fs machinery.Filesystem) error {
 
 	scaffolder := scaffolds.NewCreateAPIScaffolder(p.config, *p.resource, p.options.DoRole, p.options.DoPlaybook)
 	scaffolder.InjectFS(fs)
-	if err := scaffolder.Scaffold(); err != nil {
-		return err
-	}
-
-	return nil
+	return scaffolder.Scaffold()
 }

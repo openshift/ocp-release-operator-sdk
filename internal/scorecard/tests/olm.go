@@ -36,6 +36,7 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 )
 
+//nolint:gosec
 const (
 	OLMBundleValidationTest   = "olm-bundle-validation"
 	OLMCRDsHaveValidationTest = "olm-crds-have-validation"

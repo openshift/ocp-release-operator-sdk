@@ -95,7 +95,7 @@ func (m manager) IsUpgradeRequired() bool {
 
 // Sync ensures the Helm storage backend is in sync with the status of the
 // custom resource.
-func (m *manager) Sync(ctx context.Context) error {
+func (m *manager) Sync(_ context.Context) error {
 	// Get release history for this release name
 	releases, err := m.storageBackend.History(m.releaseName)
 	if err != nil && !notFoundErr(err) {
@@ -161,7 +161,7 @@ func (m manager) getCandidateRelease(namespace, name string, chart *cpb.Chart,
 }
 
 // InstallRelease performs a Helm release install.
-func (m manager) InstallRelease(ctx context.Context, opts ...InstallOption) (*rpb.Release, error) {
+func (m manager) InstallRelease(_ context.Context, opts ...InstallOption) (*rpb.Release, error) {
 	install := action.NewInstall(m.actionConfig)
 	install.ReleaseName = m.releaseName
 	install.Namespace = m.namespace
@@ -203,7 +203,7 @@ func ForceUpgrade(force bool) UpgradeOption {
 }
 
 // UpgradeRelease performs a Helm release upgrade.
-func (m manager) UpgradeRelease(ctx context.Context, opts ...UpgradeOption) (*rpb.Release, *rpb.Release, error) {
+func (m manager) UpgradeRelease(_ context.Context, opts ...UpgradeOption) (*rpb.Release, *rpb.Release, error) {
 	upgrade := action.NewUpgrade(m.actionConfig)
 	upgrade.Namespace = m.namespace
 	for _, o := range opts {
@@ -362,7 +362,7 @@ func createJSONMergePatch(existingJSON, expectedJSON []byte) ([]byte, error) {
 }
 
 // UninstallRelease performs a Helm release uninstall.
-func (m manager) UninstallRelease(ctx context.Context, opts ...UninstallOption) (*rpb.Release, error) {
+func (m manager) UninstallRelease(_ context.Context, opts ...UninstallOption) (*rpb.Release, error) {
 	uninstall := action.NewUninstall(m.actionConfig)
 	for _, o := range opts {
 		if err := o(uninstall); err != nil {
@@ -378,7 +378,7 @@ func (m manager) UninstallRelease(ctx context.Context, opts ...UninstallOption) 
 
 // CleanupRelease deletes resources if they are not deleted already.
 // Return true if all the resources are deleted, false otherwise.
-func (m manager) CleanupRelease(ctx context.Context, manifest string) (bool, error) {
+func (m manager) CleanupRelease(_ context.Context, manifest string) (bool, error) {
 	dc, err := m.actionConfig.RESTClientGetter.ToDiscoveryClient()
 	if err != nil {
 		return false, fmt.Errorf("failed to get Kubernetes discovery client: %w", err)

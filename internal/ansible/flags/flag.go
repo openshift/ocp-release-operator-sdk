@@ -52,6 +52,7 @@ type Flags struct {
 	flagSet *pflag.FlagSet
 }
 
+//nolint:gosec
 const (
 	AnsibleRolesPathEnvVar       = "ANSIBLE_ROLES_PATH"
 	AnsibleCollectionsPathEnvVar = "ANSIBLE_COLLECTIONS_PATH"

@@ -112,7 +112,6 @@ func (c *packagemanifestsCmd) setDefaults() (err error) {
 
 // validate validates c for package manifests generation.
 func (c packagemanifestsCmd) validate() error {
-
 	if c.version != "" {
 		if err := genutil.ValidateVersion(c.version); err != nil {
 			return err
@@ -155,7 +154,6 @@ func (c packagemanifestsCmd) validate() error {
 
 // run generates package manifests.
 func (c packagemanifestsCmd) run() error {
-
 	c.println("Generating package manifests version", c.version)
 
 	if err := c.generatePackageManifest(); err != nil {
@@ -227,8 +225,8 @@ func (c packagemanifestsCmd) run() error {
 }
 
 func (c packagemanifestsCmd) generatePackageManifest() error {
-	//copy of genpkg withfilewriter()
-	//move out of internal util pkg?
+	// copy of genpkg withfilewriter()
+	// move out of internal util pkg?
 	if err := os.MkdirAll(c.outputDir, 0755); err != nil {
 		return err
 	}
@@ -239,8 +237,5 @@ func (c packagemanifestsCmd) generatePackageManifest() error {
 		IsDefaultChannel: c.isDefaultChannel,
 	}
 
-	if err := c.generator.Generate(c.packageName, c.version, c.outputDir, opts); err != nil {
-		return err
-	}
-	return nil
+	return c.generator.Generate(c.packageName, c.version, c.outputDir, opts)
 }
