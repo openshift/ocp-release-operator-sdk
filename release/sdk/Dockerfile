@@ -7,7 +7,7 @@ COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make -f ci/prow.Makefile patch build
 
-FROM registry.ci.openshift.org/ocp/4.17:base
+FROM registry.ci.openshift.org/ocp/4.17:base-rhel9
 
 RUN yum install -y \
       golang \
