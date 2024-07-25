@@ -14,8 +14,9 @@ limitations under the License.
 package samples
 
 import (
-	"fmt"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
 
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 )
@@ -34,10 +35,14 @@ type CRDSample struct {
 // SetTemplateDefaults implements file.Template
 func (f *CRDSample) SetTemplateDefaults() error {
 	if f.Path == "" {
-		f.Path = filepath.Join("config", "samples", "%[group]_%[version]_%[kind].yaml")
+		if f.Resource.Group != "" {
+			f.Path = filepath.Join("config", "samples", "%[group]_%[version]_%[kind].yaml")
+		} else {
+			f.Path = filepath.Join("config", "samples", "%[version]_%[kind].yaml")
+		}
 	}
 	f.Path = f.Resource.Replacer().Replace(f.Path)
-	fmt.Println(f.Path)
+	log.Println(f.Path)
 
 	f.IfExistsAction = machinery.OverwriteFile
 
@@ -54,8 +59,8 @@ spec:
   # TODO(user): edit the following value to ensure the number
   # of Pods/Instances your Operand must have on cluster
   size: 1
-{{ if not (isEmptyStr .Port) -}}
+{{ if not (isEmptyStr .Port) }}
   # TODO(user): edit the following value to ensure the container has the right port to be initialized
   containerPort: {{ .Port }}
-{{- end }}
+{{ end -}}
 `
