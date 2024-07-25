@@ -24,14 +24,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 
-	. "github.com/onsi/ginkgo/v2" //nolint:golint,revive
+	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
-	certmanagerVersion        = "v1.5.3"
-	certmanagerURLTmpl        = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
+	certmanagerVersion        = "v1.14.4"
+	certmanagerURLTmpl        = "https://github.com/cert-manager/cert-manager/releases/download/%s/cert-manager.yaml"
 	prometheusOperatorVersion = "0.51"
 	prometheusOperatorURL     = "https://raw.githubusercontent.com/prometheus-operator/" +
 		"prometheus-operator/release-%s/bundle.yaml"
@@ -121,6 +122,10 @@ func (t *TestContext) makeCertManagerURL() string {
 	return fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
 }
 
+func (t *TestContext) makePrometheusOperatorURL() string {
+	return fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
+}
+
 // InstallCertManager installs the cert manager bundle. If hasv1beta1CRs is true,
 // the legacy version (which uses v1alpha2 CRs) is installed.
 func (t *TestContext) InstallCertManager() error {
@@ -148,14 +153,14 @@ func (t *TestContext) UninstallCertManager() {
 
 // InstallPrometheusOperManager installs the prometheus manager bundle.
 func (t *TestContext) InstallPrometheusOperManager() error {
-	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
+	url := t.makePrometheusOperatorURL()
 	_, err := t.Kubectl.Apply(false, "-f", url)
 	return err
 }
 
 // UninstallPrometheusOperManager uninstalls the prometheus manager bundle.
 func (t *TestContext) UninstallPrometheusOperManager() {
-	url := fmt.Sprintf(prometheusOperatorURL, prometheusOperatorVersion)
+	url := t.makePrometheusOperatorURL()
 	if _, err := t.Kubectl.Delete(false, "-f", url); err != nil {
 		warnError(err)
 	}
@@ -214,6 +219,15 @@ func (t *TestContext) CreateWebhook(resourceOptions ...string) error {
 	return err
 }
 
+// Regenerate is for running `kubebuilder alpha generate`
+func (t *TestContext) Regenerate(resourceOptions ...string) error {
+	resourceOptions = append([]string{"alpha", "generate"}, resourceOptions...)
+	//nolint:gosec
+	cmd := exec.Command(t.BinaryName, resourceOptions...)
+	_, err := t.Run(cmd)
+	return err
+}
+
 // Make is for running `make` with various targets
 func (t *TestContext) Make(makeOptions ...string) error {
 	cmd := exec.Command("make", makeOptions...)
@@ -232,9 +246,18 @@ func (t *TestContext) Tidy() error {
 // Destroy is for cleaning up the docker images for testing
 func (t *TestContext) Destroy() {
 	//nolint:gosec
-	cmd := exec.Command("docker", "rmi", "-f", t.ImageName)
-	if _, err := t.Run(cmd); err != nil {
-		warnError(err)
+	// if image name is not present or not provided skip execution of docker command
+	if t.ImageName != "" {
+		// Check white space from image name
+		if len(strings.TrimSpace(t.ImageName)) == 0 {
+			log.Println("Image not set, skip cleaning up of docker image")
+		} else {
+			cmd := exec.Command("docker", "rmi", "-f", t.ImageName)
+			if _, err := t.Run(cmd); err != nil {
+				warnError(err)
+			}
+		}
+
 	}
 	if err := os.RemoveAll(t.Dir); err != nil {
 		warnError(err)
@@ -251,8 +274,6 @@ func (t *TestContext) CreateManagerNamespace() error {
 // if a warning with `Warning: would violate PodSecurity` will be raised when the manifests are applied
 func (t *TestContext) LabelAllNamespacesToWarnAboutRestricted() error {
 	_, err := t.Kubectl.Command("label", "--overwrite", "ns", "--all",
-		"pod-security.kubernetes.io/audit=restricted",
-		"pod-security.kubernetes.io/enforce-version=v1.24",
 		"pod-security.kubernetes.io/warn=restricted")
 	return err
 }

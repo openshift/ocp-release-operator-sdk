@@ -6,18 +6,21 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
+
+	"github.com/opencontainers/go-digest"
 
 	"github.com/distribution/distribution/v3"
-	dcontext "github.com/distribution/distribution/v3/context"
-	"github.com/distribution/distribution/v3/reference"
+	"github.com/distribution/distribution/v3/internal/dcontext"
 	"github.com/distribution/distribution/v3/registry/proxy/scheduler"
-	"github.com/opencontainers/go-digest"
+	"github.com/distribution/reference"
 )
 
 type proxyBlobStore struct {
 	localStore     distribution.BlobStore
 	remoteStore    distribution.BlobService
 	scheduler      *scheduler.TTLExpirationScheduler
+	ttl            *time.Duration
 	repositoryName reference.Named
 	authChallenger authChallenger
 }
@@ -59,7 +62,8 @@ func (pbs *proxyBlobStore) copyContent(ctx context.Context, dgst digest.Digest, 
 		return distribution.Descriptor{}, err
 	}
 
-	proxyMetrics.BlobPush(uint64(desc.Size))
+	proxyMetrics.BlobPull(uint64(desc.Size))
+	proxyMetrics.BlobPush(uint64(desc.Size), false)
 
 	return desc, nil
 }
@@ -72,37 +76,8 @@ func (pbs *proxyBlobStore) serveLocal(ctx context.Context, w http.ResponseWriter
 		return false, nil
 	}
 
-	proxyMetrics.BlobPush(uint64(localDesc.Size))
+	proxyMetrics.BlobPush(uint64(localDesc.Size), true)
 	return true, pbs.localStore.ServeBlob(ctx, w, r, dgst)
-}
-
-func (pbs *proxyBlobStore) storeLocal(ctx context.Context, dgst digest.Digest) error {
-	defer func() {
-		mu.Lock()
-		delete(inflight, dgst)
-		mu.Unlock()
-	}()
-
-	var desc distribution.Descriptor
-	var err error
-	var bw distribution.BlobWriter
-
-	bw, err = pbs.localStore.Create(ctx)
-	if err != nil {
-		return err
-	}
-
-	desc, err = pbs.copyContent(ctx, dgst, bw)
-	if err != nil {
-		return err
-	}
-
-	_, err = bw.Commit(ctx, desc)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (pbs *proxyBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter, r *http.Request, dgst digest.Digest) error {
@@ -123,6 +98,9 @@ func (pbs *proxyBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter,
 	mu.Lock()
 	_, ok := inflight[dgst]
 	if ok {
+		// If the blob has been serving in other requests.
+		// Will return the blob from the remote store directly.
+		// TODO Maybe we could reuse the these blobs are serving remotely and caching locally.
 		mu.Unlock()
 		_, err := pbs.copyContent(ctx, dgst, w)
 		return err
@@ -130,30 +108,43 @@ func (pbs *proxyBlobStore) ServeBlob(ctx context.Context, w http.ResponseWriter,
 	inflight[dgst] = struct{}{}
 	mu.Unlock()
 
-	// storeLocalCtx will be independent with ctx, because ctx it used to fetch remote image.
-	// There would be a situation, that is pulling remote bytes ends before pbs.storeLocal( 'Copy', 'Commit' ...)
-	// Then the registry fails to cache the layer, even though the layer had been served to client.
-	storeLocalCtx, cancel := context.WithCancel(context.Background())
-	go func(dgst digest.Digest) {
-		defer cancel()
-		if err := pbs.storeLocal(storeLocalCtx, dgst); err != nil {
-			dcontext.GetLogger(storeLocalCtx).Errorf("Error committing to storage: %s", err.Error())
-		}
+	defer func() {
+		mu.Lock()
+		delete(inflight, dgst)
+		mu.Unlock()
+	}()
 
-		blobRef, err := reference.WithDigest(pbs.repositoryName, dgst)
-		if err != nil {
-			dcontext.GetLogger(storeLocalCtx).Errorf("Error creating reference: %s", err)
-			return
-		}
-
-		pbs.scheduler.AddBlob(blobRef, repositoryTTL)
-	}(dgst)
-
-	_, err = pbs.copyContent(ctx, dgst, w)
+	bw, err := pbs.localStore.Create(ctx)
 	if err != nil {
-		cancel()
 		return err
 	}
+
+	// Serving client and storing locally over same fetching request.
+	// This can prevent a redundant blob fetching.
+	multiWriter := io.MultiWriter(w, bw)
+	desc, err := pbs.copyContent(ctx, dgst, multiWriter)
+	if err != nil {
+		return err
+	}
+
+	_, err = bw.Commit(ctx, desc)
+	if err != nil {
+		return err
+	}
+
+	blobRef, err := reference.WithDigest(pbs.repositoryName, dgst)
+	if err != nil {
+		dcontext.GetLogger(ctx).Errorf("Error creating reference: %s", err)
+		return err
+	}
+
+	if pbs.scheduler != nil && pbs.ttl != nil {
+		if err := pbs.scheduler.AddBlob(blobRef, *pbs.ttl); err != nil {
+			dcontext.GetLogger(ctx).Errorf("Error adding blob: %s", err)
+			return err
+		}
+	}
+
 	return nil
 }
 

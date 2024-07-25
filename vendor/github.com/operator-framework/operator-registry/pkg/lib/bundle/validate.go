@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
-	y "github.com/ghodss/yaml"
 	log "github.com/sirupsen/logrus"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
@@ -18,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
+	y "sigs.k8s.io/yaml"
 
 	"github.com/operator-framework/api/pkg/manifests"
 	v1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -79,7 +79,7 @@ func (i imageValidator) ValidateBundleFormat(directory string) error {
 	var metadataDir, manifestsDir string
 	var validationErrors []error
 
-	items, err := ioutil.ReadDir(directory)
+	items, err := os.ReadDir(directory)
 	if err != nil {
 		validationErrors = append(validationErrors, err)
 	}
@@ -118,7 +118,7 @@ func (i imageValidator) ValidateBundleFormat(directory string) error {
 	}
 
 	// Validate annotations file
-	files, err := ioutil.ReadDir(metadataDir)
+	files, err := os.ReadDir(metadataDir)
 	if err != nil {
 		validationErrors = append(validationErrors, err)
 	}
@@ -282,14 +282,14 @@ func (i imageValidator) ValidateBundleContent(manifestDir string) error {
 	crdValidator := v.CustomResourceDefinitionValidator
 
 	// Read all files in manifests directory
-	items, err := ioutil.ReadDir(manifestDir)
+	items, err := os.ReadDir(manifestDir)
 	if err != nil {
 		validationErrors = append(validationErrors, err)
 	}
 
 	for _, item := range items {
 		fileWithPath := filepath.Join(manifestDir, item.Name())
-		data, err := ioutil.ReadFile(fileWithPath)
+		data, err := os.ReadFile(fileWithPath)
 		if err != nil {
 			validationErrors = append(validationErrors, fmt.Errorf("Unable to read file %s in supported types", fileWithPath))
 			continue
