@@ -1,15 +1,15 @@
 diff -up ./Makefile.fixsanity ./Makefile
---- ./Makefile.fixsanity	2022-10-24 11:51:12.003730219 -0400
-+++ ./Makefile	2022-10-24 11:53:27.191694898 -0400
-@@ -50,7 +50,6 @@ bindata: ## Update project bindata
+--- ./Makefile.fixsanity	2024-07-26 00:35:57.849070455 +0530
++++ ./Makefile	2024-07-26 00:36:27.996901984 +0530
+@@ -51,7 +51,6 @@ bindata: ## Update project bindata
  
  .PHONY: fix
  fix: ## Fixup files in the repo.
--	go mod tidy
- 	go fmt ./...
+-	$(GO) mod tidy
+ 	$(GO) fmt ./...
  	make setup-lint
  	$(TOOLS_DIR)/golangci-lint run --fix
-@@ -139,14 +138,10 @@ test-all: test-static test-e2e ## Run al
+@@ -140,14 +139,10 @@ test-all: test-static test-e2e ## Run al
  test-static: test-sanity test-unit test-docs ## Run all non-cluster-based tests
  
  .PHONY: test-sanity
@@ -18,7 +18,7 @@ diff -up ./Makefile.fixsanity ./Makefile
 +test-sanity: build fix lint ## Test repo formatting, linting, etc.
  	./hack/check-license.sh
  	./hack/check-error-log-msg-format.sh
- 	go vet ./...
+ 	$(GO) vet ./...
 -	make setup-lint
 -	make lint
 -	git diff --exit-code # diff again to ensure other checks don't change repo
