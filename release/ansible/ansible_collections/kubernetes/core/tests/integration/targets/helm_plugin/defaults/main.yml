@@ -1,2 +1,0 @@
----
-helm_binary: "/tmp/helm/{{ ansible_system | lower }}-amd64/helm"
