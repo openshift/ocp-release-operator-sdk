@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	prettyunmarshaler "github.com/operator-framework/operator-registry/pkg/prettyunmarshaler"
+
 	"golang.org/x/text/cases"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -14,16 +16,18 @@ import (
 )
 
 const (
-	SchemaPackage = "olm.package"
-	SchemaChannel = "olm.channel"
-	SchemaBundle  = "olm.bundle"
+	SchemaPackage     = "olm.package"
+	SchemaChannel     = "olm.channel"
+	SchemaBundle      = "olm.bundle"
+	SchemaDeprecation = "olm.deprecations"
 )
 
 type DeclarativeConfig struct {
-	Packages []Package
-	Channels []Channel
-	Bundles  []Bundle
-	Others   []Meta
+	Packages     []Package
+	Channels     []Channel
+	Bundles      []Bundle
+	Deprecations []Deprecation
+	Others       []Meta
 }
 
 type Package struct {
@@ -88,6 +92,22 @@ type RelatedImage struct {
 	Image string `json:"image"`
 }
 
+type Deprecation struct {
+	Schema  string             `json:"schema"`
+	Package string             `json:"package"`
+	Entries []DeprecationEntry `json:"entries"`
+}
+
+type DeprecationEntry struct {
+	Reference PackageScopedReference `json:"reference"`
+	Message   string                 `json:"message"`
+}
+
+type PackageScopedReference struct {
+	Schema string `json:"schema"`
+	Name   string `json:"name,omitempty"`
+}
+
 type Meta struct {
 	Schema  string
 	Package string
@@ -107,7 +127,7 @@ func (m *Meta) UnmarshalJSON(blob []byte) error {
 		//   that eat our error type and return a generic error, such that we lose the
 		//   ability to errors.As to get this error on the other side. For now, just return
 		//   a string error that includes the pretty printed message.
-		return errors.New(newJSONUnmarshalError(blob, err).Pretty())
+		return errors.New(prettyunmarshaler.NewJSONUnmarshalError(blob, err).Pretty())
 	}
 
 	// TODO: this function ensures we do not break backwards compatibility with
@@ -178,4 +198,12 @@ func extractUniqueMetaKeys(blobMap map[string]any, m *Meta) error {
 		*ptr = v
 	}
 	return nil
+}
+
+func (destination *DeclarativeConfig) Merge(src *DeclarativeConfig) {
+	destination.Packages = append(destination.Packages, src.Packages...)
+	destination.Channels = append(destination.Channels, src.Channels...)
+	destination.Bundles = append(destination.Bundles, src.Bundles...)
+	destination.Others = append(destination.Others, src.Others...)
+	destination.Deprecations = append(destination.Deprecations, src.Deprecations...)
 }
