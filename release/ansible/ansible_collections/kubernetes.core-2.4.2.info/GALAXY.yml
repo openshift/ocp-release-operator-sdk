@@ -1,8 +1,0 @@
-download_url: https://galaxy.ansible.com/api/v3/plugin/ansible/content/published/collections/artifacts/kubernetes-core-2.4.2.tar.gz
-format_version: 1.0.0
-name: core
-namespace: kubernetes
-server: https://galaxy.ansible.com/api/
-signatures: []
-version: 2.4.2
-version_url: /api/v3/plugin/ansible/content/published/collections/index/kubernetes/core/versions/2.4.2/

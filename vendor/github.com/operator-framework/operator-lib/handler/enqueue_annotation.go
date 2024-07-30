@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -87,14 +88,14 @@ type EnqueueRequestForAnnotation struct {
 var _ crtHandler.EventHandler = &EnqueueRequestForAnnotation{}
 
 // Create implements EventHandler
-func (e *EnqueueRequestForAnnotation) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForAnnotation) Create(_ context.Context, evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	if ok, req := e.getAnnotationRequests(evt.Object); ok {
 		q.Add(req)
 	}
 }
 
 // Update implements EventHandler
-func (e *EnqueueRequestForAnnotation) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForAnnotation) Update(_ context.Context, evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	if ok, req := e.getAnnotationRequests(evt.ObjectOld); ok {
 		q.Add(req)
 	}
@@ -104,14 +105,14 @@ func (e *EnqueueRequestForAnnotation) Update(evt event.UpdateEvent, q workqueue.
 }
 
 // Delete implements EventHandler
-func (e *EnqueueRequestForAnnotation) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForAnnotation) Delete(_ context.Context, evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	if ok, req := e.getAnnotationRequests(evt.Object); ok {
 		q.Add(req)
 	}
 }
 
 // Generic implements EventHandler
-func (e *EnqueueRequestForAnnotation) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
+func (e *EnqueueRequestForAnnotation) Generic(_ context.Context, evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 	if ok, req := e.getAnnotationRequests(evt.Object); ok {
 		q.Add(req)
 	}
@@ -163,7 +164,7 @@ func SetOwnerAnnotations(owner, object client.Object) error {
 	ownerGK := owner.GetObjectKind().GroupVersionKind().GroupKind()
 
 	if ownerGK.Kind == "" {
-		return fmt.Errorf("Owner %s Kind not found, cannot call SetOwnerAnnotations", owner.GetName())
+		return fmt.Errorf("owner %s Kind not found, cannot call SetOwnerAnnotations", owner.GetName())
 	}
 
 	annotations := object.GetAnnotations()

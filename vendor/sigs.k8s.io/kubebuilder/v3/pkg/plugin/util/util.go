@@ -80,6 +80,23 @@ func InsertCode(filename, target, code string) error {
 	return os.WriteFile(filename, []byte(out), 0644)
 }
 
+// InsertCodeIfNotExist insert code if it does not already exists
+func InsertCodeIfNotExist(filename, target, code string) error {
+	// false positive
+	// nolint:gosec
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	idx := strings.Index(string(contents), code)
+	if idx != -1 {
+		return nil
+	}
+
+	return InsertCode(filename, target, code)
+}
+
 // UncommentCode searches for target in the file and remove the comment prefix
 // of the target content. The target content may span multiple lines.
 func UncommentCode(filename, target, prefix string) error {
@@ -164,7 +181,7 @@ func ImplementWebhooks(filename string) error {
 		str,
 		"// TODO(user): fill in your validation logic upon object creation.",
 		`if r.Spec.Count < 0 {
-		return errors.New(".spec.count must >= 0")
+		return nil, errors.New(".spec.count must >= 0")
 	}`)
 	if err != nil {
 		return err
@@ -173,7 +190,7 @@ func ImplementWebhooks(filename string) error {
 		str,
 		"// TODO(user): fill in your validation logic upon object update.",
 		`if r.Spec.Count < 0 {
-		return errors.New(".spec.count must >= 0")
+		return nil, errors.New(".spec.count must >= 0")
 	}`)
 	if err != nil {
 		return err

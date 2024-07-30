@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	tc.BundleImageName = fmt.Sprintf("quay.io/integration/%s-bundle:0.0.1", tc.ProjectName)
 
 	By("copying sample to a temporary e2e directory")
-	Expect(exec.Command("cp", "-r", "../../testdata/go/v3/memcached-operator", tc.Dir).Run()).To(Succeed())
+	Expect(exec.Command("cp", "-r", "../../testdata/go/v4/memcached-operator", tc.Dir).Run()).To(Succeed())
 
 	By("updating the project configuration")
 	Expect(tc.AddPackagemanifestsTarget(projutil.OperatorTypeGo)).To(Succeed())
@@ -83,12 +83,14 @@ var _ = BeforeSuite(func() {
 		Expect(tc.LoadImageToKindCluster()).To(Succeed())
 	}
 
-	By("generating the operator package manifests and enabling all InstallModes")
+	By("generating the operator package manifests and enabling AllNamespaces InstallMode")
 	Expect(tc.Make("packagemanifests", "IMG="+tc.ImageName)).To(Succeed())
 	csv, err := readCSV(&tc, "0.0.1", false)
 	Expect(err).NotTo(HaveOccurred())
 	for i := range csv.Spec.InstallModes {
-		csv.Spec.InstallModes[i].Supported = true
+		if csv.Spec.InstallModes[i].Type == "AllNamespaces" {
+			csv.Spec.InstallModes[i].Supported = true
+		}
 	}
 	Expect(writeCSV(&tc, "0.0.1", csv, false)).To(Succeed())
 

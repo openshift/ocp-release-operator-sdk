@@ -42,6 +42,8 @@ func (hbu *httpBlobUpload) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	defer req.Body.Close()
 
+	req.Header.Set("Content-Type", "application/octet-stream")
+
 	resp, err := hbu.client.Do(req)
 	if err != nil {
 		return 0, err
@@ -64,8 +66,8 @@ func (hbu *httpBlobUpload) ReadFrom(r io.Reader) (n int64, err error) {
 		return 0, fmt.Errorf("bad range format: %s", rng)
 	}
 
-	hbu.offset += end - start + 1
 	return (end - start + 1), nil
+
 }
 
 func (hbu *httpBlobUpload) Write(p []byte) (n int, err error) {
@@ -99,8 +101,8 @@ func (hbu *httpBlobUpload) Write(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("bad range format: %s", rng)
 	}
 
-	hbu.offset += int64(end - start + 1)
 	return (end - start + 1), nil
+
 }
 
 func (hbu *httpBlobUpload) Size() int64 {

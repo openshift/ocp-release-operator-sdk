@@ -1,6 +1,0 @@
----
-- include_tasks: "tasks/{{ item }}.yml"
-  with_items:
-    - wait
-    - api-server-caching
-    - discovery
