@@ -89,7 +89,7 @@ controllers/memcached_controller.go
 
 This will scaffold the Memcached resource API at `api/v1alpha1/memcached_types.go` and the controller at `controllers/memcached_controller.go`.
 
-**Note:** In this tutorial we will be providing all the steps to show you how to implement an operator project. However, as a follow up you might want to check the [Deploy Image plugin][deploy-image-plugin-doc] with which it is possible to have the whole code generated to deploy and manage an Operand(image). To do so, you can use the the command `$ operator-sdk create api --group cache --version v1alpha1 --kind Memcached --plugins="deploy-image/v1-alpha" --image=memcached:1.4.36-alpine --image-container-command="memcached,-m=64,modern,-v" --run-as-user="1001"`
+**Note:** In this tutorial we will be providing all the steps to show you how to implement an operator project. However, as a follow up you might want to check the [Deploy Image plugin][deploy-image-plugin-doc] with which it is possible to have the whole code generated to deploy and manage an Operand(image). To do so, you can use the command `$ operator-sdk create api --group cache --version v1alpha1 --kind Memcached --plugins="deploy-image/v1-alpha" --image=memcached:1.4.36-alpine --image-container-command="memcached,-m=64,modern,-v" --run-as-user="1001"`
 
 **Note:** This guide will cover the default case of a single group API. If you would like to support Multi-Group APIs see the [Single Group to Multi-Group][multigroup-kubebuilder-doc] doc.
 
@@ -539,13 +539,12 @@ Next, check out the following:
 [kubebuilder_entrypoint_doc]: https://book.kubebuilder.io/cronjob-tutorial/empty-main.html
 [kubebuilder_layout_doc]:https://book.kubebuilder.io/cronjob-tutorial/basic-project.html
 [kubernetes-extend-api]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
-[legacy-quickstart-doc]:https://v0-19-x.sdk.operatorframework.io/docs/golang/legacy/quickstart/
-[legacy_CLI]:https://v0-19-x.sdk.operatorframework.io/docs/cli
+[legacy-quickstart-doc]:https://github.com/operator-framework/operator-sdk/blob/v0.19.x/website/content/en/docs/golang/legacy/quickstart.md
+[legacy_CLI]:https://github.com/operator-framework/operator-sdk/tree/v0.19.x/website/content/en/docs/cli
 [manager_go_doc]: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/manager#Manager
 [markers]: https://book.kubebuilder.io/reference/markers.html
-[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/latest/testdata/go/v3/memcached-operator/controllers/memcached_controller.go
+[memcached_controller]: https://github.com/operator-framework/operator-sdk/blob/latest/testdata/go/v4/memcached-operator/internal/controller/memcached_controller.go
 [migration-guide]:/docs/building-operators/golang/migration
-[multi-namespaced-cache-builder]: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/cache#MultiNamespacedCacheBuilder
 [multigroup-kubebuilder-doc]: https://book.kubebuilder.io/migration/multi-group.html
 [olm-integration]: /docs/olm-integration
 [openapi-validation]: /docs/building-operators/golang/references/openapi-validation

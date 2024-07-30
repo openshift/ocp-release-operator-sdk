@@ -47,6 +47,8 @@ const (
 	// DefaultIndexImage is the index base image used if none is specified. It contains no bundles.
 	// TODO(v2.0.0): pin this image tag to a specific version.
 	DefaultIndexImage = DefaultIndexImageBase + "latest"
+	// DefaultInitImage is the default image to be used in the registry init container
+	DefaultInitImage = "registry.access.redhat.com/ubi8:8.9"
 )
 
 // BundleDeclcfg represents a minimal File-Based Catalog.
