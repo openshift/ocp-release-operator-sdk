@@ -29,6 +29,9 @@ oc version
 echo $ROOTDIR
 
 # install operator-sdk
+if [ -z "$(GOBIN)" ]; then
+    export GOBIN=${GOPATH}/bin
+fi
 make install
 
 # Test the operator
