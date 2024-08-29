@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	rpb "helm.sh/helm/v3/pkg/release"
@@ -54,6 +55,7 @@ type HelmOperatorReconciler struct {
 	OverrideValues         map[string]string
 	SuppressOverrideValues bool
 	releaseHook            ReleaseHookFunc
+	DryRunOption           string
 }
 
 const (
@@ -63,6 +65,7 @@ const (
 	uninstallFinalizerLegacy = "uninstall-helm-release"
 
 	helmUpgradeForceAnnotation    = "helm.sdk.operatorframework.io/upgrade-force"
+	helmRollbackForceAnnotation   = "helm.sdk.operatorframework.io/rollback-force"
 	helmUninstallWaitAnnotation   = "helm.sdk.operatorframework.io/uninstall-wait"
 	helmReconcilePeriodAnnotation = "helm.sdk.operatorframework.io/reconcile-period"
 )
@@ -94,7 +97,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 		return reconcile.Result{}, err
 	}
 
-	manager, err := r.ManagerFactory.NewManager(o, r.OverrideValues)
+	manager, err := r.ManagerFactory.NewManager(o, r.OverrideValues, r.DryRunOption)
 	if err != nil {
 		log.Error(err, "Failed to get release manager")
 		return reconcile.Result{}, err
@@ -106,7 +109,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 	reconcileResult := reconcile.Result{RequeueAfter: r.ReconcilePeriod}
 	// Determine the correct reconcile period based on the existing value in the reconciler and the
 	// annotations in the custom resource. If a reconcile period is specified in the custom resource
-	// annotations, this value will take precedence over the the existing reconcile period value
+	// annotations, this value will take precedence over the existing reconcile period value
 	// (which came from either the command-line flag or the watches.yaml file).
 	finalReconcilePeriod, err := determineReconcilePeriod(r.ReconcilePeriod, o)
 	if err != nil {
@@ -123,7 +126,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 			return reconcile.Result{}, nil
 		}
 
-		uninstalledRelease, err := manager.UninstallRelease(ctx)
+		uninstalledRelease, err := manager.UninstallRelease()
 		if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
 			log.Error(err, "Failed to uninstall release")
 			status.SetCondition(types.HelmAppCondition{
@@ -171,7 +174,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 
 		if wait && status.DeployedRelease != nil && status.DeployedRelease.Manifest != "" {
 			log.Info("Uninstall wait")
-			isAllResourcesDeleted, err := manager.CleanupRelease(ctx, status.DeployedRelease.Manifest)
+			isAllResourcesDeleted, err := manager.CleanupRelease(status.DeployedRelease.Manifest)
 			if err != nil {
 				log.Error(err, "Failed to cleanup release")
 				status.SetCondition(types.HelmAppCondition{
@@ -215,7 +218,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 		Status: types.StatusTrue,
 	})
 
-	if err := manager.Sync(ctx); err != nil {
+	if err := manager.Sync(); err != nil {
 		log.Error(err, "Failed to sync release")
 		status.SetCondition(types.HelmAppCondition{
 			Type:    types.ConditionIrreconcilable,
@@ -238,7 +241,7 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 			r.EventRecorder.Eventf(o, "Warning", "OverrideValuesInUse",
 				"Chart value %q overridden to %q by operator's watches.yaml", k, v)
 		}
-		installedRelease, err := manager.InstallRelease(ctx)
+		installedRelease, err := manager.InstallRelease()
 		if err != nil {
 			log.Error(err, "Release failed")
 			status.SetCondition(types.HelmAppCondition{
@@ -311,8 +314,18 @@ func (r HelmOperatorReconciler) Reconcile(ctx context.Context, request reconcile
 				"Chart value %q overridden to %q by operator's watches.yaml", k, v)
 		}
 		force := hasAnnotation(helmUpgradeForceAnnotation, o)
-		previousRelease, upgradedRelease, err := manager.UpgradeRelease(ctx, release.ForceUpgrade(force))
+
+		previousRelease, upgradedRelease, err := manager.UpgradeRelease(release.ForceUpgrade(force))
 		if err != nil {
+			if errors.Is(err, release.ErrUpgradeFailed) {
+				// the forceRollback variable takes the value of the annotation,
+				// "helm.sdk.operatorframework.io/rollback-force".
+				// The default value for the annotation is true
+				forceRollback := readBoolAnnotationWithDefault(o, helmRollbackForceAnnotation, true)
+				if err := manager.RollBack(release.ForceRollback(forceRollback)); err != nil {
+					log.Error(err, "Error rolling back release")
+				}
+			}
 			log.Error(err, "Release failed")
 			status.SetCondition(types.HelmAppCondition{
 				Type:    types.ConditionReleaseFailed,
@@ -446,6 +459,21 @@ func hasAnnotation(anno string, o *unstructured.Unstructured) bool {
 	return value
 }
 
+func readBoolAnnotationWithDefault(obj *unstructured.Unstructured, annotation string, fallback bool) bool {
+	val, ok := obj.GetAnnotations()[annotation]
+	if !ok {
+		return fallback
+	}
+	r, err := strconv.ParseBool(val)
+	if err != nil {
+		log.Error(
+			fmt.Errorf(strings.ToLower(err.Error())), "error parsing annotation", "annotation", annotation)
+		return fallback
+	}
+
+	return r
+}
+
 func (r HelmOperatorReconciler) updateResource(ctx context.Context, o client.Object) error {
 	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		return r.Client.Update(ctx, o)
@@ -464,8 +492,8 @@ func (r HelmOperatorReconciler) waitForDeletion(ctx context.Context, o client.Ob
 
 	tctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
-	return wait.PollImmediateUntil(time.Millisecond*10, func() (bool, error) {
-		err := r.Client.Get(tctx, key, o)
+	return wait.PollUntilContextCancel(tctx, time.Millisecond*10, false, func(pctx context.Context) (bool, error) {
+		err := r.Client.Get(pctx, key, o)
 		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
@@ -473,5 +501,5 @@ func (r HelmOperatorReconciler) waitForDeletion(ctx context.Context, o client.Ob
 			return false, err
 		}
 		return false, nil
-	}, tctx.Done())
+	})
 }
