@@ -21,29 +21,30 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/helm/v1/chartutil"
-	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates"
-	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/hack"
-	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/rbac"
-	utils "github.com/operator-framework/helm-operator-plugins/pkg/plugins/util"
 	"github.com/spf13/afero"
 	"sigs.k8s.io/kubebuilder/v3/pkg/config"
 	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugin/util"
 	"sigs.k8s.io/kubebuilder/v3/pkg/plugins"
 
-	kustomizev2alpha "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v2-alpha"
-	golangv3 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v3/scaffolds"
+	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/helm/v1/chartutil"
+	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates"
+	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/hack"
+	"github.com/operator-framework/helm-operator-plugins/pkg/plugins/hybrid/v1alpha/scaffolds/internal/templates/rbac"
+	utils "github.com/operator-framework/helm-operator-plugins/pkg/plugins/util"
+
+	kustomizev2 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/common/kustomize/v2"
+	golangv4 "sigs.k8s.io/kubebuilder/v3/pkg/plugins/golang/v4/scaffolds"
 )
 
 const (
 	imageName = "controller:latest"
 
 	// TODO: This is a placeholder for now. This would probably be the operator-sdk version
-	hybridOperatorVersion = "0.0.11"
+	hybridOperatorVersion = "0.2.2"
 
 	// helmPluginVersion is the operator-framework/helm-operator-plugin version to be used in the project
-	helmPluginVersion = "v0.0.11"
+	helmPluginVersion = "v0.2.2"
 )
 
 var _ plugins.Scaffolder = &initScaffolder{}
@@ -119,16 +120,16 @@ func (s *initScaffolder) Scaffold() error {
 
 	err = scaffold.Execute(
 		&templates.Main{},
-		&templates.GoMod{ControllerRuntimeVersion: golangv3.ControllerRuntimeVersion},
+		&templates.GoMod{ControllerRuntimeVersion: golangv4.ControllerRuntimeVersion},
 		&templates.GitIgnore{},
 		&templates.Watches{},
 		&rbac.ManagerRole{},
 		&templates.Makefile{
 			Image:                    imageName,
-			KustomizeVersion:         kustomizev2alpha.KustomizeVersion,
+			KustomizeVersion:         kustomizev2.KustomizeVersion,
 			HybridOperatorVersion:    hybridOperatorVersion,
-			ControllerToolsVersion:   golangv3.ControllerToolsVersion,
-			ControllerRuntimeVersion: golangv3.ControllerRuntimeVersion,
+			ControllerToolsVersion:   golangv4.ControllerToolsVersion,
+			ControllerRuntimeVersion: golangv4.ControllerRuntimeVersion,
 		},
 		&templates.Dockerfile{},
 		&templates.DockerIgnore{},

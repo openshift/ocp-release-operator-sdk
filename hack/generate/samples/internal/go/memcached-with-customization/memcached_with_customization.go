@@ -27,7 +27,10 @@ import (
 	"github.com/operator-framework/operator-sdk/hack/generate/samples/internal/pkg"
 )
 
-// Memcached defines the Memcached Sample in GO using webhooks and monitoring code
+// monitoringString is appended to logs and error messages to signify the inclusion of monitoring
+const monitoringString = " and monitoring"
+
+// Memcached defines the Memcached Sample in GO using webhooks or webhooks and monitoring code
 type Memcached struct {
 	ctx *pkg.SampleContext
 }
@@ -39,25 +42,36 @@ var prometheusAPIVersion = "v0.59.0"
 // GenerateSample will call all actions to create the directory and generate the sample
 // Note that it should NOT be called in the e2e tests.
 func GenerateSample(binaryPath, samplesPath string) {
-	log.Infof("starting to generate Go memcached sample with webhooks and metrics documentation")
-	ctx, err := pkg.NewSampleContext(binaryPath, filepath.Join(samplesPath, "memcached-operator"), "GO111MODULE=on")
-	pkg.CheckError("generating Go memcached with webhooks and metrics documentation context", err)
+	generateWithMonitoring = strings.HasSuffix(samplesPath, "monitoring")
 
-	generateWithMonitoring = false
-	if strings.HasSuffix(samplesPath, "monitoring") {
-		generateWithMonitoring = true
+	logInfo := "starting to generate Go memcached sample with webhooks"
+	errorInfo := "generating Go memcached with context: webhooks"
+
+	if generateWithMonitoring {
+		logInfo += monitoringString
+		errorInfo += monitoringString
 	}
+
+	log.Infof(logInfo)
+	ctx, err := pkg.NewSampleContext(binaryPath, filepath.Join(samplesPath, "memcached-operator"), "GO111MODULE=on")
+	pkg.CheckError(errorInfo, err)
 
 	memcached := Memcached{&ctx}
 	memcached.Prepare()
 	memcached.Run()
 }
 
-// Prepare the Context for the Memcached with webhooks and metrics documentation Go Sample
+// Prepare the Context for the Memcached with webhooks or with webhooks and monitoring Go Sample
 // Note that sample directory will be re-created and the context data for the sample
 // will be set such as the domain and GVK.
 func (mh *Memcached) Prepare() {
-	log.Infof("destroying directory for Memcached with webhooks and metrics documentation Go samples")
+	logInfo := "destroying directory for Go Memcached sample with webhooks"
+
+	if generateWithMonitoring {
+		logInfo += monitoringString
+	}
+
+	log.Infof(logInfo)
 	mh.ctx.Destroy()
 
 	log.Infof("creating directory")
@@ -71,28 +85,18 @@ func (mh *Memcached) Prepare() {
 	mh.ctx.Kind = "Memcached"
 }
 
-// Run the steps to create the Memcached with metrics and webhooks Go Sample
+// Run the steps to create the Memcached with webhooks or with webhooks and monitoring Go Sample
 func (mh *Memcached) Run() {
 
-	if !mh.isV3() {
-		log.Infof("creating the v4-alpha project")
-		err := mh.ctx.Init(
-			"--plugins", "go/v4-alpha",
-			"--project-version", "3",
-			"--repo", "github.com/example/memcached-operator",
-			"--domain", mh.ctx.Domain)
-		pkg.CheckError("creating the project", err)
-	} else {
-		log.Infof("creating the go/v3 project")
-		err := mh.ctx.Init(
-			"--plugins", "go/v3",
-			"--project-version", "3",
-			"--repo", "github.com/example/memcached-operator",
-			"--domain", mh.ctx.Domain)
-		pkg.CheckError("creating the project", err)
-	}
+	log.Infof("creating the go/v3 project")
+	err := mh.ctx.Init(
+		"--plugins", "go/v4",
+		"--project-version", "3",
+		"--repo", "github.com/example/memcached-operator",
+		"--domain", mh.ctx.Domain)
+	pkg.CheckError("creating the project", err)
 
-	err := mh.ctx.CreateAPI(
+	err = mh.ctx.CreateAPI(
 		"--group", mh.ctx.Group,
 		"--version", mh.ctx.Version,
 		"--kind", mh.ctx.Kind,
@@ -136,13 +140,8 @@ func (mh *Memcached) Run() {
 
 	mh.implementingWebhooks()
 
-	if strings.Contains(mh.ctx.Dir, "v4-alpha") {
-		mh.uncommentDefaultKustomizationV4()
-		mh.uncommentManifestsKustomizationv4()
-	} else {
-		mh.uncommentDefaultKustomizationV3()
-		mh.uncommentManifestsKustomizationv3()
-	}
+	mh.uncommentDefaultKustomizationV4()
+	mh.uncommentManifestsKustomizationv4()
 
 	mh.customizingMain()
 
@@ -169,70 +168,22 @@ func (mh *Memcached) Run() {
 	err = kbutil.ReplaceRegexInFile(csv, "createdAt:.*", createdAt)
 	pkg.CheckError("setting createdAt annotation", err)
 
-	log.Infof("striping bundle annotations")
+	log.Infof("stripping bundle annotations")
 	err = mh.ctx.StripBundleAnnotations()
-	pkg.CheckError("striping bundle annotations", err)
+	pkg.CheckError("stripping bundle annotations", err)
 
 	pkg.CheckError("formatting project", mh.ctx.Make("fmt"))
 
 	// Clean up built binaries, if any.
 	pkg.CheckError("cleaning up", os.RemoveAll(filepath.Join(mh.ctx.Dir, "bin")))
-}
 
-// isV3 checks if the golang plugin version is v3 or v4
-func (mh *Memcached) isV3() bool {
-	return strings.Contains(mh.ctx.Dir, "go/v3")
-}
+	// TODO: remove when this is fixed
+	// Update the test make target to properly shell out
+	// to the go list command
+	pkg.CheckError("fixing \"test\" make target", kbutil.ReplaceInFile(filepath.Join(mh.ctx.Dir, "Makefile"),
+		"KUBEBUILDER_ASSETS=\"$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)\"  go test $(go list ./... | grep -v /test/) -coverprofile cover.out",
+		"KUBEBUILDER_ASSETS=\"$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)\"  go test $(shell go list ./... | grep -v /test/) -coverprofile cover.out"))
 
-// uncommentDefaultKustomizationV3 will uncomment code in config/default/kustomization.yaml
-func (mh *Memcached) uncommentDefaultKustomizationV3() {
-	var err error
-	kustomization := filepath.Join(mh.ctx.Dir, "config", "default", "kustomization.yaml")
-	log.Info("uncommenting config/default/kustomization.yaml to enable webhooks and ca injection")
-
-	err = kbutil.UncommentCode(kustomization, "#- ../webhook", "#")
-	pkg.CheckError("uncomment webhook", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- ../certmanager", "#")
-	pkg.CheckError("uncomment certmanager", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- ../prometheus", "#")
-	pkg.CheckError("uncomment prometheus", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- manager_webhook_patch.yaml", "#")
-	pkg.CheckError("uncomment manager_webhook_patch.yaml", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- webhookcainjection_patch.yaml", "#")
-	pkg.CheckError("uncomment webhookcainjection_patch.yaml", err)
-
-	err = kbutil.UncommentCode(kustomization,
-		`#- name: CERTIFICATE_NAMESPACE # namespace of the certificate CR
-#  objref:
-#    kind: Certificate
-#    group: cert-manager.io
-#    version: v1
-#    name: serving-cert # this name should match the one in certificate.yaml
-#  fieldref:
-#    fieldpath: metadata.namespace
-#- name: CERTIFICATE_NAME
-#  objref:
-#    kind: Certificate
-#    group: cert-manager.io
-#    version: v1
-#    name: serving-cert # this name should match the one in certificate.yaml
-#- name: SERVICE_NAMESPACE # namespace of the service
-#  objref:
-#    kind: Service
-#    version: v1
-#    name: webhook-service
-#  fieldref:
-#    fieldpath: metadata.namespace
-#- name: SERVICE_NAME
-#  objref:
-#    kind: Service
-#    version: v1
-#    name: webhook-service`, "#")
-	pkg.CheckError("uncommented certificate CR", err)
 }
 
 // uncommentDefaultKustomizationV4 will uncomment code in config/default/kustomization.yaml
@@ -241,20 +192,11 @@ func (mh *Memcached) uncommentDefaultKustomizationV4() {
 	kustomization := filepath.Join(mh.ctx.Dir, "config", "default", "kustomization.yaml")
 	log.Info("uncommenting config/default/kustomization.yaml to enable webhooks and ca injection")
 
-	err = kbutil.UncommentCode(kustomization, "#- ../webhook", "#")
-	pkg.CheckError("uncomment webhook", err)
-
 	err = kbutil.UncommentCode(kustomization, "#- ../certmanager", "#")
 	pkg.CheckError("uncomment certmanager", err)
 
 	err = kbutil.UncommentCode(kustomization, "#- ../prometheus", "#")
 	pkg.CheckError("uncomment prometheus", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- manager_webhook_patch.yaml", "#")
-	pkg.CheckError("uncomment manager_webhook_patch.yaml", err)
-
-	err = kbutil.UncommentCode(kustomization, "#- webhookcainjection_patch.yaml", "#")
-	pkg.CheckError("uncomment webhookcainjection_patch.yaml", err)
 
 	err = kbutil.UncommentCode(kustomization,
 		`#replacements:
@@ -358,32 +300,6 @@ func (mh *Memcached) uncommentDefaultKustomizationV4() {
 }
 
 // uncommentManifestsKustomization will uncomment code in config/manifests/kustomization.yaml
-func (mh *Memcached) uncommentManifestsKustomizationv3() {
-	var err error
-	kustomization := filepath.Join(mh.ctx.Dir, "config", "manifests", "kustomization.yaml")
-	log.Info("uncommenting config/manifests/kustomization.yaml to enable webhooks in OLM")
-
-	err = kbutil.UncommentCode(kustomization,
-		`#patchesJson6902:
-#- target:
-#    group: apps
-#    version: v1
-#    kind: Deployment
-#    name: controller-manager
-#    namespace: system
-#  patch: |-
-#    # Remove the manager container's "cert" volumeMount, since OLM will create and mount a set of certs.
-#    # Update the indices in this path if adding or removing containers/volumeMounts in the manager's Deployment.
-#    - op: remove
-#      path: /spec/template/spec/containers/1/volumeMounts/0
-#    # Remove the "cert" volume, since OLM will create and mount a set of certs.
-#    # Update the indices in this path if adding or removing volumes in the manager's Deployment.
-#    - op: remove
-#      path: /spec/template/spec/volumes/0`, "#")
-	pkg.CheckError("uncommented webhook volume removal patch", err)
-}
-
-// uncommentManifestsKustomization will uncomment code in config/manifests/kustomization.yaml
 func (mh *Memcached) uncommentManifestsKustomizationv4() {
 	var err error
 	kustomization := filepath.Join(mh.ctx.Dir, "config", "manifests", "kustomization.yaml")
@@ -430,20 +346,14 @@ func (mh *Memcached) implementingWebhooks() {
 	err = kbutil.InsertCode(webhookPath,
 		"import (",
 		// TODO(estroz): remove runtime dep when --programmatic-validation is added to `ccreate webhook` above.
-		"\"errors\"\n\n\"k8s.io/apimachinery/pkg/runtime\"")
+		"\"errors\"\n\n\"k8s.io/apimachinery/pkg/runtime\"\n\n\"sigs.k8s.io/controller-runtime/pkg/webhook/admission\"")
 	pkg.CheckError("adding imports", err)
 }
 
 // implementingController will customizations in the Controller
 func (mh *Memcached) implementingController() {
-	var controllerPath string
-	if mh.isV3() {
-		controllerPath = filepath.Join(mh.ctx.Dir, "controllers", fmt.Sprintf("%s_controller.go",
-			strings.ToLower(mh.ctx.Kind)))
-	} else {
-		controllerPath = filepath.Join(mh.ctx.Dir, "internal", "controller", fmt.Sprintf("%s_controller.go",
-			strings.ToLower(mh.ctx.Kind)))
-	}
+	controllerPath := filepath.Join(mh.ctx.Dir, "internal", "controller", fmt.Sprintf("%s_controller.go",
+		strings.ToLower(mh.ctx.Kind)))
 
 	err := kbutil.InsertCode(controllerPath,
 		`						SecurityContext: &corev1.SecurityContext{`, userIDWarningFragment)
@@ -536,7 +446,7 @@ func (mh *Memcached) implementingAPIMarkers() {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=3
 	// +kubebuilder:validation:ExclusiveMaximum=false
-	
+
 	// Size defines the number of Memcached instances
 	// +operator-sdk:csv:customresourcedefinitions:type=spec`,
 	)
@@ -732,15 +642,8 @@ func (mh *Memcached) implementingPrometheusRBAC() {
 
 // customizingController will customize the Controller to include monitoring
 func (mh *Memcached) customizingController() {
-	var controllerPath string
-
-	if mh.isV3() {
-		controllerPath = filepath.Join(mh.ctx.Dir, "controllers", fmt.Sprintf("%s_controller.go",
-			strings.ToLower(mh.ctx.Kind)))
-	} else {
-		controllerPath = filepath.Join(mh.ctx.Dir, "internal", "controller", fmt.Sprintf("%s_controller.go",
-			strings.ToLower(mh.ctx.Kind)))
-	}
+	controllerPath := filepath.Join(mh.ctx.Dir, "internal", "controller", fmt.Sprintf("%s_controller.go",
+		strings.ToLower(mh.ctx.Kind)))
 
 	// Add monitoring imports
 	err := kbutil.InsertCode(controllerPath,
@@ -788,13 +691,7 @@ func (mh *Memcached) customizingController() {
 
 // customizingMain will add comments to main
 func (mh *Memcached) customizingMain() {
-	var mainPath string
-
-	if mh.isV3() {
-		mainPath = filepath.Join(mh.ctx.Dir, "main.go")
-	} else {
-		mainPath = filepath.Join(mh.ctx.Dir, "cmd", "main.go")
-	}
+	mainPath := filepath.Join(mh.ctx.Dir, "cmd", "main.go")
 
 	err := kbutil.InsertCode(mainPath,
 		"Scheme:   mgr.GetScheme(),",
@@ -804,16 +701,8 @@ func (mh *Memcached) customizingMain() {
 
 // customizingMainMonitoring will customize main.go to register metrics
 func (mh *Memcached) customizingMainMonitoring() {
-	var mainPath string
-
-	marker := "\"github.com/example/memcached-operator/"
-	if mh.isV3() {
-		mainPath = filepath.Join(mh.ctx.Dir, "main.go")
-		marker += "controllers\""
-	} else {
-		mainPath = filepath.Join(mh.ctx.Dir, "cmd", "main.go")
-		marker += "internal/controller\""
-	}
+	mainPath := filepath.Join(mh.ctx.Dir, "cmd", "main.go")
+	marker := "\"github.com/example/memcached-operator/internal/controller\""
 
 	err := kbutil.InsertCode(mainPath,
 		marker,
@@ -838,12 +727,7 @@ func (mh *Memcached) customizingDockerfile() {
 	dockerfilePath := filepath.Join(mh.ctx.Dir, "Dockerfile")
 
 	// Copy monitoring
-	var ctrlCopy string
-	if mh.isV3() {
-		ctrlCopy = "controllers/"
-	} else {
-		ctrlCopy = "internal/controller/"
-	}
+	ctrlCopy := "internal/controller/"
 
 	err := kbutil.InsertCode(dockerfilePath,
 		fmt.Sprintf("COPY %s %s", ctrlCopy, ctrlCopy),
@@ -857,9 +741,10 @@ const createdAt = `createdAt: "2022-11-08T17:26:37Z"`
 func (mh *Memcached) customizingMakefile() {
 	makefilePath := filepath.Join(mh.ctx.Dir, "Makefile")
 
+	// TODO: update this to be different based on go plugin version
 	// Add prom-rule-ci target to the makefile
 	err := kbutil.InsertCode(makefilePath,
-		`$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -`,
+		`$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -`,
 		makefileFragment)
 	pkg.CheckError("adding prom-rule-ci target to the makefile", err)
 
@@ -930,105 +815,45 @@ const metricsdocsFragment = `
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
+	"text/template"
 
 	"github.com/example/memcached-operator/monitoring"
 )
 
-// please run "make generate-metricsdocs" to run this tool and update metrics documentation
-const (
-	title      = "# Operator Metrics\n"
-	background = "This document aims to help users that are not familiar with metrics exposed by this operator.\n" +
-		"The metrics documentation is auto-generated by the utility tool \"monitoring/metricsdocs\" and reflects all of the metrics that are exposed by the operator.\n\n"
-
-	KVSpecificMetrics = "## Operator Metrics List\n"
-
-	opening = title +
-		background +
-		KVSpecificMetrics
-
-	// footer
-	footerHeading = "## Developing new metrics\n"
-	footerContent = "After developing new metrics or changing old ones, please run \"make generate-metricsdocs\" to regenerate this document.\n\n" +
-		"If you feel that the new metric doesn't follow these rules, please change \"monitoring/metricsdocs\" according to your needs.\n"
-
-	footer = footerHeading + footerContent
-)
-
-// TODO: scaffolding these helpers with operator-lib: https://github.com/operator-framework/operator-lib.
-
-// metricList contains the name, description, and type for each metric.
 func main() {
-	metricList := metricDescriptionListToMetricList(monitoring.ListMetrics())
-	sort.Sort(metricList)
-	writeToStdOut(metricList)
-}
+	metricDescriptions := monitoring.ListMetrics()
+	sort.Slice(metricDescriptions, func(i, j int) bool {
+		return metricDescriptions[i].Name < metricDescriptions[j].Name
+	})
 
-// writeToStdOut receives a list of metrics and prints them to STDOUT.
-func writeToStdOut(metricsList metricList) {
-	fmt.Print(opening)
-	metricsList.writeOut()
-	fmt.Print(footer)
-}
+	tmpl, err := template.New("Operator metrics").Parse("# Operator Metrics\n" +
+		"This document aims to help users that are not familiar with metrics exposed by this operator.\n" +
+		"The metrics documentation is auto-generated by the utility tool \"monitoring/metricsdocs\" and reflects all of the metrics that are exposed by the operator.\n\n" +
+		"## Operator Metrics List" +
+		"{{range .}}\n" +
+		"### {{.Name}}\n" +
+		"{{.Help}} " +
+		"Type: {{.Type}}.\n" +
+		"{{end}}" +
+		"## Developing new metrics\n" +
+		"After developing new metrics or changing old ones, please run \"make generate-metricsdocs\" to regenerate this document.\n\n" +
+		"If you feel that the new metric doesn't follow these rules, please change \"monitoring/metricsdocs\" according to your needs.")
 
-// Metric is an exported struct that defines the metric
-// name, description, and type as a new type named Metric.
-type Metric struct {
-	name        string
-	description string
-	metricType  string
-}
-
-func metricDescriptionToMetric(md monitoring.MetricDescription) Metric {
-	return Metric{
-		name:        md.Name,
-		description: md.Help,
-		metricType:  md.Type,
-	}
-}
-
-// writeOut receives a metric of type metric and prints
-// the metric name, description, and type.
-func (m Metric) writeOut() {
-	fmt.Println("###", m.name)
-	fmt.Println(m.description, "Type: "+m.metricType+".")
-}
-
-// metricList is an array that contain metrics from type metric,
-// as a new type named metricList.
-type metricList []Metric
-
-// metricDescriptionListToMetricList collects the metrics exposed by the
-// operator, and inserts them into the metricList array.
-func metricDescriptionListToMetricList(mdl []monitoring.MetricDescription) metricList {
-	res := make([]Metric, len(mdl))
-	for i, md := range mdl {
-		res[i] = metricDescriptionToMetric(md)
+	if err != nil {
+		panic(err)
 	}
 
-	return res
-}
-
-// Len implements sort.Interface.Len
-func (m metricList) Len() int {
-	return len(m)
-}
-
-// Less implements sort.Interface.Less
-func (m metricList) Less(i, j int) bool {
-	return m[i].name < m[j].name
-}
-
-// Swap implements sort.Interface.Swap
-func (m metricList) Swap(i, j int) {
-	m[i], m[j] = m[j], m[i]
-}
-
-func (m metricList) writeOut() {
-	for _, met := range m {
-		met.writeOut()
+	// generate the template using the sorted list of metrics
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, metricDescriptions); err != nil {
+		panic(err)
 	}
+
+	// print the generated metrics documentation
+	fmt.Println(buf.String())
 }
 `
 
@@ -1048,7 +873,7 @@ const (
 	deploymentSizeUndesiredAlert = "MemcachedDeploymentSizeUndesired"
 	operatorDownAlert            = "MemcachedOperatorDown"
 	operatorUpTotalRecordingRule = "memcached_operator_up_total"
-	runbookURLBasePath           = "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4-alpha/monitoring/memcached-operator/docs/monitoring/runbooks/"
+	runbookURLBasePath           = "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/docs/monitoring/runbooks/"
 )
 
 // NewPrometheusRule creates new PrometheusRule(CR) for the operator to have alerts and recording rules
@@ -1158,7 +983,7 @@ tests:
               description: "Memcached-sample deployment size was not as desired more than 3 times in the last 5 minutes."
             exp_labels:
               severity: "warning"
-              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4-alpha/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedDeploymentSizeUndesired.md"
+              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedDeploymentSizeUndesired.md"
       - eval_time: 5m
         alertname: MemcachedOperatorDown
         exp_alerts:
@@ -1166,7 +991,7 @@ tests:
               description: "No running memcached-operator pods were detected in the last 5 min."
             exp_labels:
               severity: "critical"
-              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4-alpha/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedOperatorDown.md"
+              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedOperatorDown.md"
       # it must not trigger before 15m
       - eval_time: 14m
         alertname: MemcachedDeploymentSizeUndesired
@@ -1182,7 +1007,7 @@ tests:
               description: "Memcached-sample deployment size was not as desired more than 3 times in the last 5 minutes."
             exp_labels:
               severity: "warning"
-              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4-alpha/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedDeploymentSizeUndesired.md"
+              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedDeploymentSizeUndesired.md"
       - eval_time: 15m
         alertname: MemcachedOperatorDown
         exp_alerts:
@@ -1190,7 +1015,7 @@ tests:
               description: "No running memcached-operator pods were detected in the last 5 min."
             exp_labels:
               severity: "critical"
-              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4-alpha/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedOperatorDown.md"
+              runbook_url: "https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/docs/monitoring/runbooks/MemcachedOperatorDown.md"
 `
 
 const ruleSpecDumperFragment = `
@@ -1300,7 +1125,7 @@ Unavailability of distributed memory object caching system in the cluster.
 - Observe the logs of the memcached manager pod, to see why it cannot create the memcached-sample pods.
 
    <code>kubectl get logs <memcached-operator-controller-manager-pod> -n memcached-operator-system</code>
-  
+
 ## Mitigation
 There can be several reasons. Like:
 - Node resource exhaustion
@@ -1455,24 +1280,24 @@ const webhooksFragment = `
 var _ webhook.Validator = &Memcached{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Memcached) ValidateCreate() error {
+func (r *Memcached) ValidateCreate() (admission.Warnings, error) {
 	memcachedlog.Info("validate create", "name", r.Name)
 
-	return validateOdd(r.Spec.Size)
+	return nil, validateOdd(r.Spec.Size)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Memcached) ValidateUpdate(old runtime.Object) error {
+func (r *Memcached) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	memcachedlog.Info("validate update", "name", r.Name)
 
-	return validateOdd(r.Spec.Size)
+	return nil, validateOdd(r.Spec.Size)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Memcached) ValidateDelete() error {
+func (r *Memcached) ValidateDelete() (admission.Warnings, error) {
 	memcachedlog.Info("validate delete", "name", r.Name)
 
-	return nil
+	return nil, nil
 }
 func validateOdd(n int32) error {
 	if n%2 == 0 {
