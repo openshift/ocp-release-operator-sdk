@@ -1,1 +1,1 @@
-release/ansible/Dockerfile
+release/helm/Dockerfile
