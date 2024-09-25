@@ -77,7 +77,7 @@ var imageSubstitutions = map[string][]substitution{
 		// Helm
 		{
 			regexp.MustCompile(`quay.io/operator-framework/helm-operator:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-helm-operator:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-helm-rhel9-operator:v" + ocpProductVersion,
 		},
 		// Go
 		{
