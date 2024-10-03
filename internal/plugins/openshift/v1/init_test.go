@@ -73,9 +73,9 @@ FROM registry.access.redhat.com/ubi8/ubi-micro:8.1
 
 const dockerfileAllExp = `FROM foo:bar
 
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
 FROM quay.io/operator-framework/ansible:latest
 FROM foo/ansible-operator:latest
 
