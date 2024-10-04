@@ -79,9 +79,9 @@ FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion +
 FROM quay.io/operator-framework/ansible:latest
 FROM foo/ansible-operator:latest
 
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
 FROM quay.io/operator-framework/helm:latest
 FROM foo/helm-operator:latest
 
