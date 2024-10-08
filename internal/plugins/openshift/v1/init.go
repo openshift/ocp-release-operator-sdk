@@ -72,7 +72,7 @@ var imageSubstitutions = map[string][]substitution{
 		// Ansible
 		{
 			regexp.MustCompile(`quay.io/operator-framework/ansible-operator:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-ansible-operator:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v" + ocpProductVersion,
 		},
 		// Helm
 		{
