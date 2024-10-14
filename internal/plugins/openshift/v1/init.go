@@ -65,7 +65,7 @@ var imageSubstitutions = map[string][]substitution{
 	filepath.Join("config", "default", "manager_auth_proxy_patch.yaml"): {
 		{
 			regexp.MustCompile(`gcr.io/kubebuilder/kube-rbac-proxy:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-kube-rbac-proxy:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v" + ocpProductVersion,
 		},
 	},
 	filepath.Join("Dockerfile"): {
