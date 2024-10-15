@@ -9,12 +9,6 @@ RUN cd /go/src/github.com/operator-framework/operator-sdk \
 
 FROM registry.ci.openshift.org/ocp/4.17:base-rhel9
 
-RUN yum install -y \
-      golang \
-      make \
- && yum clean all \
- && rm -rf /var/cache/yum
-
 ENV USER_UID=1001 \
     USER_NAME=sdk \
     HOME=/opt/sdk
