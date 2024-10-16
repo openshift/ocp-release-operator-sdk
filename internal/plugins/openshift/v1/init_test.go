@@ -119,9 +119,9 @@ spec:
     spec:
       containers:
       - name: kube-rbac-proxy
-        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy:v` + ocpProductVersion + `
+        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v` + ocpProductVersion + `
       - name: kube-rbac-proxy-latest
-        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy:v` + ocpProductVersion + `
+        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v` + ocpProductVersion + `
       - name: upstream
         image: quay.io/brancz/kube-rbac-proxy:v0.5.0
 `
