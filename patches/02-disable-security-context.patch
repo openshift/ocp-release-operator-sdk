@@ -1,6 +1,6 @@
 diff -up ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml.disable-security-context ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml
---- ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml.disable-security-context	2020-12-15 21:58:00.595435374 -0500
-+++ ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml	2020-12-15 21:58:14.871632854 -0500
+--- ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml.disable-security-context	2024-07-25 16:28:31.648563540 +0530
++++ ./testdata/helm/memcached-operator/helm-charts/memcached/values.yaml	2024-07-25 17:21:23.507025333 +0530
 @@ -70,7 +70,7 @@ affinity: {}
  ## Memcached pod Security Context
  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/

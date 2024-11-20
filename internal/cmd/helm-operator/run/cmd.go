@@ -23,9 +23,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	apimachruntime "k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,6 +46,10 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/helm/watches"
 	"github.com/operator-framework/operator-sdk/internal/util/k8sutil"
 	sdkVersion "github.com/operator-framework/operator-sdk/internal/version"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 var log = logf.Log.WithName("cmd")
@@ -92,9 +97,15 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		options manager.Options
 		err     error
 	)
+	// TODO: This flag has been deprecated since controller-runtime has deprecated
+	// the component config package. This check and the associated flag
+	// should be removed when upgrading to a version of controller-runtime where the
+	// component config package has been removed.
+	// For tracking see https://github.com/kubernetes-sigs/controller-runtime/issues/895
+	// Until this has been done, ignore the linting errors
 	if f.ManagerConfigPath != "" {
-		cfgLoader := ctrl.ConfigFile().AtPath(f.ManagerConfigPath)
-		if options, err = options.AndFrom(cfgLoader); err != nil {
+		cfgLoader := ctrl.ConfigFile().AtPath(f.ManagerConfigPath) // nolint:staticcheck
+		if options, err = options.AndFrom(cfgLoader); err != nil { // nolint:staticcheck
 			log.Error(err, "Unable to load the manager config file")
 			os.Exit(1)
 		}
@@ -136,42 +147,24 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	// Set default manager options
 	options = f.ToManagerOptions(options)
 
-	if options.NewClient == nil {
-		options.NewClient = func(cache cache.Cache, config *rest.Config, options client.Options, uncachedObjects ...client.Object) (client.Client, error) {
-			// Create the Client for Write operations.
-			c, err := client.New(config, options)
-			if err != nil {
-				return nil, err
-			}
-
-			return client.NewDelegatingClient(client.NewDelegatingClientInput{
-				CacheReader:       cache,
-				Client:            c,
-				UncachedObjects:   uncachedObjects,
-				CacheUnstructured: true,
-			})
-		}
+	if options.Scheme == nil {
+		options.Scheme = apimachruntime.NewScheme()
 	}
-	namespace, found := os.LookupEnv(k8sutil.WatchNamespaceEnvVar)
-	log = log.WithValues("Namespace", namespace)
-	if found {
-		log.V(1).Info(fmt.Sprintf("Setting namespace with value in %s", k8sutil.WatchNamespaceEnvVar))
-		if namespace == metav1.NamespaceAll {
-			log.Info("Watching all namespaces.")
-			options.Namespace = metav1.NamespaceAll
-		} else {
-			if strings.Contains(namespace, ",") {
-				log.Info("Watching multiple namespaces.")
-				options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
-			} else {
-				log.Info("Watching single namespace.")
-				options.Namespace = namespace
-			}
-		}
-	} else if options.Namespace == "" {
-		log.Info(fmt.Sprintf("Watch namespaces not configured by environment variable %s or file. "+
-			"Watching all namespaces.", k8sutil.WatchNamespaceEnvVar))
-		options.Namespace = metav1.NamespaceAll
+
+	ws, err := watches.Load(f.WatchesFile)
+	if err != nil {
+		log.Error(err, "Failed to load watches file.")
+		os.Exit(1)
+	}
+
+	configureWatchNamespaces(&options, log)
+	err = configureSelectors(&options, ws, options.Scheme)
+	if err != nil {
+		log.Error(err, "Failed to configure default selectors for caching")
+		os.Exit(1)
+	}
+	if options.NewClient == nil {
+		options.NewClient = client.New
 	}
 
 	mgr, err := manager.New(cfg, options)
@@ -189,11 +182,6 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		os.Exit(1)
 	}
 
-	ws, err := watches.Load(f.WatchesFile)
-	if err != nil {
-		log.Error(err, "Failed to create new manager factories.")
-		os.Exit(1)
-	}
 	acg, err := helmClient.NewActionConfigGetter(mgr.GetConfig(), mgr.GetRESTMapper(), mgr.GetLogger())
 	if err != nil {
 		log.Error(err, "Failed to create Helm action config getter")
@@ -207,7 +195,6 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 		}
 
 		err := controller.Add(mgr, controller.WatchOptions{
-			Namespace:               namespace,
 			GVK:                     w.GroupVersionKind,
 			ManagerFactory:          release.NewManagerFactory(mgr, acg, w.ChartDir),
 			ReconcilePeriod:         reconcilePeriod,
@@ -216,6 +203,7 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 			SuppressOverrideValues:  f.SuppressOverrideValues,
 			MaxConcurrentReconciles: f.MaxConcurrentReconciles,
 			Selector:                w.Selector,
+			DryRunOption:            w.DryRunOption,
 		})
 		if err != nil {
 			log.Error(err, "Failed to add manager factory to controller.")
@@ -233,20 +221,80 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 // exitIfUnsupported prints an error containing unsupported field names and exits
 // if any of those fields are not their default values.
 func exitIfUnsupported(options manager.Options) {
-	var keys []string
-	// The below options are webhook-specific, which is not supported by ansible.
-	if options.CertDir != "" {
-		keys = append(keys, "certDir")
-	}
-	if options.Host != "" {
-		keys = append(keys, "host")
-	}
-	if options.Port != 0 {
-		keys = append(keys, "port")
-	}
-
-	if len(keys) > 0 {
-		log.Error(fmt.Errorf("%s set in manager options", strings.Join(keys, ", ")), "unsupported fields")
+	// The below options are webhook-specific, which is not supported by helm.
+	if options.WebhookServer != nil {
+		log.Error(errors.New("webhook configurations set in manager options"), "unsupported configuration")
 		os.Exit(1)
 	}
+}
+
+func configureWatchNamespaces(options *manager.Options, log logr.Logger) {
+	namespaces := splitNamespaces(os.Getenv(k8sutil.WatchNamespaceEnvVar))
+
+	namespaceConfigs := make(map[string]cache.Config)
+	if len(namespaces) != 0 {
+		log.Info("Watching namespaces", "namespaces", namespaces)
+		for _, namespace := range namespaces {
+			namespaceConfigs[namespace] = cache.Config{}
+			if namespace == metav1.NamespaceAll {
+				namespaceConfigs[namespace] = cache.Config{
+					LabelSelector: labels.Everything(),
+				}
+			}
+		}
+	} else {
+		log.Info("Watching all namespaces")
+		// in order to properly establish cluster level watches
+		// we need to override the default label selectors configured
+		// in later config steps
+		namespaceConfigs[metav1.NamespaceAll] = cache.Config{
+			LabelSelector: labels.Everything(),
+		}
+	}
+
+	options.Cache.DefaultNamespaces = namespaceConfigs
+}
+
+func splitNamespaces(namespaces string) []string {
+	list := strings.Split(namespaces, ",")
+	var out []string
+	for _, ns := range list {
+		trimmed := strings.TrimSpace(ns)
+		if trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+func configureSelectors(opts *manager.Options, ws []watches.Watch, sch *apimachruntime.Scheme) error {
+	selectorsByObject := map[client.Object]cache.ByObject{}
+	chartNames := make([]string, 0, len(ws))
+	for _, w := range ws {
+		sch.AddKnownTypeWithName(w.GroupVersionKind, &unstructured.Unstructured{})
+
+		crObj := &unstructured.Unstructured{}
+		crObj.SetGroupVersionKind(w.GroupVersionKind)
+		sel, err := metav1.LabelSelectorAsSelector(&w.Selector)
+		if err != nil {
+			return fmt.Errorf("unable to parse watch selector for %s: %v", w.GroupVersionKind, err)
+		}
+		selectorsByObject[crObj] = cache.ByObject{Label: sel}
+
+		chrt, err := loader.LoadDir(w.ChartDir)
+		if err != nil {
+			return fmt.Errorf("unable to load chart for %s: %v", w.GroupVersionKind, err)
+		}
+		chartNames = append(chartNames, chrt.Name())
+
+	}
+	req, err := labels.NewRequirement("helm.sdk.operatorframework.io/chart", selection.In, chartNames)
+	if err != nil {
+		return fmt.Errorf("unable to create label requirement for cache default selector: %v", err)
+	}
+	defaultSelector := labels.NewSelector().Add(*req)
+
+	opts.Cache.ByObject = selectorsByObject
+	opts.Cache.DefaultLabelSelector = defaultSelector
+	return nil
 }

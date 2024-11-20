@@ -27,9 +27,9 @@ import (
 
 const (
 	// The current OCP release version.
-	ocpProductVersion = "4.15"
+	ocpProductVersion = "4.16"
 	// The currently used version of ubi8/ubi-minimal images.
-	ubiMinimalVersion = "8.8"
+	ubiMinimalVersion = "8.10"
 )
 
 type initSubcommand struct {
@@ -65,19 +65,19 @@ var imageSubstitutions = map[string][]substitution{
 	filepath.Join("config", "default", "manager_auth_proxy_patch.yaml"): {
 		{
 			regexp.MustCompile(`gcr.io/kubebuilder/kube-rbac-proxy:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-kube-rbac-proxy:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v" + ocpProductVersion,
 		},
 	},
 	filepath.Join("Dockerfile"): {
 		// Ansible
 		{
 			regexp.MustCompile(`quay.io/operator-framework/ansible-operator:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-ansible-operator:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v" + ocpProductVersion,
 		},
 		// Helm
 		{
 			regexp.MustCompile(`quay.io/operator-framework/helm-operator:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-helm-operator:v" + ocpProductVersion,
+			"registry.redhat.io/openshift4/ose-helm-rhel9-operator:v" + ocpProductVersion,
 		},
 		// Go
 		{

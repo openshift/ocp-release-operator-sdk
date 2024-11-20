@@ -73,15 +73,15 @@ FROM registry.access.redhat.com/ubi8/ubi-micro:8.1
 
 const dockerfileAllExp = `FROM foo:bar
 
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-ansible-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-ansible-rhel9-operator:v` + ocpProductVersion + `
 FROM quay.io/operator-framework/ansible:latest
 FROM foo/ansible-operator:latest
 
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
-FROM registry.redhat.io/openshift4/ose-helm-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
+FROM registry.redhat.io/openshift4/ose-helm-rhel9-operator:v` + ocpProductVersion + `
 FROM quay.io/operator-framework/helm:latest
 FROM foo/helm-operator:latest
 
@@ -119,9 +119,9 @@ spec:
     spec:
       containers:
       - name: kube-rbac-proxy
-        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy:v` + ocpProductVersion + `
+        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v` + ocpProductVersion + `
       - name: kube-rbac-proxy-latest
-        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy:v` + ocpProductVersion + `
+        image: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v` + ocpProductVersion + `
       - name: upstream
         image: quay.io/brancz/kube-rbac-proxy:v0.5.0
 `
