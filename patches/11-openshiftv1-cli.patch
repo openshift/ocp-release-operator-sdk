@@ -1,15 +1,15 @@
 diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operator-sdk/cli/cli.go
---- ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2024-07-25 19:58:43.805980081 +0530
-+++ ./internal/cmd/operator-sdk/cli/cli.go	2024-07-25 20:03:21.138415443 +0530
-@@ -52,6 +52,7 @@ import (
- 	envtestv1 "github.com/operator-framework/operator-sdk/internal/plugins/envtest/v1"
+--- ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1	2024-12-26 18:02:08.422724303 +0530
++++ ./internal/cmd/operator-sdk/cli/cli.go	2024-12-26 18:04:50.221965067 +0530
+@@ -42,6 +42,7 @@ import (
+ 	"github.com/operator-framework/operator-sdk/internal/plugins"
  	helmv1 "github.com/operator-framework/operator-sdk/internal/plugins/helm/v1"
  	manifestsv2 "github.com/operator-framework/operator-sdk/internal/plugins/manifests/v2"
 +	openshiftv1 "github.com/operator-framework/operator-sdk/internal/plugins/openshift/v1"
  	scorecardv2 "github.com/operator-framework/operator-sdk/internal/plugins/scorecard/v2"
  	"github.com/operator-framework/operator-sdk/internal/util/projutil"
  )
-@@ -114,6 +115,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+@@ -78,6 +79,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
  			golangv4.Plugin{},
  			manifestsv2.Plugin{},
  			scorecardv2.Plugin{},
@@ -17,7 +17,7 @@ diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operat
  		),
  	)
  
-@@ -125,6 +127,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+@@ -89,6 +91,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
  			ansiblev1.Plugin{},
  			manifestsv2.Plugin{},
  			scorecardv2.Plugin{},
@@ -25,16 +25,8 @@ diff -up ./internal/cmd/operator-sdk/cli/cli.go.patchocpv1 ./internal/cmd/operat
  		),
  	)
  
-@@ -136,6 +139,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
+@@ -100,6 +103,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
  			helmv1.Plugin{},
- 			manifestsv2.Plugin{},
- 			scorecardv2.Plugin{},
-+			openshiftv1.Plugin{},
- 		),
- 	)
- 
-@@ -147,6 +151,7 @@ func GetPluginsCLIAndRoot() (*cli.CLI, *
- 			hybrid.Plugin{},
  			manifestsv2.Plugin{},
  			scorecardv2.Plugin{},
 +			openshiftv1.Plugin{},
