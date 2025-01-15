@@ -21,15 +21,15 @@ import (
 	"regexp"
 
 	"github.com/spf13/afero"
-	"sigs.k8s.io/kubebuilder/v3/pkg/config"
-	"sigs.k8s.io/kubebuilder/v3/pkg/machinery"
+	"sigs.k8s.io/kubebuilder/v4/pkg/config"
+	"sigs.k8s.io/kubebuilder/v4/pkg/machinery"
 )
 
 const (
 	// The current OCP release version.
-	ocpProductVersion = "4.18"
-	// The currently used version of ubi8/ubi-minimal images.
-	ubiMinimalVersion = "8.10"
+	ocpProductVersion = "4.19"
+	// The currently used version of ubi9/ubi-minimal images.
+	ubiMinimalVersion = "9.4"
 )
 
 type initSubcommand struct {
@@ -62,12 +62,6 @@ type substitution struct {
 
 // imageSubstitutions is a map of paths to image substitutions.
 var imageSubstitutions = map[string][]substitution{
-	filepath.Join("config", "default", "manager_auth_proxy_patch.yaml"): {
-		{
-			regexp.MustCompile(`gcr.io/kubebuilder/kube-rbac-proxy:[^ \n]+`),
-			"registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v" + ocpProductVersion,
-		},
-	},
 	filepath.Join("Dockerfile"): {
 		// Ansible
 		{
@@ -82,12 +76,7 @@ var imageSubstitutions = map[string][]substitution{
 		// Go
 		{
 			regexp.MustCompile(`gcr.io/distroless/static:[^ \n]+`),
-			"registry.access.redhat.com/ubi8/ubi-minimal:" + ubiMinimalVersion,
-		},
-		// Hybrid Helm
-		{
-			regexp.MustCompile(`registry.access.redhat.com/ubi8/ubi-micro:[^ \n]+`),
-			"registry.access.redhat.com/ubi8/ubi-micro:" + ubiMinimalVersion,
+			"registry.access.redhat.com/ubi9/ubi-minimal:" + ubiMinimalVersion,
 		},
 	},
 }

@@ -15,17 +15,16 @@
 package v1
 
 import (
-	"sigs.k8s.io/kubebuilder/v3/pkg/config"
-	cfgv2 "sigs.k8s.io/kubebuilder/v3/pkg/config/v2"
-	cfgv3 "sigs.k8s.io/kubebuilder/v3/pkg/config/v3"
-	"sigs.k8s.io/kubebuilder/v3/pkg/plugin"
+	"sigs.k8s.io/kubebuilder/v4/pkg/config"
+	cfgv3 "sigs.k8s.io/kubebuilder/v4/pkg/config/v3"
+	"sigs.k8s.io/kubebuilder/v4/pkg/plugin"
 )
 
 const pluginName = "sdk.x-openshift.io"
 
 var (
 	pluginVersion            = plugin.Version{Number: 1}
-	supportedProjectVersions = []config.Version{cfgv2.Version, cfgv3.Version}
+	supportedProjectVersions = []config.Version{cfgv3.Version}
 	pluginKey                = plugin.KeyFor(Plugin{})
 )
 
