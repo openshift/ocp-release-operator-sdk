@@ -120,7 +120,7 @@ echo "$version" > UPSTREAM-VERSION
 git add UPSTREAM-VERSION
 
 # Edit the version in the patch so that -ocp is properly appended
-sed -i.bak -e "s/+export SIMPLE_VERSION=.*/+export SIMPLE_VERSION = ${version}-ocp/" patches/03-setversion.patch
+sed -i.bak -e "s/+export SIMPLE_VERSION = .*/+export SIMPLE_VERSION = ${version}-ocp/" patches/03-setversion.patch
 rm -f patches/03-setversion.patch.bak
 git add patches/03-setversion.patch
 
