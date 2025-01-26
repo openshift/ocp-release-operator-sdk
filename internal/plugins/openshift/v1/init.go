@@ -27,7 +27,7 @@ import (
 
 const (
 	// The current OCP release version.
-	ocpProductVersion = "4.19"
+	ocpProductVersion = "4.18"
 	// The currently used version of ubi9/ubi-minimal images.
 	ubiMinimalVersion = "9.4"
 )
