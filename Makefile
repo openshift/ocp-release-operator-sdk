@@ -4,12 +4,12 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.38.0
+export IMAGE_VERSION = v1.39.1
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe --tags)" = "$(shell git describe --tags --abbrev=0)" && echo $(shell git describe --tags)) || echo $(shell git describe --tags --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
 export GIT_COMMIT = $(shell git rev-parse HEAD)
-export K8S_VERSION = 1.30.0
+export K8S_VERSION = 1.31.0
 
 # Build settings
 export TOOLS_DIR = tools/bin
@@ -58,7 +58,7 @@ fix: ## Fixup files in the repo.
 
 .PHONY: setup-lint
 setup-lint: ## Setup the lint
-	$(SCRIPTS_DIR)/fetch golangci-lint 1.54.0
+	$(SCRIPTS_DIR)/fetch golangci-lint 1.62.2
 
 .PHONY: lint
 lint: setup-lint ## Run the lint check
@@ -176,12 +176,12 @@ cluster-create::
 
 .PHONY: dev-install
 dev-install::
-	$(SCRIPTS_DIR)/fetch kind 0.23.0
+	$(SCRIPTS_DIR)/fetch kind 0.24.0
 	$(SCRIPTS_DIR)/fetch kubectl $(K8S_VERSION) # Install kubectl AFTER envtest because envtest includes its own kubectl binary
 
 .PHONY: test-e2e-teardown
 test-e2e-teardown:
-	$(SCRIPTS_DIR)/fetch kind 0.23.0
+	$(SCRIPTS_DIR)/fetch kind 0.24.0
 	$(TOOLS_DIR)/kind delete cluster --name $(KIND_CLUSTER)
 	rm -f $(KUBECONFIG)
 
