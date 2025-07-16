@@ -29,11 +29,13 @@ import (
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/crd"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/crd/patches"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/kdefault"
-	network_policy "sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/network-policy"
+	networkpolicy "sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/network-policy"
 	"sigs.k8s.io/kubebuilder/v4/pkg/plugins/common/kustomize/v2/scaffolds/internal/templates/config/webhook"
 )
 
 var _ plugins.Scaffolder = &webhookScaffolder{}
+
+const kustomizeFilePath = "config/default/kustomization.yaml"
 
 type webhookScaffolder struct {
 	config   config.Config
@@ -88,7 +90,7 @@ func (s *webhookScaffolder) Scaffold() error {
 		&certmanager.MetricsCertificate{},
 		&certmanager.Kustomization{},
 		&certmanager.KustomizeConfig{},
-		&network_policy.PolicyAllowWebhooks{},
+		&networkpolicy.PolicyAllowWebhooks{},
 	}
 
 	// Only scaffold the following patches if is a conversion webhook
@@ -102,7 +104,7 @@ func (s *webhookScaffolder) Scaffold() error {
 	}
 
 	if err := scaffold.Execute(buildScaffold...); err != nil {
-		return fmt.Errorf("error scaffolding kustomize webhook manifests: %v", err)
+		return fmt.Errorf("error scaffolding kustomize webhook manifests: %w", err)
 	}
 
 	policyKustomizeFilePath := "config/network-policy/kustomization.yaml"
@@ -113,7 +115,6 @@ func (s *webhookScaffolder) Scaffold() error {
 			"%s to allow webhook traffic.", policyKustomizeFilePath)
 	}
 
-	kustomizeFilePath := "config/default/kustomization.yaml"
 	err = pluginutil.UncommentCode(kustomizeFilePath, "#- ../webhook", `#`)
 	if err != nil {
 		hasWebHookUncommented, errCheck := pluginutil.HasFileContentWith(kustomizeFilePath, "- ../webhook")
@@ -164,7 +165,6 @@ func (s *webhookScaffolder) Scaffold() error {
 // Deprecated: remove it when go/v4 and/or kustomize/v2 be removed
 // validateScaffoldedProject will output a message to help users fix their scaffold
 func validateScaffoldedProject() {
-	kustomizeFilePath := "config/default/kustomization.yaml"
 	hasCertManagerPatch, _ := pluginutil.HasFileContentWith(kustomizeFilePath,
 		"crdkustomizecainjectionpatch")
 

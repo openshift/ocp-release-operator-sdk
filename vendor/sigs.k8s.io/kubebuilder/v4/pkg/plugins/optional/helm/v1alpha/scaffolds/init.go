@@ -118,13 +118,13 @@ func (s *initScaffolder) Scaffold() error {
 	}
 
 	if err = scaffold.Execute(buildScaffold...); err != nil {
-		return fmt.Errorf("error scaffolding helm-chart manifests: %v", err)
+		return fmt.Errorf("error scaffolding helm-chart manifests: %w", err)
 	}
 
 	// Copy relevant files from config/ to dist/chart/templates/
 	err = s.copyConfigFiles()
 	if err != nil {
-		return fmt.Errorf("failed to copy manifests from config to dist/chart/templates/: %v", err)
+		return fmt.Errorf("failed to copy manifests from config to dist/chart/templates/: %w", err)
 	}
 
 	return nil
@@ -170,7 +170,7 @@ func (s *initScaffolder) extractWebhooksFromGeneratedFiles() (mutatingWebhooks [
 	content, err := os.ReadFile(manifestFile)
 	if err != nil {
 		return nil, nil,
-			fmt.Errorf("failed to read %s: %w", manifestFile, err)
+			fmt.Errorf("failed to read %q: %w", manifestFile, err)
 	}
 
 	docs := strings.Split(string(content), "---")
@@ -214,9 +214,10 @@ func (s *initScaffolder) extractWebhooksFromGeneratedFiles() (mutatingWebhooks [
 				Rules:                   w.Rules,
 			}
 
-			if webhookConfig.Kind == "MutatingWebhookConfiguration" {
+			switch webhookConfig.Kind {
+			case "MutatingWebhookConfiguration":
 				mutatingWebhooks = append(mutatingWebhooks, webhook)
-			} else if webhookConfig.Kind == "ValidatingWebhookConfiguration" {
+			case "ValidatingWebhookConfiguration":
 				validatingWebhooks = append(validatingWebhooks, webhook)
 			}
 		}
@@ -246,7 +247,7 @@ func (s *initScaffolder) copyConfigFiles() error {
 
 		files, err := filepath.Glob(filepath.Join(dir.SrcDir, "*.yaml"))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed finding files in %q: %w", dir.SrcDir, err)
 		}
 
 		// Skip processing if the directory is empty (no matching files)
@@ -256,7 +257,7 @@ func (s *initScaffolder) copyConfigFiles() error {
 
 		// Ensure destination directory exists
 		if err := os.MkdirAll(dir.DestDir, os.ModePerm); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dir.DestDir, err)
+			return fmt.Errorf("failed to create directory %q: %w", dir.DestDir, err)
 		}
 
 		for _, srcFile := range files {
@@ -291,13 +292,13 @@ func (s *initScaffolder) copyConfigFiles() error {
 func copyFileWithHelmLogic(srcFile, destFile, subDir, projectName string, hasConvertionalWebhook bool) error {
 	if _, err := os.Stat(srcFile); os.IsNotExist(err) {
 		log.Printf("Source file does not exist: %s", srcFile)
-		return err
+		return fmt.Errorf("source file does not exist %q: %w", srcFile, err)
 	}
 
 	content, err := os.ReadFile(srcFile)
 	if err != nil {
 		log.Printf("Error reading source file: %s", srcFile)
-		return err
+		return fmt.Errorf("failed to read file %q: %w", srcFile, err)
 	}
 
 	contentStr := string(content)
@@ -310,16 +311,16 @@ func copyFileWithHelmLogic(srcFile, destFile, subDir, projectName string, hasCon
 
 	// Apply RBAC-specific replacements
 	if subDir == "rbac" {
-		contentStr = strings.Replace(contentStr,
+		contentStr = strings.ReplaceAll(contentStr,
 			"name: controller-manager",
-			"name: {{ .Values.controllerManager.serviceAccountName }}", -1)
+			"name: {{ .Values.controllerManager.serviceAccountName }}")
 		contentStr = strings.Replace(contentStr,
 			"name: metrics-reader",
 			fmt.Sprintf("name: %s-metrics-reader", projectName), 1)
 
-		contentStr = strings.Replace(contentStr,
+		contentStr = strings.ReplaceAll(contentStr,
 			"name: metrics-auth-role",
-			fmt.Sprintf("name: %s-metrics-auth-role", projectName), -1)
+			fmt.Sprintf("name: %s-metrics-auth-role", projectName))
 		contentStr = strings.Replace(contentStr,
 			"name: metrics-auth-rolebinding",
 			fmt.Sprintf("name: %s-metrics-auth-rolebinding", projectName), 1)
@@ -337,15 +338,15 @@ func copyFileWithHelmLogic(srcFile, destFile, subDir, projectName string, hasCon
     {{- end }}
   {{- end }}`, 1)
 		}
-		contentStr = strings.Replace(contentStr,
+		contentStr = strings.ReplaceAll(contentStr,
 			"name: leader-election-role",
-			fmt.Sprintf("name: %s-leader-election-role", projectName), -1)
+			fmt.Sprintf("name: %s-leader-election-role", projectName))
 		contentStr = strings.Replace(contentStr,
 			"name: leader-election-rolebinding",
 			fmt.Sprintf("name: %s-leader-election-rolebinding", projectName), 1)
-		contentStr = strings.Replace(contentStr,
+		contentStr = strings.ReplaceAll(contentStr,
 			"name: manager-role",
-			fmt.Sprintf("name: %s-manager-role", projectName), -1)
+			fmt.Sprintf("name: %s-manager-role", projectName))
 		contentStr = strings.Replace(contentStr,
 			"name: manager-rolebinding",
 			fmt.Sprintf("name: %s-manager-rolebinding", projectName), 1)
@@ -423,6 +424,9 @@ func copyFileWithHelmLogic(srcFile, destFile, subDir, projectName string, hasCon
   labels:
     {{- include "chart.labels" . | nindent 4 }}`, 1)
 
+	// Append project name to webhook service name
+	contentStr = strings.ReplaceAll(contentStr, "name: webhook-service", "name: "+projectName+"-webhook-service")
+
 	var wrappedContent string
 	if isMetricRBACFile(subDir, srcFile) {
 		wrappedContent = fmt.Sprintf(
@@ -433,13 +437,13 @@ func copyFileWithHelmLogic(srcFile, destFile, subDir, projectName string, hasCon
 	}
 
 	if err = os.MkdirAll(filepath.Dir(destFile), os.ModePerm); err != nil {
-		return err
+		return fmt.Errorf("error creating directory %q: %w", filepath.Dir(destFile), err)
 	}
 
 	err = os.WriteFile(destFile, []byte(wrappedContent), os.ModePerm)
 	if err != nil {
 		log.Printf("Error writing destination file: %s", destFile)
-		return err
+		return fmt.Errorf("error writing destination file %q: %w", destFile, err)
 	}
 
 	log.Printf("Successfully copied %s to %s", srcFile, destFile)
@@ -462,7 +466,7 @@ func getCRDPatchContent(kind, group string) (string, bool, error) {
 	groupKindPattern := fmt.Sprintf("config/crd/patches/webhook_*%s*%s*.yaml", group, kind)
 	patchFiles, err := filepath.Glob(groupKindPattern)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to list patches: %v", err)
+		return "", false, fmt.Errorf("failed to list patches: %w", err)
 	}
 
 	// If no group-specific patch found, search for patches that contain only "webhook" and the kind
@@ -470,7 +474,7 @@ func getCRDPatchContent(kind, group string) (string, bool, error) {
 		kindOnlyPattern := fmt.Sprintf("config/crd/patches/webhook_*%s*.yaml", kind)
 		patchFiles, err = filepath.Glob(kindOnlyPattern)
 		if err != nil {
-			return "", false, fmt.Errorf("failed to list patches: %v", err)
+			return "", false, fmt.Errorf("failed to list patches: %w", err)
 		}
 	}
 
@@ -478,7 +482,7 @@ func getCRDPatchContent(kind, group string) (string, bool, error) {
 	if len(patchFiles) > 0 {
 		patchContent, err := os.ReadFile(patchFiles[0])
 		if err != nil {
-			return "", false, fmt.Errorf("failed to read patch file %s: %v", patchFiles[0], err)
+			return "", false, fmt.Errorf("failed to read patch file %q: %w", patchFiles[0], err)
 		}
 		return string(patchContent), true, nil
 	}
