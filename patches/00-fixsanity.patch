@@ -9,15 +9,6 @@ diff -up ./Makefile.fixsanity ./Makefile
  	$(GO) fmt ./...
  	make setup-lint
  	$(TOOLS_DIR)/golangci-lint run --fix --build-tags $(GO_BUILD_TAGS)
-@@ -86,7 +85,7 @@ install: ## Install operator-sdk and helm-operator.
- 		echo "Error: GOBIN is not set"; \
- 		exit 1; \
- 	fi
--	$(GO) install $(GO_BUILD_ARGS) ./cmd/{operator-sdk,helm-operator}
-+	$(GO) install $(GO_BUILD_ARGS) -tags=$(GO_BUILD_TAGS) ./cmd/{operator-sdk,helm-operator}
-
- .PHONY: build
- build: ## Build operator-sdk and helm-operator.
 @@ -149,14 +148,10 @@ test-all: test-static test-e2e ## Run all tests
  test-static: test-sanity test-unit test-docs ## Run all non-cluster-based tests
 
