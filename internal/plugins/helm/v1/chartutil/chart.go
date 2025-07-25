@@ -190,9 +190,38 @@ func fetchChartDependencies(chartPath string) error {
 		RepositoryConfig: settings.RepositoryConfig,
 		RepositoryCache:  settings.RepositoryCache,
 	}
+	// CVE-2025-53547: Ensure Chart.lock is not a symlink before dependency build to prevent code injection
+	if err := validateForSymlink(chartPath); err != nil {
+		return err
+	}
+
 	if err := man.Build(); err != nil {
 		fmt.Println(out.String())
 		return err
+	}
+	return nil
+}
+
+// validateForSymlink checks if Chart.lock is a symbolic link to prevent CVE-2025-53547.
+//
+// Reference: https://github.com/helm/helm/security/advisories/GHSA-557j-xg8c-q2mm
+//
+// Note: The upstream fix requires a higher Go version than is currently available
+// downstream. Therefore, we are using this wrapper to avoid upgrading Helm or Go.
+func validateForSymlink(chartPath string) error {
+	dest := filepath.Join(chartPath, "Chart.lock")
+
+	info, err := os.Lstat(dest)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error getting info for %q: %w", dest, err)
+	} else if err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			link, err := os.Readlink(dest)
+			if err != nil {
+				return fmt.Errorf("error reading symlink for %q: %w", dest, err)
+			}
+			return fmt.Errorf("the Chart.lock file is a symlink to %q. This could lead to code injection (CVE-2025-53547)", link)
+		}
 	}
 	return nil
 }
