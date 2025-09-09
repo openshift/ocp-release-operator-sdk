@@ -214,6 +214,17 @@ func runTestCase(t *testing.T, testDir string, tc createChartTestCase) {
 // This validates the CVE-2025-53547 mitigation implemented in validateForSymlink function.
 // Reference: https://github.com/helm/helm/security/advisories/GHSA-557j-xg8c-q2mm
 func TestCVE2025_53547_Protection(t *testing.T) {
+	// Set up test server like in TestChart
+	srv, err := repotest.NewTempServerWithCleanup(t, "testdata/*.tgz")
+	if err != nil {
+		t.Fatalf("Failed to create new temp server: %s", err)
+	}
+	defer srv.Stop()
+
+	if err := srv.LinkIndices(); err != nil {
+		t.Fatalf("Failed to link server indices: %s", err)
+	}
+
 	tests := []struct {
 		name                  string
 		setupAfterScaffolding func(string) error // Setup function called after initial scaffolding
@@ -265,6 +276,16 @@ func TestCVE2025_53547_Protection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Set up Helm environment like in runTestCase
+			os.Setenv("XDG_CONFIG_HOME", filepath.Join(srv.Root(), ".config"))
+			os.Setenv("XDG_CACHE_HOME", filepath.Join(srv.Root(), ".cache"))
+			os.Setenv("HELM_REPOSITORY_CONFIG", filepath.Join(srv.Root(), "repositories.yaml"))
+			os.Setenv("HELM_REPOSITORY_CACHE", filepath.Join(srv.Root()))
+			defer os.Unsetenv("XDG_CONFIG_HOME")
+			defer os.Unsetenv("XDG_CACHE_HOME")
+			defer os.Unsetenv("HELM_REPOSITORY_CONFIG")
+			defer os.Unsetenv("HELM_REPOSITORY_CACHE")
+
 			// Create temporary directories
 			tmpProjectDir, err := os.MkdirTemp("", "test-project-cve")
 			assert.NoError(t, err)
@@ -274,18 +295,18 @@ func TestCVE2025_53547_Protection(t *testing.T) {
 			assert.NoError(t, err)
 			defer os.RemoveAll(tmpChartDir)
 
-			// Step 1: Create chart with dependencies to generate Chart.lock
-			chartYaml := `apiVersion: v2
+			// Step 1: Create chart with dependencies using test server
+			chartYaml := fmt.Sprintf(`apiVersion: v2
 name: test-chart
 version: 1.0.0
 appVersion: 1.0.0
 description: Test chart for CVE-2025-53547 testing
 type: application
 dependencies:
-  - name: common
-    version: "2.0.0"
-    repository: "oci://registry-1.docker.io/bitnamicharts"
-`
+  - name: test-chart
+    version: "1.2.3"
+    repository: "%s"
+`, srv.URL())
 			err = os.WriteFile(filepath.Join(tmpChartDir, "Chart.yaml"), []byte(chartYaml), 0644)
 			assert.NoError(t, err)
 
