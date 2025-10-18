@@ -1,4 +1,4 @@
-FROM openshift/origin-release:golang-1.13
+FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.24-openshift-4.21
 
 WORKDIR /go/src/github.com/operator-framework/operator-sdk
 ENV GOPATH=/go \

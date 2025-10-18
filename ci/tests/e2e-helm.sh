@@ -165,10 +165,12 @@ kubectl delete clusterrolebinding memcached-operator-metrics-reader-rolebinding
 
 # remove_operator
 echo "running make undeploy"
+# Hack: Adding `--ignore-not-found` to avoid errors when some kustomized resources are deleted with namespace deletion
+sed -i '/kubectl delete/ s/$/ --ignore-not-found/' Makefile
 make undeploy
 
 # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
-if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
+if ! timeout 120s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
 then
     echo FAIL: memcached-operator Deployment did not get garbage collected
     kubectl describe pods
