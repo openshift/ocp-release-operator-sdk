@@ -68,7 +68,7 @@ type manager struct {
 	releaseName string
 	namespace   string
 
-	values map[string]interface{}
+	values map[string]any
 	status *types.HelmAppStatus
 
 	isInstalled       bool
@@ -157,7 +157,7 @@ func (m manager) getDeployedRelease() (*rpb.Release, error) {
 }
 
 func (m manager) getCandidateRelease(namespace, name string, chart *cpb.Chart,
-	values map[string]interface{}) (*rpb.Release, error) {
+	values map[string]any) (*rpb.Release, error) {
 	upgrade := action.NewUpgrade(m.actionConfig)
 	upgrade.Namespace = namespace
 	upgrade.DryRun = true
@@ -374,7 +374,7 @@ func createJSONMergePatch(existingJSON, expectedJSON []byte) ([]byte, error) {
 	// All "add" operations without a value (null) can be ignored
 	patchOps := make([]jsonpatch.JsonPatchOperation, 0)
 	for _, op := range ops {
-		if op.Operation != "remove" && !(op.Operation == "add" && op.Value == nil) {
+		if op.Operation != "remove" && (op.Operation != "add" || op.Value != nil) {
 			patchOps = append(patchOps, op)
 		}
 	}

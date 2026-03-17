@@ -22,7 +22,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/operator-framework/api/pkg/lib/version"
-	"github.com/operator-framework/api/pkg/manifests"
 	apimanifests "github.com/operator-framework/api/pkg/manifests"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/operator-framework/operator-sdk/internal/olm/client"
@@ -72,10 +71,10 @@ var _ = Describe("Registry", func() {
 				newRegistryService("pkgName", "testns"),
 			).Build()
 			rr := RegistryResources{
-				Pkg: &manifests.PackageManifest{
+				Pkg: &apimanifests.PackageManifest{
 					PackageName: "pkgName",
-					Channels: []manifests.PackageChannel{
-						manifests.PackageChannel{
+					Channels: []apimanifests.PackageChannel{
+						apimanifests.PackageChannel{
 							Name: "pkgChannelTest",
 						},
 					},
@@ -85,10 +84,10 @@ var _ = Describe("Registry", func() {
 						Name: "testbundle",
 						Objects: []*unstructured.Unstructured{
 							{
-								Object: map[string]interface{}{"val1": "val1"},
+								Object: map[string]any{"val1": "val1"},
 							},
 							{
-								Object: map[string]interface{}{"val2": "va2"},
+								Object: map[string]any{"val2": "va2"},
 							},
 						},
 						CSV: &v1alpha1.ClusterServiceVersion{
@@ -133,10 +132,10 @@ var _ = Describe("Registry", func() {
 				newRegistryService("pkgName", testns),
 			).Build()
 			rr = RegistryResources{
-				Pkg: &manifests.PackageManifest{
+				Pkg: &apimanifests.PackageManifest{
 					PackageName: "pkgName",
-					Channels: []manifests.PackageChannel{
-						manifests.PackageChannel{
+					Channels: []apimanifests.PackageChannel{
+						apimanifests.PackageChannel{
 							Name: "pkgChannelTest",
 						},
 					},
@@ -146,10 +145,10 @@ var _ = Describe("Registry", func() {
 						Name: "testbundle",
 						Objects: []*unstructured.Unstructured{
 							{
-								Object: map[string]interface{}{"val1": "val1"},
+								Object: map[string]any{"val1": "val1"},
 							},
 							{
-								Object: map[string]interface{}{"val2": "va2"},
+								Object: map[string]any{"val2": "va2"},
 							},
 						},
 						CSV: &v1alpha1.ClusterServiceVersion{
@@ -213,10 +212,10 @@ var _ = Describe("Registry", func() {
 				newRegistryService("pkgName", testns),
 			).Build()
 			rr = RegistryResources{
-				Pkg: &manifests.PackageManifest{
+				Pkg: &apimanifests.PackageManifest{
 					PackageName: "pkgName",
-					Channels: []manifests.PackageChannel{
-						manifests.PackageChannel{
+					Channels: []apimanifests.PackageChannel{
+						apimanifests.PackageChannel{
 							Name: "pkgChannelTest",
 						},
 					},
@@ -227,10 +226,10 @@ var _ = Describe("Registry", func() {
 						Name:    "testbundle",
 						Objects: []*unstructured.Unstructured{
 							{
-								Object: map[string]interface{}{"val1": "val1"},
+								Object: map[string]any{"val1": "val1"},
 							},
 							{
-								Object: map[string]interface{}{"val2": "va2"},
+								Object: map[string]any{"val2": "va2"},
 							},
 						},
 						CSV: &v1alpha1.ClusterServiceVersion{
@@ -322,10 +321,10 @@ var _ = Describe("Registry", func() {
 		})
 
 		It("should return true if it fails in the next iteration", func() {
-			binarydata, _ := makeObjectBinaryData(&manifests.PackageManifest{
+			binarydata, _ := makeObjectBinaryData(&apimanifests.PackageManifest{
 				PackageName: "pkgName",
-				Channels: []manifests.PackageChannel{
-					manifests.PackageChannel{
+				Channels: []apimanifests.PackageChannel{
+					apimanifests.PackageChannel{
 						Name: "pkgChannelTest",
 					},
 				},

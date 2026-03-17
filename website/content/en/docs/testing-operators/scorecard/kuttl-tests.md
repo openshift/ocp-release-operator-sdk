@@ -159,7 +159,7 @@ have to provide RBAC access for reading kubernetes events to the
 service account used to run kuttl tests.
 
 [client_go]: https://github.com/kubernetes/client-go
-[kuttl]: https://kuttl.dev
-[kuttl_yaml]: https://kuttl.dev/docs/cli.html#examples
-[kuttl_tests]: https://kuttl.dev/docs/kuttl-test-harness.html#writing-your-first-test
-[kuttl_configuration]:https://kuttl.dev/docs/testing/reference.html#testsuite
+[kuttl]: https://github.com/kudobuilder/kuttl/
+[kuttl_yaml]: https://github.com/kudobuilder/kuttl/blob/main/docs/cli.md#examples
+[kuttl_tests]: https://github.com/kudobuilder/kuttl/blob/main/docs/kuttl-test-harness.md#writing-your-first-test
+[kuttl_configuration]:https://github.com/kudobuilder/kuttl/blob/main/docs/testing/reference.md#testsuite
