@@ -2,7 +2,7 @@ FROM osdk-builder as builder
 
 RUN ci/tests/scaffolding/scorecard-proxy-scaffold.sh
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi10/ubi-minimal:latest
 
 ENV PROXY=/usr/local/bin/scorecard-proxy \
     USER_UID=1001 \
