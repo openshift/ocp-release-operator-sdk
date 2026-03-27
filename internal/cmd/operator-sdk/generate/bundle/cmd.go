@@ -146,8 +146,8 @@ func (c *bundleCmd) addFlagsTo(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.useImageDigests, "use-image-digests", false, "Use SHA Digest for images")
 }
 
-func (c bundleCmd) println(a ...interface{}) {
-	if !(c.quiet || c.stdout) {
+func (c bundleCmd) println(a ...any) {
+	if !c.quiet && !c.stdout {
 		fmt.Println(a...)
 	}
 }
