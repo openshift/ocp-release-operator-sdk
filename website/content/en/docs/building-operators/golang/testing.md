@@ -53,7 +53,7 @@ To implement application-specific tests, the SDK's test harness, [scorecard][sco
 [writing-custom-scorecard-tests]: /docs/testing-operators/scorecard/custom-tests
 [scorecard]: /docs/testing-operators/scorecard/
 [gomega]: https://onsi.github.io/gomega/
-[kuttl]: https://kuttl.dev/
+[kuttl]: https://github.com/kudobuilder/kuttl/
 [sample]: https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/memcached-operator
 [molecule]: https://molecule.readthedocs.io/
 [molecule-tests]: /docs/building-operators/ansible/testing-guide
