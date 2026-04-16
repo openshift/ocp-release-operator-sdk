@@ -2,7 +2,7 @@ FROM osdk-builder as builder
 
 RUN ci/tests/scaffolding/e2e-go-scaffold.sh
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi10/ubi-minimal:latest
 
 ENV OPERATOR=/usr/local/bin/memcached-operator \
     USER_UID=1001 \

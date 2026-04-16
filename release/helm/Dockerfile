@@ -1,14 +1,15 @@
-FROM registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.25-openshift-4.22 AS builder
+FROM registry.redhat.io/ubi10/go-toolset:10.1 AS builder
 
 ENV GO111MODULE=on \
     GOFLAGS=-mod=vendor
 
 # we need to patch the Makefile prior to building
+USER root
 COPY . /go/src/github.com/operator-framework/operator-sdk
 RUN cd /go/src/github.com/operator-framework/operator-sdk \
  && make -f ci/prow.Makefile patch build
 
-FROM registry.ci.openshift.org/ocp/4.22:base-rhel9
+FROM registry.access.redhat.com/ubi10/ubi-minimal:10.1
 
 ENV HOME=/opt/helm \
     USER_NAME=helm \
