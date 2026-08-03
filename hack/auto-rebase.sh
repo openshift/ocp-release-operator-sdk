@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+#
+# Periodic / CI entrypoint for rebasing openshift/ocp-release-operator-sdk onto
+# a newer upstream Operator SDK release tag (OAPE-829).
+#
+# Uses ./UPSTREAM-MERGE.sh for the merge. Opens a PR; does not auto-merge.
+#
+# Environment:
+#   FORCE_TAG              Optional. Rebase this tag instead of scanning for newest.
+#   REBASE_BRANCH          Downstream branch to rebase onto (default: main).
+#   UPSTREAM_REMOTE        Remote name for upstream SDK (default: upstream).
+#   ORIGIN_REMOTE          Remote name to push PR branch (default: origin).
+#   DEST_ORG_REPO          GitHub org/repo for PRs (default: openshift/ocp-release-operator-sdk).
+#   GITHUB_TOKEN           Token for push + gh pr create (minted by the periodic job).
+#   DRY_RUN                If set to 1, only report what would happen (no merge/push/PR).
+#   SKIP_PUSH              If set to 1, run merge + patch gate but do not push/PR.
+#   SKIP_BUILD             If set to 1, only run `make -f ci/prow.Makefile patch`.
+#   GIT_AUTHOR_NAME        Git identity for commits (default: openshift-app-platform-shift-bot).
+#   GIT_AUTHOR_EMAIL       Git identity email (default: 267347085+openshift-app-platform-shift-bot@users.noreply.github.com).
+#
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$REPO_ROOT"
+
+REBASE_BRANCH=${REBASE_BRANCH:-main}
+UPSTREAM_REMOTE=${UPSTREAM_REMOTE:-upstream}
+ORIGIN_REMOTE=${ORIGIN_REMOTE:-origin}
+DEST_ORG_REPO=${DEST_ORG_REPO:-openshift/ocp-release-operator-sdk}
+UPSTREAM_URL=${UPSTREAM_URL:-https://github.com/operator-framework/operator-sdk.git}
+ORIGIN_URL=${ORIGIN_URL:-https://github.com/${DEST_ORG_REPO}.git}
+DRY_RUN=${DRY_RUN:-0}
+SKIP_PUSH=${SKIP_PUSH:-0}
+SKIP_BUILD=${SKIP_BUILD:-0}
+GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
+GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@users.noreply.github.com}
+
+log() { printf '==> %s\n' "$*"; }
+die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+# Compare semver tags like v1.42.3 (pre-releases sort lower than releases).
+version_gt() {
+  local a=${1#v} b=${2#v}
+  [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)" == "$a" && "$a" != "$b" ]]
+}
+
+ensure_remote() {
+  local name=$1 url=$2
+  if git remote get-url "$name" >/dev/null 2>&1; then
+    git remote set-url "$name" "$url"
+  else
+    git remote add "$name" "$url"
+  fi
+}
+
+load_github_token() {
+  [[ -n "${GITHUB_TOKEN:-}" ]]
+}
+
+configure_git_identity() {
+  git config user.name "$GIT_AUTHOR_NAME"
+  git config user.email "$GIT_AUTHOR_EMAIL"
+}
+
+configure_origin_auth() {
+  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    return 0
+  fi
+  # Prefer HTTPS with embedded token for non-interactive push.
+  git remote set-url "$ORIGIN_REMOTE" "https://x-access-token:${GITHUB_TOKEN}@github.com/${DEST_ORG_REPO}.git"
+}
+
+ensure_gh() {
+  if command -v gh >/dev/null 2>&1; then
+    return 0
+  fi
+  local gh_version=2.62.0
+  local tarball="gh_${gh_version}_linux_amd64.tar.gz"
+  log "Installing gh ${gh_version}"
+  curl -sL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" -o "/tmp/${tarball}"
+  tar -C /tmp -xzf "/tmp/${tarball}"
+  install -m 0755 "/tmp/gh_${gh_version}_linux_amd64/bin/gh" /usr/local/bin/gh || \
+    install -m 0755 "/tmp/gh_${gh_version}_linux_amd64/bin/gh" "${HOME}/bin/gh"
+  export PATH="${HOME}/bin:${PATH}"
+  command -v gh >/dev/null 2>&1 || die "gh CLI is required but could not be installed"
+}
+
+current_pin() {
+  local pin
+  pin=$(tr -d '[:space:]' <UPSTREAM-VERSION)
+  [[ -n "$pin" ]] || die "UPSTREAM-VERSION is empty"
+  printf '%s\n' "$pin"
+}
+
+newest_upstream_tag() {
+  local pin=$1 tag newest=""
+  while IFS= read -r tag; do
+    # Release tags only: vMAJOR.MINOR.PATCH
+    [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+    if version_gt "$tag" "$pin"; then
+      if [[ -z "$newest" ]] || version_gt "$tag" "$newest"; then
+        newest=$tag
+      fi
+    fi
+  done < <(git tag -l 'v*' --sort=-v:refname)
+  printf '%s\n' "$newest"
+}
+
+branch_exists_remote() {
+  local branch=$1
+  git ls-remote --exit-code --heads "$ORIGIN_REMOTE" "$branch" >/dev/null 2>&1
+}
+
+open_pr_exists() {
+  local tag=$1
+  command -v gh >/dev/null 2>&1 || return 1
+  [[ -n "${GITHUB_TOKEN:-}" ]] || return 1
+  gh pr list --repo "$DEST_ORG_REPO" --state open --search "$tag rebase" --json title,headRefName \
+    --jq ".[] | select(.headRefName==\"${tag}-rebase-${REBASE_BRANCH}\" or (.title | test(\"${tag}\"))) | .headRefName" \
+    | grep -q .
+}
+
+run_patch_gate() {
+  local failed=0
+  log "Running patch gate"
+  if ! make -f ci/prow.Makefile patch; then
+    log "WARNING: make -f ci/prow.Makefile patch failed"
+    failed=1
+  elif [[ "$SKIP_BUILD" != "1" ]]; then
+    if ! make -f ci/prow.Makefile build; then
+      log "WARNING: make -f ci/prow.Makefile build failed"
+      failed=1
+    fi
+  fi
+  # Restore tree after patch/build so we can push the rebase commits cleanly.
+  git checkout -- . >/dev/null 2>&1 || true
+  git clean -fd >/dev/null 2>&1 || true
+  return "$failed"
+}
+
+create_pr() {
+  local tag=$1 branch=$2 patch_ok=$3 old_pin=$4
+  local title body
+  title="Rebase to ${tag}"
+  body=$(cat <<EOF
+## Summary
+Automated rebase of downstream Helm Operator midstream onto upstream Operator SDK \`${tag}\` via \`./UPSTREAM-MERGE.sh\` (OAPE-829).
+
+- Previous upstream pin: \`${old_pin}\`
+- Patch gate: $([[ "$patch_ok" == "1" ]] && echo "passed \`make -f ci/prow.Makefile patch/build\`" || echo "**failed** — please fix/recreate patches before merge").
+
+## Manual follow-up
+- Review conflict fallout (script prefers upstream on conflicts).
+- Add any needed \`UPSTREAM: <carry>:\` commits.
+- Do **not** auto-merge until patches and CI are green.
+
+## Test plan
+- [ ] \`make -f ci/prow.Makefile patch build\`
+- [ ] Presubmit unit / sanity / e2e-helm
+EOF
+)
+  # WIP label may not exist in the repo; fall back to unlabeled PR.
+  if [[ "$patch_ok" != "1" ]]; then
+    gh pr create --repo "$DEST_ORG_REPO" --base "$REBASE_BRANCH" --head "$branch" \
+      --title "$title" --body "$body" --label "do-not-merge/work-in-progress" \
+      || gh pr create --repo "$DEST_ORG_REPO" --base "$REBASE_BRANCH" --head "$branch" \
+        --title "$title" --body "$body"
+  else
+    gh pr create --repo "$DEST_ORG_REPO" --base "$REBASE_BRANCH" --head "$branch" \
+      --title "$title" --body "$body"
+  fi
+}
+
+main() {
+  local pin tag branch patch_ok=1
+
+  ensure_remote "$UPSTREAM_REMOTE" "$UPSTREAM_URL"
+  ensure_remote "$ORIGIN_REMOTE" "$ORIGIN_URL"
+
+  log "Fetching upstream tags and origin"
+  git fetch -t "$UPSTREAM_REMOTE"
+  git fetch "$ORIGIN_REMOTE" "$REBASE_BRANCH" || git fetch "$ORIGIN_REMOTE"
+
+  pin=$(current_pin)
+  if [[ -n "${FORCE_TAG:-}" ]]; then
+    tag=$FORCE_TAG
+    log "FORCE_TAG set: ${tag}"
+  else
+    tag=$(newest_upstream_tag "$pin")
+  fi
+
+  if [[ -z "$tag" ]]; then
+    log "No newer upstream release tag than ${pin}; nothing to do"
+    exit 0
+  fi
+
+  if ! version_gt "$tag" "$pin" && [[ -z "${FORCE_TAG:-}" ]]; then
+    log "Selected tag ${tag} is not newer than pin ${pin}; nothing to do"
+    exit 0
+  fi
+
+  branch="${tag}-rebase-${REBASE_BRANCH}"
+  log "Candidate rebase: ${pin} -> ${tag} (branch ${branch})"
+
+  if branch_exists_remote "$branch"; then
+    log "Remote branch ${branch} already exists; skipping"
+    exit 0
+  fi
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    log "DRY_RUN=1: would run ./UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
+    exit 0
+  fi
+
+  load_github_token || log "WARNING: no GITHUB_TOKEN; push/PR may fail"
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    ensure_gh
+    export GH_TOKEN="$GITHUB_TOKEN"
+    if open_pr_exists "$tag"; then
+      log "Open PR for ${tag} already exists; skipping"
+      exit 0
+    fi
+  fi
+
+  configure_git_identity
+  configure_origin_auth
+
+  # Ensure rebase target branch exists locally and tracks origin.
+  git checkout -B "$REBASE_BRANCH" "$ORIGIN_REMOTE/$REBASE_BRANCH"
+  git branch --set-upstream-to="$ORIGIN_REMOTE/$REBASE_BRANCH" "$REBASE_BRANCH"
+
+  # Drop a stale local rebase branch from a previous attempt.
+  if git show-ref --verify --quiet "refs/heads/${branch}"; then
+    git branch -D "$branch"
+  fi
+
+  log "Running UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
+  ./UPSTREAM-MERGE.sh "$tag" "$REBASE_BRANCH" "$UPSTREAM_REMOTE"
+
+  if ! run_patch_gate; then
+    patch_ok=0
+  fi
+
+  if [[ "$SKIP_PUSH" == "1" ]]; then
+    log "SKIP_PUSH=1: merge complete on ${branch}; not pushing"
+    exit 0
+  fi
+
+  [[ -n "${GITHUB_TOKEN:-}" ]] || die "GITHUB_TOKEN required to push and open PR"
+
+  log "Pushing ${branch}"
+  git push -u "$ORIGIN_REMOTE" "$branch"
+
+  log "Opening pull request"
+  create_pr "$tag" "$branch" "$patch_ok" "$pin"
+  log "Auto-rebase complete for ${tag}"
+}
+
+main "$@"

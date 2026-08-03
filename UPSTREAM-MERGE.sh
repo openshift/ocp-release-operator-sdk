@@ -27,13 +27,14 @@ if [[ -z "$version" ]]; then
 fi
 
 sdk_repo=$(git remote get-url "$upstream_remote")
-if [[ $sdk_repo != "https://github.com/operator-framework/operator-sdk.git" ]]; then
-  echo "Upstream remote url should be set to kubernetes-sigs repo."
+# Accept common URL forms for operator-framework/operator-sdk (CI may rewrite remotes).
+if [[ ! "$sdk_repo" =~ github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
+  echo "Upstream remote url should point at operator-framework/operator-sdk (got: $sdk_repo)."
   exit 1
 fi
 
 # check state of working directory
-git diff-index --quiet HEAD || { printf "!! Git status not clean, aborting !!\\n\\n%s" "$(git status)"; exit 1; }
+git diff-index --quiet HEAD || { printf "!! Git status not clean, aborting !!\n\n%s" "$(git status)"; exit 1; }
 
 # update remote, including tags (-t)
 git fetch -t "$upstream_remote"
@@ -42,10 +43,15 @@ git fetch -t "$upstream_remote"
 git checkout "$rebase_branch"
 remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u})
 if [[ $? -ne 0 ]]; then
-  echo "Your branch is not properly tracking upstream as required, aborting."
+  echo "Your branch is not properly tracking a remote as required, aborting."
   exit 1
 fi
 git merge "$remote_branch"
+# Replace a leftover local rebase branch from a prior failed attempt when running in CI.
+if git show-ref --verify --quiet "refs/heads/${version}-rebase-${rebase_branch}"; then
+  echo "Deleting existing local branch ${version}-rebase-${rebase_branch}"
+  git branch -D "${version}-rebase-${rebase_branch}"
+fi
 git checkout -b "$version"-rebase-"$rebase_branch" || { echo "Expected branch $version-rebase-$rebase_branch to not exist, delete and retry."; exit 1; }
 
 # do the merge, but don't commit so tweaks below are included in commit
@@ -123,7 +129,7 @@ git add patches/03-setversion.patch
 git diff --staged --quiet && { echo "No changed files in merge?! Aborting."; exit 1; }
 
 # make local commit
-git commit -m "Merge upstream tag $version" -m "Operator SDK $version" -m "Merge executed via ./UPSTREAM-MERGE.sh $version $upstream_remote $rebase_branch" -m "$(printf "Overwritten conflicts:\\n%s" "$unmerged_files")"
+git commit -m "Merge upstream tag $version" -m "Operator SDK $version" -m "Merge executed via ./UPSTREAM-MERGE.sh $version $rebase_branch $upstream_remote" -m "$(printf "Overwritten conflicts:\\n%s" "$unmerged_files")"
 
 # verify merge is correct
 git --no-pager log --oneline "$(git merge-base origin/"$rebase_branch" tags/"$version")"..tags/"$version"

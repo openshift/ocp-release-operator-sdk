@@ -33,6 +33,49 @@ The downstream ci files are as follows:
 
 When an upstream release is ready, you can sync down that release downstream.
 
+This midstream primarily ships the **Helm Operator** image for OpenShift
+(`release/helm/`). Upstream Operator SDK tags are merged into this repo with
+[`UPSTREAM-MERGE.sh`](./UPSTREAM-MERGE.sh). Downstream-only packaging for the
+`operator-sdk` binary was removed (OAPE-110); Ansible scaffolding comes from an
+external plugin module.
+
+### Automatic rebase (periodic)
+
+A Prow periodic (OAPE-829) runs [`hack/auto-rebase.sh`](./hack/auto-rebase.sh) on
+weekdays against `main`. That wrapper:
+
+1. Compares [`UPSTREAM-VERSION`](./UPSTREAM-VERSION) to the newest upstream
+   `v*` release tag on `operator-framework/operator-sdk`.
+2. If a newer tag exists (and no rebase branch/PR already covers it), runs
+   `./UPSTREAM-MERGE.sh <tag> main`.
+3. Verifies patches with `make -f ci/prow.Makefile patch` (and build when
+   practical).
+4. Pushes `$tag-rebase-main` and opens a PR. It does **not** auto-merge.
+
+**Still manual after the bot opens a PR:** review conflict fallout, fix or drop
+patches that no longer apply, add any needed `UPSTREAM: <carry>:` commits, and
+merge. ART image-consistency bumps for Dockerfiles are unrelated and continue
+separately.
+
+**CI credentials:** the periodic uses the OAPE team's GitHub App
+(`openshift-app-platform-shift-bot`) via the existing `test-credentials`
+secret `openshift-app-platform-shift-github-bot` — the same bot used by
+`openshift-eng/oape-ai-e2e`. The App must be **installed** on
+`openshift/ocp-release-operator-sdk` with `contents:write` and
+`pull_requests:write` permissions.
+
+Local dry-run (no push/PR):
+
+```
+DRY_RUN=1 ./hack/auto-rebase.sh
+```
+
+Force a specific tag (for testing):
+
+```
+FORCE_TAG=v1.42.3 DRY_RUN=1 ./hack/auto-rebase.sh
+```
+
 ### Verify upstream
 
 Verify you have the upstream repo as a remote:
@@ -66,7 +109,7 @@ you want. In this steps below we will sync `v1.4.1` to `main`.
 
 To build simply use the `UPSTREAM-MERGE.sh` script.
 
-`./UPSTREAM-MEGE.sh <UPSTREAM-TAG>`
+`./UPSTREAM-MERGE.sh <UPSTREAM-TAG>`
 
 Here is an example run using upstream tag `v1.4.1`
 
