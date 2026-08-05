@@ -41,8 +41,8 @@ external plugin module.
 
 ### Automatic rebase (periodic)
 
-A Prow periodic (OAPE-829) runs [`hack/auto-rebase.sh`](./hack/auto-rebase.sh) on
-weekdays against `main`. That wrapper:
+A Prow periodic (OAPE-829) runs [`hack/auto-rebase.sh`](./hack/auto-rebase.sh)
+weekly against `main`. That wrapper:
 
 1. Compares [`UPSTREAM-VERSION`](./UPSTREAM-VERSION) to the newest upstream
    `v*` release tag on `operator-framework/operator-sdk`.

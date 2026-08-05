@@ -80,7 +80,9 @@ configure_origin_auth() {
   printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" >"$cred_file"
   git config credential.helper "store --file=${cred_file}"
   git remote set-url "$ORIGIN_REMOTE" "https://github.com/${DEST_ORG_REPO}.git"
-  trap 'rm -f "$cred_file"' EXIT
+  # Expand cred_file now — it is local and will be out of scope when the trap fires.
+  # shellcheck disable=SC2064
+  trap "rm -f '${cred_file}'" EXIT
 }
 
 ensure_gh() {
@@ -227,7 +229,12 @@ main() {
     exit 0
   fi
 
-  # Beyond this point, configure remotes and git identity (not needed for dry-run).
+  # Beyond this point we mutate the tree — reject untracked files that git clean
+  # in run_patch_gate would destroy.
+  if [[ -n "$(git status --porcelain)" ]]; then
+    die "Working tree must be clean (including untracked files) before mutating"
+  fi
+
   ensure_remote "$UPSTREAM_REMOTE" "$UPSTREAM_URL"
   ensure_remote "$ORIGIN_REMOTE" "$ORIGIN_URL"
 

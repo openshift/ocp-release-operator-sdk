@@ -27,9 +27,9 @@ if [[ -z "$version" ]]; then
 fi
 
 sdk_repo=$(git remote get-url "$upstream_remote")
-# Accept common URL forms for operator-framework/operator-sdk (CI may rewrite remotes).
-if [[ ! "$sdk_repo" =~ ^((https?://)?(git@)?)github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
-  echo "Upstream remote url should point at operator-framework/operator-sdk (got: $sdk_repo)."
+# Accept HTTPS and SSH forms for operator-framework/operator-sdk (CI may rewrite remotes).
+if [[ ! "$sdk_repo" =~ ^((https://)?(git@)?)github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
+  echo "Upstream remote url should point at operator-framework/operator-sdk via HTTPS or SSH."
   exit 1
 fi
 
@@ -55,7 +55,12 @@ fi
 git checkout -b "$version"-rebase-"$rebase_branch" || { echo "Expected branch $version-rebase-$rebase_branch to not exist, delete and retry."; exit 1; }
 
 # do the merge, but don't commit so tweaks below are included in commit
-git merge --no-commit tags/"$version"
+if ! git merge --no-commit "tags/$version"; then
+  if ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+    echo "Failed to merge tags/$version, aborting."
+    exit 1
+  fi
+fi
 
 # preserve our version of these files
 # git checkout HEAD -- OWNERS Makefile .gitignore
