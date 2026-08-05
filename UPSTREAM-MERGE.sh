@@ -28,7 +28,7 @@ fi
 
 sdk_repo=$(git remote get-url "$upstream_remote")
 # Accept common URL forms for operator-framework/operator-sdk (CI may rewrite remotes).
-if [[ ! "$sdk_repo" =~ github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
+if [[ ! "$sdk_repo" =~ ^((https?://)?(git@)?)github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
   echo "Upstream remote url should point at operator-framework/operator-sdk (got: $sdk_repo)."
   exit 1
 fi
@@ -40,13 +40,13 @@ git diff-index --quiet HEAD || { printf "!! Git status not clean, aborting !!\n\
 git fetch -t "$upstream_remote"
 
 # do work on the correct branch
-git checkout "$rebase_branch"
+git checkout "$rebase_branch" || { echo "Failed to checkout $rebase_branch, aborting."; exit 1; }
 remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u})
 if [[ $? -ne 0 ]]; then
   echo "Your branch is not properly tracking a remote as required, aborting."
   exit 1
 fi
-git merge "$remote_branch"
+git merge "$remote_branch" || { echo "Failed to merge $remote_branch, aborting."; exit 1; }
 # Replace a leftover local rebase branch from a prior failed attempt when running in CI.
 if git show-ref --verify --quiet "refs/heads/${version}-rebase-${rebase_branch}"; then
   echo "Deleting existing local branch ${version}-rebase-${rebase_branch}"

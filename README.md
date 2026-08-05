@@ -66,13 +66,13 @@ secret `openshift-app-platform-shift-github-bot` — the same bot used by
 
 Local dry-run (no push/PR):
 
-```
+```bash
 DRY_RUN=1 ./hack/auto-rebase.sh
 ```
 
 Force a specific tag (for testing):
 
-```
+```bash
 FORCE_TAG=v1.42.3 DRY_RUN=1 ./hack/auto-rebase.sh
 ```
 

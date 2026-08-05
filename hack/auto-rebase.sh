@@ -9,7 +9,9 @@
 #   FORCE_TAG              Optional. Rebase this tag instead of scanning for newest.
 #   REBASE_BRANCH          Downstream branch to rebase onto (default: main).
 #   UPSTREAM_REMOTE        Remote name for upstream SDK (default: upstream).
+#   UPSTREAM_URL           URL for the upstream remote (default: https://github.com/operator-framework/operator-sdk.git).
 #   ORIGIN_REMOTE          Remote name to push PR branch (default: origin).
+#   ORIGIN_URL             URL for the origin remote (default: https://github.com/${DEST_ORG_REPO}.git).
 #   DEST_ORG_REPO          GitHub org/repo for PRs (default: openshift/ocp-release-operator-sdk).
 #   GITHUB_TOKEN           Token for push + gh pr create (minted by the periodic job).
 #   DRY_RUN                If set to 1, only report what would happen (no merge/push/PR).
@@ -38,7 +40,8 @@ GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-# Compare semver tags like v1.42.3 (pre-releases sort lower than releases).
+# Compare release-only semver tags (vMAJOR.MINOR.PATCH). sort -V does not
+# guarantee correct ordering for pre-release suffixes.
 version_gt() {
   local a=${1#v} b=${2#v}
   [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)" == "$a" && "$a" != "$b" ]]
@@ -47,7 +50,12 @@ version_gt() {
 ensure_remote() {
   local name=$1 url=$2
   if git remote get-url "$name" >/dev/null 2>&1; then
-    git remote set-url "$name" "$url"
+    local current
+    current=$(git remote get-url "$name")
+    if [[ "$current" != "$url" ]]; then
+      log "Rewriting remote ${name}: ${current} -> ${url}"
+      git remote set-url "$name" "$url"
+    fi
   else
     git remote add "$name" "$url"
   fi
@@ -66,8 +74,13 @@ configure_origin_auth() {
   if [[ -z "${GITHUB_TOKEN:-}" ]]; then
     return 0
   fi
-  # Prefer HTTPS with embedded token for non-interactive push.
-  git remote set-url "$ORIGIN_REMOTE" "https://x-access-token:${GITHUB_TOKEN}@github.com/${DEST_ORG_REPO}.git"
+  local cred_file
+  cred_file=$(mktemp)
+  chmod 600 "$cred_file"
+  printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" >"$cred_file"
+  git config credential.helper "store --file=${cred_file}"
+  git remote set-url "$ORIGIN_REMOTE" "https://github.com/${DEST_ORG_REPO}.git"
+  trap 'rm -f "$cred_file"' EXIT
 }
 
 ensure_gh() {
@@ -76,11 +89,15 @@ ensure_gh() {
   fi
   local gh_version=2.62.0
   local tarball="gh_${gh_version}_linux_amd64.tar.gz"
+  local tmpdir
+  tmpdir=$(mktemp -d)
   log "Installing gh ${gh_version}"
-  curl -sL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" -o "/tmp/${tarball}"
-  tar -C /tmp -xzf "/tmp/${tarball}"
-  install -m 0755 "/tmp/gh_${gh_version}_linux_amd64/bin/gh" /usr/local/bin/gh || \
-    install -m 0755 "/tmp/gh_${gh_version}_linux_amd64/bin/gh" "${HOME}/bin/gh"
+  curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" -o "${tmpdir}/${tarball}"
+  tar -C "$tmpdir" -xzf "${tmpdir}/${tarball}"
+  mkdir -p "${HOME}/bin"
+  install -m 0755 "${tmpdir}/gh_${gh_version}_linux_amd64/bin/gh" /usr/local/bin/gh || \
+    install -m 0755 "${tmpdir}/gh_${gh_version}_linux_amd64/bin/gh" "${HOME}/bin/gh"
+  rm -rf "$tmpdir"
   export PATH="${HOME}/bin:${PATH}"
   command -v gh >/dev/null 2>&1 || die "gh CLI is required but could not be installed"
 }
@@ -116,7 +133,7 @@ open_pr_exists() {
   command -v gh >/dev/null 2>&1 || return 1
   [[ -n "${GITHUB_TOKEN:-}" ]] || return 1
   gh pr list --repo "$DEST_ORG_REPO" --state open --search "$tag rebase" --json title,headRefName \
-    --jq ".[] | select(.headRefName==\"${tag}-rebase-${REBASE_BRANCH}\" or (.title | test(\"${tag}\"))) | .headRefName" \
+    --jq ".[] | select(.headRefName==\"${tag}-rebase-${REBASE_BRANCH}\" or .title==\"Rebase to ${tag}\") | .headRefName" \
     | grep -q .
 }
 
@@ -132,9 +149,9 @@ run_patch_gate() {
       failed=1
     fi
   fi
-  # Restore tree after patch/build so we can push the rebase commits cleanly.
-  git checkout -- . >/dev/null 2>&1 || true
-  git clean -fd >/dev/null 2>&1 || true
+  log "Restoring working tree after patch gate"
+  git checkout -- . 2>&1 || true
+  git clean -fd 2>&1 || true
   return "$failed"
 }
 
@@ -174,12 +191,9 @@ EOF
 main() {
   local pin tag branch patch_ok=1
 
-  ensure_remote "$UPSTREAM_REMOTE" "$UPSTREAM_URL"
-  ensure_remote "$ORIGIN_REMOTE" "$ORIGIN_URL"
-
-  log "Fetching upstream tags and origin"
-  git fetch -t "$UPSTREAM_REMOTE"
-  git fetch "$ORIGIN_REMOTE" "$REBASE_BRANCH" || git fetch "$ORIGIN_REMOTE"
+  # Fetch upstream tags using URL directly — avoid rewriting remotes before DRY_RUN.
+  log "Fetching upstream tags"
+  git fetch -t "$UPSTREAM_URL"
 
   pin=$(current_pin)
   if [[ -n "${FORCE_TAG:-}" ]]; then
@@ -202,7 +216,8 @@ main() {
   branch="${tag}-rebase-${REBASE_BRANCH}"
   log "Candidate rebase: ${pin} -> ${tag} (branch ${branch})"
 
-  if branch_exists_remote "$branch"; then
+  # Check remote branch existence using URL directly (no remote rewrite needed).
+  if git ls-remote --exit-code --heads "$ORIGIN_URL" "$branch" >/dev/null 2>&1; then
     log "Remote branch ${branch} already exists; skipping"
     exit 0
   fi
@@ -211,6 +226,12 @@ main() {
     log "DRY_RUN=1: would run ./UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
     exit 0
   fi
+
+  # Beyond this point, configure remotes and git identity (not needed for dry-run).
+  ensure_remote "$UPSTREAM_REMOTE" "$UPSTREAM_URL"
+  ensure_remote "$ORIGIN_REMOTE" "$ORIGIN_URL"
+
+  git fetch "$ORIGIN_REMOTE" "$REBASE_BRANCH" || git fetch "$ORIGIN_REMOTE"
 
   load_github_token || log "WARNING: no GITHUB_TOKEN; push/PR may fail"
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
@@ -233,6 +254,8 @@ main() {
   if git show-ref --verify --quiet "refs/heads/${branch}"; then
     git branch -D "$branch"
   fi
+
+  trap 'log "FAILED (rc=$?) on branch $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"' ERR
 
   log "Running UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
   ./UPSTREAM-MERGE.sh "$tag" "$REBASE_BRANCH" "$UPSTREAM_REMOTE"
