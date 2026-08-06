@@ -25,7 +25,4 @@ test-e2e-helm: patch
 test-subcommand: patch
 	./ci/tests/subcommand.sh
 
-ci-images:
-	docker build -f ci/dockerfiles/builder.Dockerfile -t osdk-builder .
-
-.PHONY: patch build test-e2e-go test-e2e-helm patch test-subcommand ci-images
+.PHONY: patch build test-e2e-go test-e2e-helm patch test-subcommand

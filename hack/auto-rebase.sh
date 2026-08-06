@@ -70,19 +70,23 @@ configure_git_identity() {
   git config user.email "$GIT_AUTHOR_EMAIL"
 }
 
-configure_origin_auth() {
-  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-    return 0
-  fi
+_CRED_CONFIGURED=0
+setup_credential_helper() {
+  [[ "$_CRED_CONFIGURED" -eq 0 ]] || return 0
+  [[ -n "${GITHUB_TOKEN:-}" ]] || return 0
   local cred_file
   cred_file=$(mktemp)
   chmod 600 "$cred_file"
   printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" >"$cred_file"
   git config credential.helper "store --file=${cred_file}"
-  git remote set-url "$ORIGIN_REMOTE" "https://github.com/${DEST_ORG_REPO}.git"
-  # Expand cred_file now — it is local and will be out of scope when the trap fires.
   # shellcheck disable=SC2064
   trap "rm -f '${cred_file}'" EXIT
+  _CRED_CONFIGURED=1
+}
+
+configure_origin_auth() {
+  setup_credential_helper
+  git remote set-url "$ORIGIN_REMOTE" "$ORIGIN_URL"
 }
 
 ensure_gh() {
@@ -90,15 +94,22 @@ ensure_gh() {
     return 0
   fi
   local gh_version=2.62.0
-  local tarball="gh_${gh_version}_linux_amd64.tar.gz"
+  local arch
+  case "$(uname -m)" in
+    x86_64)  arch="amd64" ;;
+    aarch64) arch="arm64" ;;
+    *)       die "Unsupported architecture: $(uname -m)" ;;
+  esac
+  local tarball="gh_${gh_version}_linux_${arch}.tar.gz"
   local tmpdir
   tmpdir=$(mktemp -d)
-  log "Installing gh ${gh_version}"
-  curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" -o "${tmpdir}/${tarball}"
+  log "Installing gh ${gh_version} (${arch})"
+  curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" \
+    -o "${tmpdir}/${tarball}"
   tar -C "$tmpdir" -xzf "${tmpdir}/${tarball}"
   mkdir -p "${HOME}/bin"
-  install -m 0755 "${tmpdir}/gh_${gh_version}_linux_amd64/bin/gh" /usr/local/bin/gh || \
-    install -m 0755 "${tmpdir}/gh_${gh_version}_linux_amd64/bin/gh" "${HOME}/bin/gh"
+  install -m 0755 "${tmpdir}/gh_${gh_version}_linux_${arch}/bin/gh" /usr/local/bin/gh || \
+    install -m 0755 "${tmpdir}/gh_${gh_version}_linux_${arch}/bin/gh" "${HOME}/bin/gh"
   rm -rf "$tmpdir"
   export PATH="${HOME}/bin:${PATH}"
   command -v gh >/dev/null 2>&1 || die "gh CLI is required but could not be installed"
@@ -125,18 +136,43 @@ newest_upstream_tag() {
   printf '%s\n' "$newest"
 }
 
-branch_exists_remote() {
-  local branch=$1
-  git ls-remote --exit-code --heads "$ORIGIN_REMOTE" "$branch" >/dev/null 2>&1
-}
-
 open_pr_exists() {
   local tag=$1
   command -v gh >/dev/null 2>&1 || return 1
   [[ -n "${GITHUB_TOKEN:-}" ]] || return 1
-  gh pr list --repo "$DEST_ORG_REPO" --state open --search "$tag rebase" --json title,headRefName \
-    --jq ".[] | select(.headRefName==\"${tag}-rebase-${REBASE_BRANCH}\" or .title==\"Rebase to ${tag}\") | .headRefName" \
-    | grep -q .
+  local branch="${tag}-rebase-${REBASE_BRANCH}"
+  local count
+  count=$(gh pr list --repo "$DEST_ORG_REPO" --state open --head "$branch" \
+    --json headRefName --jq 'length')
+  [[ "$count" -gt 0 ]]
+}
+
+update_golang_builder() {
+  local new_go current_go
+  new_go=$(awk '/^go /{split($2, a, "."); print a[1]"."a[2]}' go.mod)
+  [[ -n "$new_go" ]] || { log "WARNING: could not parse go version from go.mod"; return 0; }
+
+  current_go=$(sed -n 's/.*golang-\([0-9]*\.[0-9]*\).*/\1/p' .ci-operator.yaml | head -1)
+  [[ -n "$current_go" ]] || { log "WARNING: could not parse golang version from .ci-operator.yaml"; return 0; }
+
+  if [[ "$new_go" == "$current_go" ]]; then
+    log "Golang version unchanged (${current_go}); no builder update needed"
+    return 0
+  fi
+
+  log "Updating golang builder: ${current_go} -> ${new_go}"
+  local escaped="${current_go//./\\.}"
+  sed -i "s/golang-${escaped}/golang-${new_go}/" .ci-operator.yaml
+
+  if [[ -f release/helm/Dockerfile ]]; then
+    sed -i "s/golang-${escaped}/golang-${new_go}/" release/helm/Dockerfile
+  fi
+
+  git add .ci-operator.yaml
+  git add release/helm/Dockerfile 2>/dev/null || true
+  if ! git diff --staged --quiet; then
+    git commit -m "UPSTREAM: <carry>: updates golang version from ${current_go} to ${new_go}"
+  fi
 }
 
 run_patch_gate() {
@@ -266,6 +302,8 @@ main() {
 
   log "Running UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
   ./UPSTREAM-MERGE.sh "$tag" "$REBASE_BRANCH" "$UPSTREAM_REMOTE"
+
+  update_golang_builder
 
   if ! run_patch_gate; then
     patch_ok=0

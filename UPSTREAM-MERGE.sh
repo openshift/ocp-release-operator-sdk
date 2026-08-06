@@ -28,8 +28,8 @@ fi
 
 sdk_repo=$(git remote get-url "$upstream_remote")
 # Accept HTTPS and SSH forms for operator-framework/operator-sdk (CI may rewrite remotes).
-if [[ ! "$sdk_repo" =~ ^((https://)?(git@)?)github\.com[:/]+operator-framework/operator-sdk(\.git)?/?$ ]]; then
-  echo "Upstream remote url should point at operator-framework/operator-sdk via HTTPS or SSH."
+if [[ ! "$sdk_repo" =~ ^((https|ssh)://)?((git@)?github\.com[:/])operator-framework/operator-sdk(\.git)?/?$ ]]; then
+  echo "Upstream remote url should point at operator-framework/operator-sdk via HTTPS or SSH (git@/https:///ssh://)."
   exit 1
 fi
 
@@ -71,33 +71,23 @@ unmerged_files=$(git diff --name-only --diff-filter=U --exit-code)
 differences=$?
 
 if [[ $differences -eq 1 ]]; then
-  unmerged_files_oneline=$(echo "$unmerged_files" | paste -s -d ' ')
-  unmerged=$(git status --porcelain $unmerged_files_oneline | sed 's/ /,/')
-
-  # both deleted => remove => DD
-  # added by us => remove => AU
-  # deleted by them => remove  => UD
-  # deleted by us => remove => DU
-  # added by them => add => UA
-  # both added => take theirs => AA
-  # both modified => take theirs => UU
-  for line in $unmerged
-  do
-      IFS=","
-      set $line
-      case $1 in
-          "DD" | "AU" | "UD" | "DU")
-          git rm -- $2
-          ;;
-          "UA")
-          git add -- $2
-          ;;
-          "AA" | "UU")
-          git checkout --theirs -- $2
-          git add -- $2
-          ;;
-      esac
-  done
+  # Resolve each unmerged file: remove deletions, take upstream on conflicts.
+  while IFS= read -r fname; do
+    [[ -n "$fname" ]] || continue
+    sts=$(git status --porcelain -- "$fname" | cut -c1-2)
+    case "$sts" in
+      DD|AU|UD|DU)
+        git rm -- "$fname"
+        ;;
+      UA)
+        git add -- "$fname"
+        ;;
+      AA|UU)
+        git checkout --theirs -- "$fname"
+        git add -- "$fname"
+        ;;
+    esac
+  done <<< "$unmerged_files"
 
   if [[ $(git diff --check) ]]; then
     echo "All conflict markers should have been taken care of, aborting."

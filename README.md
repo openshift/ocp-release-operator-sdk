@@ -48,9 +48,10 @@ weekly against `main`. That wrapper:
    `v*` release tag on `operator-framework/operator-sdk`.
 2. If a newer tag exists (and no rebase branch/PR already covers it), runs
    `./UPSTREAM-MERGE.sh <tag> main`.
-3. Verifies patches with `make -f ci/prow.Makefile patch` (and build when
-   practical).
-4. Pushes `$tag-rebase-main` and opens a PR. It does **not** auto-merge.
+3. Updates golang builder pins in `.ci-operator.yaml` and
+   `release/helm/Dockerfile` if the upstream golang version changed.
+4. Verifies patches and build with `make -f ci/prow.Makefile patch build`.
+5. Pushes `$tag-rebase-main` and opens a PR. It does **not** auto-merge.
 
 **Still manual after the bot opens a PR:** review conflict fallout, fix or drop
 patches that no longer apply, add any needed `UPSTREAM: <carry>:` commits, and
@@ -63,6 +64,8 @@ secret `openshift-app-platform-shift-github-bot` — the same bot used by
 `openshift-eng/oape-ai-e2e`. The App must be **installed** on
 `openshift/ocp-release-operator-sdk` with `contents:write` and
 `pull_requests:write` permissions.
+
+**Prerequisites:** `git`, `gh` (GitHub CLI), `make`.
 
 Local dry-run (no push/PR):
 
