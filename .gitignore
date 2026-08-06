@@ -6,6 +6,9 @@
 /dist
 **/bin/
 
+# CVE triage tool scratch output (hack/cve-triage)
+/.work/
+
 # Test artifacts
 **/testbin/
 
@@ -128,5 +131,5 @@ tags
 
 # End of https://www.toptal.com/developers/gitignore/api/go,vim,emacs,visualstudiocode
 
-# Python cache (Ansible molecule)
-test/ansible/plugins/filter/__pycache__/
+# Python cache
+**/__pycache__/
