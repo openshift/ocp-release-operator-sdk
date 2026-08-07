@@ -143,7 +143,7 @@ open_pr_exists() {
   local branch="${tag}-rebase-${REBASE_BRANCH}"
   local count
   count=$(gh pr list --repo "$DEST_ORG_REPO" --state open --head "$branch" \
-    --json headRefName --jq 'length')
+    --json headRefName --jq 'length') || die "gh pr list failed for branch ${branch}"
   [[ "$count" -gt 0 ]]
 }
 

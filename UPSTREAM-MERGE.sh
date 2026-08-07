@@ -46,7 +46,13 @@ if [[ $? -ne 0 ]]; then
   echo "Your branch is not properly tracking a remote as required, aborting."
   exit 1
 fi
-git merge "$remote_branch" || { echo "Failed to merge $remote_branch, aborting."; exit 1; }
+if ! git merge "$remote_branch"; then
+  if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+    git merge --abort || { echo "Failed to abort merge $remote_branch."; exit 1; }
+  fi
+  echo "Failed to merge $remote_branch, aborting."
+  exit 1
+fi
 # Replace a leftover local rebase branch from a prior failed attempt when running in CI.
 if git show-ref --verify --quiet "refs/heads/${version}-rebase-${rebase_branch}"; then
   echo "Deleting existing local branch ${version}-rebase-${rebase_branch}"
