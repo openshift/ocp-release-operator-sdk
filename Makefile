@@ -4,7 +4,7 @@ SHELL = /bin/bash
 # This value must be updated to the release tag of the most recent release, a change that must
 # occur in the release commit. IMAGE_VERSION will be removed once each subproject that uses this
 # version is moved to a separate repo and release process.
-export IMAGE_VERSION = v1.42.1
+export IMAGE_VERSION = v1.42.3
 # Build-time variables to inject into binaries
 export SIMPLE_VERSION = $(shell (test "$(shell git describe --tags)" = "$(shell git describe --tags --abbrev=0)" && echo $(shell git describe --tags)) || echo $(shell git describe --tags --abbrev=0)+git)
 export GIT_VERSION = $(shell git describe --dirty --tags --always)
@@ -61,7 +61,7 @@ fix: ## Fixup files in the repo.
 
 .PHONY: setup-lint
 setup-lint: ## Setup the lint
-	$(SCRIPTS_DIR)/fetch golangci-lint 2.6.2
+	$(SCRIPTS_DIR)/fetch golangci-lint 2.9.0
 
 .PHONY: lint
 lint: setup-lint ## Run the lint check
