@@ -61,12 +61,8 @@ func Add(mgr manager.Manager, options WatchOptions) error {
 	controllerName := fmt.Sprintf("%v-controller", strings.ToLower(options.GVK.Kind))
 
 	r := &HelmOperatorReconciler{
-		Client: mgr.GetClient(),
-		// HelmOperatorReconciler.EventRecorder is the old-style
-		// record.EventRecorder; migrating to the new events API
-		// (mgr.GetEventRecorder) requires changing that field's type and both
-		// call sites' Eventf signature, which is out of scope here.
-		EventRecorder:          mgr.GetEventRecorderFor(controllerName), //nolint:staticcheck
+		Client:                 mgr.GetClient(),
+		EventRecorder:          mgr.GetEventRecorder(controllerName),
 		GVK:                    options.GVK,
 		ManagerFactory:         options.ManagerFactory,
 		ReconcilePeriod:        options.ReconcilePeriod,
