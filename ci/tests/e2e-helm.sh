@@ -137,24 +137,47 @@ EOF
     kubectl logs deployment/memcached-operator-controller-manager -c manager | grep "Uninstalled release" | grep "memcached-sample"
 }
 
+# Deploy the memcached-operator built from $IMAGE and wait for it to become
+# available. Split out from the main flow so CI jobs that only need a running
+# operator (e.g. a TLS scanner step) can invoke deployment via DEPLOY_ONLY
+# without also running test_operator/undeploy below.
+deploy_operator() {
+    # Give the serviceaccount cluster role to create statefulsets
+    if oc api-versions | grep openshift; then
+        oc adm policy add-cluster-role-to-user cluster-admin -z default || :
+    fi
+
+    # deploy operator
+    echo "running make deploy"
+    make deploy IMG=$IMAGE
+
+    # wait for operator pod to run
+    if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager -n memcached-operator-system;
+    then
+        echo FAIL: for operator pod to run
+        kubectl describe pods
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
+        exit 1
+    fi
+
+    # create clusterrolebinding for metrics
+    kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding --clusterrole=memcached-operator-metrics-reader --serviceaccount=memcached-operator-system:default
+
+    # switch to the "memcached-operator-system" namespace
+    oc project memcached-operator-system
+}
+
 # use sample in testdata
 pushd $ROOTDIR/testdata/helm/memcached-operator
 ls
 
-# Give the serviceaccount cluster role to create statefulsets
-if oc api-versions | grep openshift; then
-    oc adm policy add-cluster-role-to-user cluster-admin -z default || :
+deploy_operator
+
+if [ "${DEPLOY_ONLY:-false}" = "true" ]; then
+    echo "DEPLOY_ONLY=true: operator deployed; skipping test_operator, cleanup, and undeploy"
+    popd
+    exit 0
 fi
-
-# deploy operator
-echo "running make deploy"
-make deploy IMG=$IMAGE
-
-# create clusterrolebinding for metrics
-kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding --clusterrole=memcached-operator-metrics-reader --serviceaccount=memcached-operator-system:default
-
-# switch to the "memcached-operator-system" namespace
-oc project memcached-operator-system
 
 # Test the operator
 echo "running test_operator"
