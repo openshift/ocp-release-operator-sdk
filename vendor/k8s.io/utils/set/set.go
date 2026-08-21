@@ -17,6 +17,7 @@ limitations under the License.
 package set
 
 import (
+	"slices"
 	"sort"
 )
 
@@ -32,6 +33,14 @@ func New[E ordered](items ...E) Set[E] {
 	ss := Set[E]{}
 	ss.Insert(items...)
 	return ss
+}
+
+// Clear empties the set.
+// It is preferable to replace the set with a newly constructed set,
+// but not all callers can do that (when there are other references to the map).
+func (s Set[T]) Clear() Set[T] {
+	clear(s)
+	return s
 }
 
 // KeySet creates a Set[E] from a keys of a map[E](? extends interface{}).
@@ -77,12 +86,7 @@ func (s Set[E]) HasAll(items ...E) bool {
 
 // HasAny returns true if any items are contained in the set.
 func (s Set[E]) HasAny(items ...E) bool {
-	for _, item := range items {
-		if s.Has(item) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(items, s.Has)
 }
 
 // Union returns a new set which includes items in either s1 or s2.

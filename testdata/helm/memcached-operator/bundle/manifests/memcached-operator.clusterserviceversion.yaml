@@ -94,6 +94,14 @@ spec:
           verbs:
           - create
         - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - cache.example.com
           resources:
           - memcacheds
@@ -159,6 +167,14 @@ spec:
           - events
           verbs:
           - create
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
         - apiGroups:
           - cache.example.com
           resources:
