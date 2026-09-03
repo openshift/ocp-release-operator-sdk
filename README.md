@@ -42,7 +42,10 @@ external plugin module.
 ### Automatic rebase (periodic)
 
 A Prow periodic (OAPE-829) runs [`hack/auto-rebase.sh`](./hack/auto-rebase.sh)
-weekly against `main`. That wrapper:
+weekly against `main`. A custom script is used because this repo rebases via
+**git merge** (not `git rebase` like rebasebot) and discovers releases by
+selecting the newest `v*` tag beyond [`UPSTREAM-VERSION`](./UPSTREAM-VERSION)
+rather than tracking a branch. That wrapper:
 
 1. Compares [`UPSTREAM-VERSION`](./UPSTREAM-VERSION) to the newest upstream
    `v*` release tag on `operator-framework/operator-sdk`.

@@ -17,6 +17,9 @@
 #   DRY_RUN                If set to 1, only report what would happen (no merge/push/PR).
 #   SKIP_PUSH              If set to 1, run merge + patch gate but do not push/PR.
 #   SKIP_BUILD             If set to 1, only run `make -f ci/prow.Makefile patch`.
+#   FORCE_ORIGIN_URL       If set to 1, allow rewriting an existing origin remote whose
+#                          org/repo differs from DEST_ORG_REPO (e.g. a developer fork).
+#                          Default 0 — the script aborts instead to protect local config.
 #   GIT_AUTHOR_NAME        Git identity for commits (default: openshift-app-platform-shift-bot).
 #   GIT_AUTHOR_EMAIL       Git identity email (default: 267347085+openshift-app-platform-shift-bot@users.noreply.github.com).
 #
@@ -34,6 +37,7 @@ ORIGIN_URL=${ORIGIN_URL:-https://github.com/${DEST_ORG_REPO}.git}
 DRY_RUN=${DRY_RUN:-0}
 SKIP_PUSH=${SKIP_PUSH:-0}
 SKIP_BUILD=${SKIP_BUILD:-0}
+FORCE_ORIGIN_URL=${FORCE_ORIGIN_URL:-0}
 GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
 GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@users.noreply.github.com}
 
@@ -47,12 +51,34 @@ version_gt() {
   [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)" == "$a" && "$a" != "$b" ]]
 }
 
+# Extract owner/repo from a GitHub URL (strips scheme, host, .git, trailing slash).
+_extract_org_repo() {
+  local url=$1
+  url=${url%.git}
+  url=${url%/}
+  url=${url#*github.com[:/]}
+  url=${url#*github.com/}
+  printf '%s\n' "$url"
+}
+
 ensure_remote() {
   local name=$1 url=$2
   if git remote get-url "$name" >/dev/null 2>&1; then
     local current
     current=$(git remote get-url "$name")
     if [[ "$current" != "$url" ]]; then
+      if [[ "$name" == "$ORIGIN_REMOTE" ]]; then
+        local cur_repo exp_repo
+        cur_repo=$(_extract_org_repo "$current")
+        exp_repo=$(_extract_org_repo "$url")
+        if [[ "$cur_repo" == "$exp_repo" ]]; then
+          log "Origin org/repo matches (${cur_repo}); keeping existing URL"
+          return 0
+        fi
+        if [[ "$FORCE_ORIGIN_URL" != "1" ]]; then
+          die "Origin remote points at ${cur_repo} but expected ${exp_repo}. Set FORCE_ORIGIN_URL=1 to overwrite, or set ORIGIN_URL to match your fork."
+        fi
+      fi
       log "Rewriting remote ${name}: ${current} -> ${url}"
       git remote set-url "$name" "$url"
     fi
@@ -86,7 +112,6 @@ setup_credential_helper() {
 
 configure_origin_auth() {
   setup_credential_helper
-  git remote set-url "$ORIGIN_REMOTE" "$ORIGIN_URL"
 }
 
 ensure_gh() {
@@ -189,7 +214,8 @@ run_patch_gate() {
   fi
   log "Restoring working tree after patch gate"
   git checkout -- . 2>&1 || true
-  git clean -fd 2>&1 || true
+  rm -rf build/
+  find . -name '*.orig' -not -path './.git/*' -delete 2>/dev/null || true
   return "$failed"
 }
 

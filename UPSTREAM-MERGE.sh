@@ -27,9 +27,9 @@ if [[ -z "$version" ]]; then
 fi
 
 sdk_repo=$(git remote get-url "$upstream_remote")
-# Accept HTTPS and SSH forms for operator-framework/operator-sdk (CI may rewrite remotes).
-if [[ ! "$sdk_repo" =~ ^((https|ssh)://)?((git@)?github\.com[:/])operator-framework/operator-sdk(\.git)?/?$ ]]; then
-  echo "Upstream remote url should point at operator-framework/operator-sdk via HTTPS or SSH (git@/https:///ssh://)."
+# Only accept HTTPS or SSH forms — reject bare hostnames (git treats them as local paths).
+if [[ ! "$sdk_repo" =~ ^(https://github\.com/|git@github\.com:)operator-framework/operator-sdk(\.git)?/?$ ]]; then
+  echo "Upstream remote url should point at operator-framework/operator-sdk via HTTPS or SSH (git@/https://)."
   exit 1
 fi
 
@@ -41,8 +41,7 @@ git fetch -t "$upstream_remote"
 
 # do work on the correct branch
 git checkout "$rebase_branch" || { echo "Failed to checkout $rebase_branch, aborting."; exit 1; }
-remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u})
-if [[ $? -ne 0 ]]; then
+if ! remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}'); then
   echo "Your branch is not properly tracking a remote as required, aborting."
   exit 1
 fi
@@ -130,7 +129,10 @@ git add patches/03-setversion.patch
 git diff --staged --quiet && { echo "No changed files in merge?! Aborting."; exit 1; }
 
 # make local commit
-git commit -m "Merge upstream tag $version" -m "Operator SDK $version" -m "Merge executed via ./UPSTREAM-MERGE.sh $version $rebase_branch $upstream_remote" -m "$(printf "Overwritten conflicts:\\n%s" "$unmerged_files")"
+if ! git commit -m "Merge upstream tag $version" -m "Operator SDK $version" -m "Merge executed via ./UPSTREAM-MERGE.sh $version $rebase_branch $upstream_remote" -m "$(printf "Overwritten conflicts:\\n%s" "$unmerged_files")"; then
+  echo "Failed to create the upstream merge commit, aborting."
+  exit 1
+fi
 
 # verify merge is correct
 git --no-pager log --oneline "$(git merge-base origin/"$rebase_branch" tags/"$version")"..tags/"$version"
@@ -142,7 +144,10 @@ if ! git diff --quiet vendor/; then
   # add the changes of go mod vendor
   git add vendor
   # make local commit
-  git commit -m "UPSTREAM: <drop>: Update vendor directory"
+  if ! git commit -m "UPSTREAM: <drop>: Update vendor directory"; then
+    echo "Failed to create vendor commit, aborting."
+    exit 1
+  fi
 else
   echo "No changed files in vendor directory. Skipping add."
 fi
