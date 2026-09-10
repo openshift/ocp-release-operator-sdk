@@ -7,6 +7,7 @@ This repository uses multiple code generation systems: kubebuilder machinery for
 ## Makefile `generate` Target
 
 The `make generate` target is the single entry point. It runs, in order:
+
 1. `hack/generate/cncf-maintainers/main.go` -- maintainer list
 2. `hack/generate/cli-doc/gen-cli-doc.go` -- CLI reference docs under `website/content/en/docs/cli/`
 3. `hack/generate/samples/generate_testdata.go` -- testdata samples under `testdata/`
@@ -21,6 +22,7 @@ Scaffold templates live under `internal/plugins/` and implement `machinery.Templ
 ### Template struct pattern
 
 Every template must:
+
 - Embed `machinery.TemplateMixin` (and optionally `machinery.ProjectNameMixin`, `machinery.ResourceMixin`)
 - Assert interface compliance: `var _ machinery.Template = &MyTemplate{}`
 - Implement `SetTemplateDefaults() error`, setting `f.Path`, `f.IfExistsAction`, and `f.TemplateBody`
@@ -56,6 +58,7 @@ To add content to existing scaffold markers, implement both `machinery.Template`
 ### Scaffold execution
 
 Always use `machinery.NewScaffold` with explicit permissions:
+
 ```go
 scaffold := machinery.NewScaffold(fs,
     machinery.WithDirectoryPermissions(0755),
@@ -74,11 +77,13 @@ SDK plugins use the qualifier `.sdk.operatorframework.io` (defined in `internal/
 The marker prefix is `+operator-sdk:csv:customresourcedefinitions`. The root prefix `operator-sdk` is defined in `internal/markers/markers.go`.
 
 ### Type-level marker (on CRD type declarations)
+
 ```go
 //+operator-sdk:csv:customresourcedefinitions:displayName="My Resource",resources={{Pod,v1,my-pod},{Service,v1}}
 ```
 
 ### Field-level marker (on spec/status struct fields)
+
 ```go
 //+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Size",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
 ```
@@ -123,9 +128,11 @@ Files named `zz_generated.*.go` are fully machine-generated. Do not edit them. T
 ## go:generate Directives
 
 The repo uses `counterfeiter` for generating test fakes:
+
 ```go
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 . Generator
 ```
+
 The tool dependency is pinned in `tools/tools.go` with a build tag `// +build tools`. Generated fakes go into a `*fakes/` subdirectory.
 
 ## OLM Bindata Generation
@@ -137,6 +144,7 @@ The tool dependency is pinned in `tools/tools.go` with a build tag `// +build to
 `hack/generate/samples/generate_testdata.go` regenerates the `testdata/` directory by invoking the `operator-sdk` binary to scaffold complete Go and Helm sample projects. Samples are organized under `testdata/<type>/<version>/<project-name>/`.
 
 Key conventions:
+
 - Sample generators set `KUBECONFIG=broken_so_we_generate_static_default_rules` to ensure idempotent RBAC generation
 - Timestamps like `createdAt` are replaced with fixed values for reproducibility
 - Bundle annotations are stripped to avoid environment-dependent differences
@@ -144,6 +152,7 @@ Key conventions:
 ## CLI Documentation Generation
 
 `hack/generate/cli-doc/gen-cli-doc.go` uses `cobra/doc.GenMarkdownTreeCustom` to generate markdown docs. It:
+
 - Deletes and recreates the output directory to remove stale files from renamed/removed commands
 - Preserves `_index.md` across regeneration
 - Replaces angular brackets with HTML entities in long descriptions
@@ -152,6 +161,7 @@ Key conventions:
 ## Kustomize Integration
 
 The `config/manifests/` directory is the integration point between kustomize and OLM generation:
+
 - `bases/<name>.clusterserviceversion.yaml` -- the CSV base (generated, but user-customizable)
 - `kustomization.yaml` -- references bases, default config, samples, and scorecard
 

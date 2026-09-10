@@ -13,7 +13,7 @@ How to create, modify, or debug patches in the `patches/` directory.
 In downstream CI, patches are applied before any build or test step:
 
 ```bash
-for i in ./patches/*.patch; do patch -p0 < $i; done
+for i in ./patches/*.patch; do patch -p0 < "$i" || exit 1; done
 ```
 
 Patches use numbered naming (`NN-description.patch`) and `diff -up` format.
@@ -30,11 +30,15 @@ Patches use numbered naming (`NN-description.patch`) and `diff -up` format.
    diff -up Makefile.patchname Makefile > patches/NN-description.patch
    ```
 
-3. **Revert the target file** (the patch is applied in CI, not committed to the source):
+3. **Restore the original target file** (the patch is applied in CI, not committed to the source):
 
    ```bash
-   git checkout -- Makefile
+   mv Makefile.patchname Makefile
    ```
+
+   Use `mv` rather than `git checkout -- Makefile`: the latter discards any
+   pre-existing uncommitted changes to the file, while `mv` restores exactly
+   the content you copied in step 2.
 
 4. **Test the patch applies cleanly:**
 

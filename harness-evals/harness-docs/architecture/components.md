@@ -1,6 +1,6 @@
 # Architecture: Components
 
-For the full architectural rationale, see [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
+For the full architectural rationale, see [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md).
 
 ## Repository Layout
 

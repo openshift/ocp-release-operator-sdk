@@ -3,6 +3,7 @@
 ## OLM API Group Structure
 
 All OLM (Operator Lifecycle Manager) APIs live under the `operators.coreos.com` group with three active versions:
+
 - `v1alpha1`: ClusterServiceVersion, CatalogSource, InstallPlan, Subscription (core lifecycle types)
 - `v1alpha2`: OperatorGroup (legacy, superseded by v1)
 - `v1`: Operator, OperatorGroup, OperatorCondition, OLMConfig (promoted/stable types)
@@ -21,6 +22,7 @@ Every CRD root type in this repo follows a mandatory marker set. Missing any of 
 ```
 
 Rules:
+
 - All OLM types use `categories=olm` so `kubectl get olm` works across types.
 - Short names are mandatory for user-facing types (csv, sub, catsrc, og, ip, condition).
 - Cluster-scoped types add `scope=Cluster` to `+kubebuilder:resource` and `+genclient:nonNamespaced`.
@@ -29,6 +31,7 @@ Rules:
 ## Print Columns Convention
 
 The user-facing v1alpha1 OLM types (ClusterServiceVersion, CatalogSource, InstallPlan, Subscription) declare `+kubebuilder:printcolumn` markers. The convention:
+
 - First columns show the most useful spec fields (Display, Package, CSV name).
 - Status phase/state is always the last column when present.
 - Use `description` on every column.
@@ -41,6 +44,7 @@ Two condition styles coexist in this repo. New code must use the second (standar
 **Legacy (OLM-specific condition types):** CSV, Subscription, InstallPlan define their own condition structs with custom Phase/State enums and `ConditionReason` string types. These carry both `LastUpdateTime` and `LastTransitionTime` as `*metav1.Time`.
 
 **Standard (metav1.Condition):** OLMConfig, CatalogSource (new fields), OperatorGroup, OperatorCondition, and scaffolded operators use `[]metav1.Condition`. When using this pattern:
+
 - Apply `+patchMergeKey=type`, `+patchStrategy=merge`, `+listType=map`, `+listMapKey=type` on the Conditions field.
 - Add `patchStrategy:"merge" patchMergeKey:"type"` struct tags.
 
@@ -49,6 +53,7 @@ Status helper methods `GetCondition`, `SetCondition`, `RemoveConditions` are def
 ## Phase-Based Status (CSV and InstallPlan)
 
 ClusterServiceVersion and InstallPlan use a `Phase` field (typed string enum) as their primary status signal rather than conditions-only. Rules:
+
 - Define the phase type and all values as named constants with `Phase` prefix (e.g., `CSVPhaseSucceeded`, `InstallPlanPhaseComplete`).
 - Include a "None" constant set to empty string `""` for zero-value.
 - `ConditionReason` values are CamelCase constants (e.g., `RequirementsNotMet`, `InstallSucceeded`).
@@ -66,6 +71,7 @@ ClusterServiceVersion and InstallPlan use a `Phase` field (typed string enum) as
 ## Kubebuilder Validation Markers
 
 Validation markers used in this repo:
+
 - `+kubebuilder:validation:Enum=` for typed string fields with a closed set (WebhookAdmissionType, SecurityConfig, UpgradeStrategy).
 - `+kubebuilder:validation:Minimum/Maximum` for numeric bounds (ContainerPort 1-65535, scaffolded Size 1-3).
 - `+kubebuilder:validation:Pattern` for regex constraints (duration format on `PackageServerSyncInterval`).
@@ -76,6 +82,7 @@ Validation markers used in this repo:
 ## Operator-SDK CSV Descriptor Markers
 
 The `+operator-sdk:csv:customresourcedefinitions` marker drives CSV generation. Rules:
+
 - On root type: `displayName`, `resources` (e.g., `resources={{Deployment,v1,name}}`).
 - On spec fields: `type=spec` plus optional `displayName`, `xDescriptors`.
 - On status fields: `type=status` plus optional `displayName`, `xDescriptors`.
@@ -92,6 +99,7 @@ The `+operator-sdk:csv:customresourcedefinitions` marker drives CSV generation. 
 ## Webhook Contracts
 
 Scaffolded webhook pattern:
+
 - Webhook structs implement `webhook.CustomDefaulter` or `webhook.CustomValidator` interfaces from controller-runtime.
 - The `+kubebuilder:webhook` marker on the struct specifies path, mutating/validating, failurePolicy, sideEffects, groups, resources, verbs, versions, admissionReviewVersions.
 - Defaulter webhooks set zero-value fields to sensible defaults; they must not error on valid objects.
@@ -101,6 +109,7 @@ Scaffolded webhook pattern:
 ## CSV Upgrade Graph
 
 Three mechanisms control the operator upgrade path:
+
 - `spec.replaces`: names the single CSV this version replaces (forms a linked list).
 - `spec.skips`: names CSV versions to skip over during upgrade resolution.
 - `metadata.annotations["olm.skipRange"]`: semver range of versions to skip (e.g., `">=1.0.0 <1.2.0"`).
@@ -110,6 +119,7 @@ These fields are set in the CSV spec and consumed only during catalog resolution
 ## CatalogSource gRPC Contract
 
 CatalogSource supports three source types: `internal` (deprecated), `configmap`, `grpc`.
+
 - For `grpc` type, the `image` field takes precedence over `address` when both are set.
 - `GrpcPodConfig` controls pod-level overrides (nodeSelector, tolerations, affinity, securityContextConfig, memoryTarget).
 - `securityContextConfig` is validated with `+kubebuilder:validation:Enum=legacy;restricted`.
@@ -130,6 +140,7 @@ CatalogSource supports three source types: `internal` (deprecated), `configmap`,
 ## Bundle Validation Pipeline
 
 The `operator-framework/api/pkg/validation` package provides validators that run against bundle artifacts. When defining new CRDs or modifying CSVs, the bundle must pass:
+
 - `ClusterServiceVersionValidator`: validates CSV structure.
 - `CustomResourceDefinitionValidator`: validates CRD definitions.
 - `BundleValidator`: validates bundle integrity (CSV + CRDs + metadata).

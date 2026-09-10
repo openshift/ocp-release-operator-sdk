@@ -36,8 +36,8 @@ CI enforces `git diff --exit-code` after generation.
 
 Task-oriented guides live in `docs/patterns/`:
 
-- [upstream-sync.md](../docs/patterns/upstream-sync.md)
-- [downstream-patches.md](../docs/patterns/downstream-patches.md)
-- [cli-changes.md](../docs/patterns/cli-changes.md)
-- [release-versioning.md](../docs/patterns/release-versioning.md)
-- [generated-and-ci.md](../docs/patterns/generated-and-ci.md)
+- [upstream-sync.md](../../docs/patterns/upstream-sync.md)
+- [downstream-patches.md](../../docs/patterns/downstream-patches.md)
+- [cli-changes.md](../../docs/patterns/cli-changes.md)
+- [release-versioning.md](../../docs/patterns/release-versioning.md)
+- [generated-and-ci.md](../../docs/patterns/generated-and-ci.md)

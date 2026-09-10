@@ -6,6 +6,7 @@
 The codebase uses both `fmt.Errorf` with `%w` (wrapping) and `%v` (non-wrapping). Prefer `%w` in new code so callers can use `errors.Is`/`errors.As`. Never import `github.com/pkg/errors` -- use only stdlib `fmt.Errorf` and `errors`.
 
 **Prefer including a colon separator before the verb.**
+
 ```go
 // correct
 return fmt.Errorf("failed to load chart: %w", err)
@@ -13,6 +14,7 @@ return fmt.Errorf("failed to load chart: %w", err)
 // less clear -- missing separator
 return fmt.Errorf("could not find config file %w", err)
 ```
+
 Some existing code omits the colon; new code should include it for consistency.
 
 **Use lowercase, verb-first error messages.** The repo uses two prefixes interchangeably: `"failed to <verb>"` and `"error <verb>ing"`. Pick one per package and stay consistent.
@@ -20,19 +22,23 @@ Some existing code omits the colon; new code should include it for consistency.
 ## Custom Error Types and Sentinels
 
 **Create custom error types only when callers must extract structured data.** The repo defines very few (~6) custom types, each carrying fields callers inspect:
+
 - `ErrPackageNotFound` (carries `PackageName`) -- checked via `errors.As`
 - `deploymentErrors` / `podErrors` -- aggregate multiple sub-errors for status reporting
 
 **Use exported sentinel variables for errors checked with `errors.Is`.**
+
 ```go
 var ErrUpgradeFailed = errors.New("upgrade failed")   // in internal/helm/release/manager.go
-var ErrOLMNotInstalled = errors.New("OLM is not installed") // in internal/olm/client/client.go
+var ErrOLMNotInstalled = errors.New("no existing installation found") // in internal/olm/client/client.go
 ```
+
 Do not create sentinels for errors that are only ever returned, never matched.
 
 ## Kubernetes API Errors
 
 **Use `apierrors.Is*` functions, not `errors.Is`, for Kubernetes status errors.**
+
 ```go
 import apierrors "k8s.io/apimachinery/pkg/api/errors"
 ```
@@ -47,6 +53,7 @@ import apierrors "k8s.io/apimachinery/pkg/api/errors"
 | Get + NotFound in polling | `apierrors.IsNotFound(err)` | `return false, nil` (keep polling) |
 
 **Combine `IsNotFound` with `meta.IsNoMatchError` to detect missing CRDs/OLM:**
+
 ```go
 if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
     return ErrOLMNotInstalled
@@ -58,6 +65,7 @@ if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 **Return `reconcile.Result{}, err` to trigger requeue with backoff.** Never set `Requeue: true` on the Result when also returning an error -- the error alone triggers the requeue.
 
 **Use `RequeueAfter` only for successful periodic reconciliation:**
+
 ```go
 return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, nil
 ```
@@ -65,6 +73,7 @@ return reconcile.Result{RequeueAfter: r.ReconcilePeriod}, nil
 **Set status conditions before returning errors.** Map errors to typed conditions (`ConditionReleaseFailed`, `ConditionIrreconcilable`) with `err.Error()` as the message. Remove failure conditions on success.
 
 **When a status update fails after a primary error, log the status error but return the primary error:**
+
 ```go
 if err := r.updateResourceStatus(ctx, o, status); err != nil {
     log.Error(err, "Failed to update status after release failure")
@@ -74,11 +83,13 @@ return reconcile.Result{}, primaryErr
 
 ## Logging Errors
 
-**Two logging libraries, scoped by layer:**
-- **CLI code** (`cmd/`, `internal/cmd/`): `logrus` (imported as `log`)
-- **Controllers** (`internal/helm/controller/`): `logr` via `controller-runtime/pkg/log`
+**Two logging libraries, scoped by binary:**
+
+- **`operator-sdk` CLI** (`cmd/operator-sdk/`, `internal/cmd/operator-sdk/`): `logrus` (imported as `log`)
+- **`helm-operator`** (`cmd/helm-operator/`, `internal/cmd/helm-operator/`, `internal/helm/`): `logr` via `controller-runtime/pkg/log`. The `helm-operator` `main.go` entrypoint uses the stdlib `log` package only for a terminal `log.Fatal` on startup failure -- it does not use `logrus`.
 
 **The log-and-return pattern is accepted in reconcilers.** Although this causes duplicate logging (controller-runtime also logs returned errors), the codebase treats this as intentional for observability:
+
 ```go
 log.Error(err, "Failed to install release")
 return reconcile.Result{}, err
@@ -87,6 +98,7 @@ return reconcile.Result{}, err
 **In CLI code, do not both log and return.** Return the error from `RunE` and let cobra handle printing. Exception: `log.Fatal` is acceptable in `Run` (not `RunE`) functions as the terminal error handler.
 
 **Obtain loggers by layer:**
+
 - Controllers: package-level `var log = logf.Log.WithName("helm.controller")`, enriched per-reconcile with `.WithValues()`
 - CLI: direct `logrus` import, flat calls
 
@@ -95,11 +107,13 @@ return reconcile.Result{}, err
 **Prefer `RunE` over `Run` for all commands.** Return errors instead of calling `log.Fatal` inside `RunE`. Several existing commands violate this (scorecard, bundle generate, olm install) -- do not follow that pattern.
 
 **Use `errors.New` for static validation failures in `PreRunE`:**
+
 ```go
 return errors.New("--version must be set")
 ```
 
 **Downgrade known-benign errors to warnings using `errors.As`:**
+
 ```go
 var notFound *operator.ErrPackageNotFound
 if errors.As(err, &notFound) {

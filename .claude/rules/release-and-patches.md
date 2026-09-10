@@ -19,7 +19,7 @@ Upstream-style commits use: `<subsystem>: <what changed>` (subject max 70 chars)
 
 Downstream patches live in `patches/` and use `diff -up` format. They are applied by `make -f ci/prow.Makefile patch` in downstream CI.
 
-See [docs/patterns/downstream-patches.md](../docs/patterns/downstream-patches.md) for the full workflow.
+See [docs/patterns/downstream-patches.md](../../docs/patterns/downstream-patches.md) for the full workflow.
 
 ## Vendor Updates
 

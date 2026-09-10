@@ -111,6 +111,7 @@ Register CRD schemes before building (`v1alpha1.AddToScheme(sch)`). To test erro
 Two patterns coexist:
 
 **Ginkgo `DescribeTable`/`Entry`** -- preferred for Ginkgo suites:
+
 ```go
 DescribeTable("should return the expected config",
     func(input, expected string) { ... },
@@ -120,6 +121,7 @@ DescribeTable("should return the expected config",
 ```
 
 **Standard `testCases` slice** -- used in `testing`-based packages:
+
 ```go
 testCases := []struct {
     name      string

@@ -29,8 +29,8 @@ All downstream-specific commits must use one of two prefixes:
 
 The `patches/` directory contains diff files applied before CI builds via `make -f ci/prow.Makefile patch`:
 
-```
-for i in ./patches/*.patch; do patch -p0 < $i; done
+```shell
+for i in ./patches/*.patch; do patch -p0 < "$i" || exit 1; done
 ```
 
 Patches use a numbered naming scheme (`NN-description.patch`) and modify the upstream Makefile and test files for downstream compatibility. Current patches:
@@ -45,8 +45,9 @@ Patches use a numbered naming scheme (`NN-description.patch`) and modify the ups
 | `12-skip-pkgman-docker-test` | Skips tests requiring Docker in CI |
 
 To create a new patch, use the standard `diff -up` format against the original file with a `.patchname` suffix:
-```
-diff -up ./path/file.patchname ./path/file
+
+```shell
+diff -up ./path/file.patchname ./path/file > ./patches/NN-description.patch
 ```
 
 ## Build System
@@ -91,6 +92,7 @@ Five ldflags are injected at build time via `GO_BUILD_ARGS`:
 ### Production Images (in `images/`)
 
 All production Dockerfiles use multi-stage builds:
+
 - Builder stage: `golang:1.26` with `BUILDPLATFORM`/`TARGETARCH` for cross-compilation
 - Runtime stage: `registry.access.redhat.com/ubi9/ubi-minimal:9.8`
 
@@ -103,6 +105,7 @@ CI Dockerfiles reference `osdk-builder` as a base image (built from `ci/dockerfi
 ### CI-Operator Base Image
 
 Defined in `.ci-operator.yaml`:
+
 ```yaml
 build_root_image:
   name: release
@@ -154,6 +157,7 @@ golangci-lint is fetched on-demand via `tools/scripts/fetch golangci-lint`. The 
 ## Binary Outputs
 
 Two CLI binaries are built from `cmd/`:
+
 - `operator-sdk` -- The main SDK CLI
 - `helm-operator` -- Helm-based operator runtime
 

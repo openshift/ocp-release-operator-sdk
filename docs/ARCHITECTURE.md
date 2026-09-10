@@ -33,7 +33,7 @@ The tradeoff is that building either binary pulls in the entire dependency graph
 
 ## High-Level Architecture
 
-```
+```text
 cmd/
   operator-sdk/main.go ─── internal/cmd/operator-sdk/cli/cli.go
   │                          │
@@ -175,6 +175,7 @@ This design means the `main` branch always contains unpatched upstream code plus
 ### Upstream Sync Process
 
 Rebasing to a new upstream release uses `UPSTREAM-MERGE.sh`, which:
+
 1. Creates a branch from the target downstream branch.
 2. Merges the upstream tag, preferring upstream for conflicts.
 3. Produces a merge commit listing all incoming upstream changes.

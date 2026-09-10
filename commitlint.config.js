@@ -22,7 +22,7 @@ module.exports = {
           }
 
           const patterns = [
-            /^UPSTREAM:\s*<(carry|drop)>:\s+\S/,
+            /^UPSTREAM:\s+<(carry|drop)>:\s+\S/,
             /^[a-zA-Z][a-zA-Z0-9/_.()\-]*:\s+\S/,
           ];
 

@@ -69,7 +69,7 @@ PreRunE: func(*cobra.Command, []string) error { return cfg.Load() },
 
 ## Run vs RunE
 
-Use `RunE` when the command can return a meaningful error to Cobra. Use `Run` (with `log.Fatalf` on errors) when the command handles all error reporting internally. Commands that use `PreRunE` for config loading tend to use `Run` for the main body, calling `log.Fatalf` on failure.
+**Prefer `RunE` for all new commands.** Return errors so Cobra can format and print them consistently; do not call `log.Fatalf` from inside `RunE`. Some existing commands (e.g. scorecard, bundle generate, olm install) use `Run` with `log.Fatalf` on errors -- this is a legacy pattern, not one to follow for new commands.
 
 ## Argument Validation
 
@@ -112,7 +112,7 @@ Plugin names use the suffix `.sdk.operatorframework.io` (defined as `plugins.Def
 
 ## Logging
 
-Use `github.com/sirupsen/logrus` throughout the CLI layer. The helm-operator runtime uses controller-runtime's `logr`. Never mix the two in the same package. Fatal errors in `Run` handlers use `log.Fatalf`; errors in `RunE` handlers are returned to Cobra.
+Use `github.com/sirupsen/logrus` throughout the `operator-sdk` CLI layer (`cmd/operator-sdk/`, `internal/cmd/operator-sdk/`). The `helm-operator` binary uses controller-runtime's `logr` instead (`cmd/helm-operator/`, `internal/cmd/helm-operator/`, `internal/helm/`) -- its `main.go` only uses stdlib `log.Fatal` as a terminal exit handler. Never mix `logrus` and `logr` in the same package. Fatal errors in `Run` handlers use `log.Fatalf`; errors in `RunE` handlers are returned to Cobra.
 
 ## Version String
 

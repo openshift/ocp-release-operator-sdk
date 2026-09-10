@@ -55,6 +55,7 @@ In `SetupWithManager`, use `For(&PrimaryKind{})` for the CR and `Owns(&ChildKind
 ## Manager and Controller Setup
 
 Manager configuration pattern in `cmd/main.go`:
+
 ```go
 mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
     Scheme:                 scheme,
