@@ -9,7 +9,6 @@ set -o nounset
 set -o pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-TOOLS_DIR="${ROOT}/tools/bin"
 GO_BUILD_TAGS="containers_image_openpgp"
 
 FILE="${1:-}"
@@ -23,8 +22,27 @@ if [[ ! "$FILE" = /* ]]; then
   FILE="${ROOT}/${FILE}"
 fi
 
-if [[ ! -f "$FILE" ]]; then
+if [[ ! -e "$FILE" ]]; then
   echo "Error: file not found: $FILE" >&2
+  exit 1
+fi
+
+# Canonicalize both paths (resolving '..' segments and symlinks) and reject
+# any file that resolves outside the repository root to prevent path
+# traversal (e.g. FILE=../../etc/passwd.go).
+FILE="$(realpath "$FILE")"
+ROOT="$(realpath "$ROOT")"
+TOOLS_DIR="${ROOT}/tools/bin"
+case "$FILE" in
+  "${ROOT}"/*) ;;
+  *)
+    echo "Error: file must be inside the repository ($ROOT)" >&2
+    exit 1
+    ;;
+esac
+
+if [[ ! -f "$FILE" ]]; then
+  echo "Error: not a regular file: $FILE" >&2
   exit 1
 fi
 
@@ -33,7 +51,7 @@ if [[ "$FILE" != *.go ]]; then
   exit 1
 fi
 
-REL_PATH="${FILE#${ROOT}/}"
+REL_PATH="${FILE#"${ROOT}"/}"
 
 case "$REL_PATH" in
   vendor/*)           echo "Error: vendor/ files cannot be verified individually" >&2; exit 1 ;;
