@@ -19,7 +19,7 @@
         letter-spacing: 2px;
         margin: var(--of--spacer--md) 0 var(--of--spacer--sm);
     }
-    
+
     h5, h6 {
         font-size: var(--of--FontSize--xs);
     }
@@ -35,7 +35,7 @@
     h1 {
         font-size: var(--of--FontSize--lg);
     }
-    
+
     @media (min-width: $ov--breakpoint--lg) {
         h6 {
             font-size: var(--of--FontSize--xs);

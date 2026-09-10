@@ -34,7 +34,7 @@ The following tools and permissions are needed to conduct a release of the opera
 
 To install the prerequisite tools on MacOS, complete the following steps:
 
-1. Install GNU `sed` and `make`, which may not be installed by default: 
+1. Install GNU `sed` and `make`, which may not be installed by default:
 
    - ```sh
       brew install gnu-sed make
@@ -118,7 +118,7 @@ correctly prior to the release commit.
         sed -i -E 's/(IMAGE_VERSION = ).+/\1v1\.3\.0/g' Makefile
         ```
 
-        If this command fails on MacOS with a warning "sed is not found", follow the step 5 in the [Setting Up Tools for MacOS Users](#setting-up-tools-for-macos-users) section to map `gsed` to `sed`. 
+        If this command fails on MacOS with a warning "sed is not found", follow the step 5 in the [Setting Up Tools for MacOS Users](#setting-up-tools-for-macos-users) section to map `gsed` to `sed`.
    1. Run the pre-release `make` target:
 
       - ```sh
@@ -179,14 +179,14 @@ if you have admin access to the operator-sdk repo, or ask an administrator to do
         ```
 
 1. Post release steps
-   1. Publish the new Netlify subdomain for version-specific docs. 
+   1. Publish the new Netlify subdomain for version-specific docs.
       1. Assuming that the Netlify prestep was done before the new branch was created, a new [branch option](https://app.netlify.com/sites/operator-sdk/settings/domain#branch-subdomains)
       should be visible to Netlify Admins under Domain management > Branch subdomains and can be mapped to a subdomain. (Note: you may have to scroll down to the bottom of the Branch subdomains section to find the branch that is ready to be mapped.)
       1. Please test that this subdomain works by going to the link in a browser. You can use the link in the second column to jump to the docs page for this release.
    1. Make an [operator-framework Google Group][of-ggroup] post.
       - You can use [this post](https://groups.google.com/g/operator-framework/c/2fBHHLQOKs8/m/VAd_zd_IAwAJ) as an example.
    1. Post to Kubernetes slack in #kubernetes-operators and #operator-sdk-dev.
-      - You can use [this post](https://kubernetes.slack.com/archives/C017UU45SHL/p1679082546359389) as an example. 
+      - You can use [this post](https://kubernetes.slack.com/archives/C017UU45SHL/p1679082546359389) as an example.
    1. Clean up the GitHub milestone
       1. In the [GitHub milestone][gh-milestones], bump any open issues to the following release.
       1. Close out the milestone.

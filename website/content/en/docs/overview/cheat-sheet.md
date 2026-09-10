@@ -43,10 +43,10 @@ For further information check [Operator SDK Integration with Operator Lifecycle 
 minor release containing https://github.com/operator-framework/operator-lifecycle-manager/pull/1941 -->
 
 ### Updating bundle channels
- 
-The following examples let you update the [bundle][bundle] with data-informed. For further information also check [Upgrade your Operator][upgrade-project] and see [Channel Naming][channel-namming-doc].  
- 
-**NOTE:** Note that it will carry over any customizations you have made and ensure a rolling update to the next version of your Operator. 
+
+The following examples let you update the [bundle][bundle] with data-informed. For further information also check [Upgrade your Operator][upgrade-project] and see [Channel Naming][channel-namming-doc].
+
+**NOTE:** Note that it will carry over any customizations you have made and ensure a rolling update to the next version of your Operator.
 
 ```sh
 make bundle CHANNELS=fast,preview DEFAULT_CHANNEL=stable VERSION=1.0.0 IMG=<some-registry>/<project-name-bundle>:<tag>
@@ -64,7 +64,7 @@ make bundle CHANNELS=fast,preview DEFAULT_CHANNEL=stable VERSION=1.0.0 IMG=<some
 | `helm test`          |  Run [Helm chart tests][helm-chart-tests].  It is valid only for Helm-based operators. |
 
 **NOTE:** This is not a comprehensive list of make targets or commands. Please see the scaffolded Makefile and `make help` for the full list of targets. Note that you can use `operator-sdk <command> --help` and check the [CLI][cli] section to check all options.
- 
+
 [olm-integration]: /docs/olm-integration/
 [creating-a-bundle]: /docs/olm-integration/tutorial-bundle/#creating-a-bundle
 [bundle]:https://github.com/operator-framework/operator-registry/blob/v1.16.1/docs/design/operator-bundle.md

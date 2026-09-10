@@ -13,20 +13,20 @@ In this document, we provide best practices and examples for creating metrics, [
 
 ### Operator Observability Recommended Components
 
-1. **Health and Performance metrics** - for all of the operator components  
-    1.1. Metrics should be implemented based on the guidelines below.  
-    1.2. **Metrics Documentation** - All metrics should have documentation.  
-    1.3. **Metrics Tests** - Metrics should include tests that verify that they exist and that their value is correct.  
-2. **Alerts** for when things are not working as expected for each of the operator's components  
-    2.1  Alerts should be implemented based on the guidelines below.  
-    2.2. **Alerts Runbooks** - Each alert can include a `runbook_url` annotation and an alert runbook that describes it. See additional details below.  
-    2.3. **Alerts Tests** - Alerts should include E2E Testing and unit tests.  
+1. **Health and Performance metrics** - for all of the operator components
+    1.1. Metrics should be implemented based on the guidelines below.
+    1.2. **Metrics Documentation** - All metrics should have documentation.
+    1.3. **Metrics Tests** - Metrics should include tests that verify that they exist and that their value is correct.
+2. **Alerts** for when things are not working as expected for each of the operator's components
+    2.1  Alerts should be implemented based on the guidelines below.
+    2.2. **Alerts Runbooks** - Each alert can include a `runbook_url` annotation and an alert runbook that describes it. See additional details below.
+    2.3. **Alerts Tests** - Alerts should include E2E Testing and unit tests.
 3. **Events** - Custom Resources should emit custom events for the operations taking place.
 
-Additional components would be `Dashboards`, `Logs` and `Traces`, which are not addressed in this document at this point.  
+Additional components would be `Dashboards`, `Logs` and `Traces`, which are not addressed in this document at this point.
 
 ### Operators Observability General Guidelines
-**Important:** It is highly recommended to separate your monitoring code from your core operator code.  
+**Important:** It is highly recommended to separate your monitoring code from your core operator code.
 We recommend to create a dedicated `/monitoring` subfolder that will include all the code of the [Operator Observability Recommended Components](#operator-observability-recommended-components), that are outlined above. For example, in the [memcached-operator](https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v4/monitoring/memcached-operator/monitoring).
 
 In your core operator code only call the functions that will update the metrics value from your desired location. For example, in the [memcached-operator](https://github.com/operator-framework/operator-sdk/blob/367bd3597c30607099aa73637f5286f7120b847a/testdata/go/v3/monitoring/memcached-operator/controllers/memcached_controller.go#L242).
@@ -47,11 +47,11 @@ That is why we recommend that your operator metrics name will follow this format
 
 **Note:** In [Prometheus Node Exporter](https://github.com/prometheus/node_exporter) metrics are separated like this:
 - node_network_**receive**_packets_total
-- node_network_**transmit**_packets_total  
- 
+- node_network_**transmit**_packets_total
+
 In this example, based on `receive` and `transmit`.
 
-Please follow the same principle and don't put similar metrics details as labels, so the user experience would be fluent.  
+Please follow the same principle and don't put similar metrics details as labels, so the user experience would be fluent.
 Example for this in an operator:
 - kubevirt_vmi_network_**receive**_errors_total
 - kubevirt_vmi_network_**transmit**_bytes_total
@@ -59,7 +59,7 @@ Example for this in an operator:
 - kubevirt_migrate_vmi_**data_remaining**_bytes
 
 3. Your metric suffix should indicate the metric unit. For better compatibility, [Prometheus base units](https://prometheus.io/docs/practices/naming/#base-units) should be used.
-4. Prometheus supports four [metric types](https://prometheus.io/docs/concepts/metric_types/#metric-types). `Gauge`,`Counter`,`Histogram` and `Summary`. You can read more about the different types here, [Understanding metrics types](https://prometheus.io/docs/tutorials/understanding_metric_types/#types-of-metrics).  
+4. Prometheus supports four [metric types](https://prometheus.io/docs/concepts/metric_types/#metric-types). `Gauge`,`Counter`,`Histogram` and `Summary`. You can read more about the different types here, [Understanding metrics types](https://prometheus.io/docs/tutorials/understanding_metric_types/#types-of-metrics).
 The most common types are:
  - `Counter` - Value can only increase or reset.
  - `Gauge` Value can be increased and decreased as needed.
@@ -80,9 +80,9 @@ Your operator metrics `help` message should include the following details:
 
 The `Help` message can be used to create auto-generated documentation, like it's done in [KubeVirt](https://github.com/kubevirt/kubevirt/blob/main/docs/observability/metrics.md) and generated by the [KubeVirt metrics doc generator](https://github.com/kubevirt/kubevirt/blob/main/tools/doc-generator/doc-generator.go).
 
-We recommend to auto-generated metrics documentation and save it in your operator repository, to a location like `/docs/monitoring/`, so that the users can find the information about your operator metrics easily. 
+We recommend to auto-generated metrics documentation and save it in your operator repository, to a location like `/docs/monitoring/`, so that the users can find the information about your operator metrics easily.
 
-See [Alerts, Metrics and Recording Rules Tests](#alerts-metrics-and-recording-rules-tests) section for metrics testing recommendations. 
+See [Alerts, Metrics and Recording Rules Tests](#alerts-metrics-and-recording-rules-tests) section for metrics testing recommendations.
 
 #### Prometheus Recording Rules Naming
 As per [Prometheus](https://prometheus.io/docs/prometheus) documentation, [Recording rules](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/#recording-rules) allow you to pre-compute frequently needed or computationally expensive expressions and save their result as a new set of time series.
@@ -91,14 +91,14 @@ As per [Prometheus](https://prometheus.io/docs/prometheus) documentation, [Recor
 Recording rule names should follow the `level:metric:operations` format as specified in the [Prometheus recording rules best practices](https://prometheus.io/docs/practices/rules/). This naming convention makes it clear that the metric is a recording rule and helps consumers understand they need to examine the underlying query to fully understand what the metric provides.
 
 - **level:** represents the aggregation level and labels of the rule output
-- **metric:** is the metric name  
+- **metric:** is the metric name
 - **operations:** is a list of operations that were applied to the metric, newest operation first
 
 For example: `job:up:avg_over_time` or `instance:node_cpu_utilisation:rate5m`
 
 In addition to this format, your operator recording rules should also follow the same naming guidelines as metrics for consistency within your operator's observability stack.
 
-See [Alerts, Metrics and Recording Rules Tests](#alerts-metrics-and-recording-rules-tests) section for recording rules testing recommendations. 
+See [Alerts, Metrics and Recording Rules Tests](#alerts-metrics-and-recording-rules-tests) section for recording rules testing recommendations.
 
 ### Prometheus Alerts Guidelines
 Clear and actionable alerts are a key component of a smooth operational experience and will result in a better experience for the end users.
@@ -168,9 +168,9 @@ night.
 
 Timeline:  ~5 minutes.
 
-Reserve critical level alerts only for reporting conditions that may lead to loss of data or inability to deliver service for the cluster as a whole.  
-Failures of most individual components should not trigger critical level alerts, unless they would result in either of those conditions.  
-Configure critical level alerts so they fire before the situation becomes irrecoverable.  
+Reserve critical level alerts only for reporting conditions that may lead to loss of data or inability to deliver service for the cluster as a whole.
+Failures of most individual components should not trigger critical level alerts, unless they would result in either of those conditions.
+Configure critical level alerts so they fire before the situation becomes irrecoverable.
 Expect users to be notified of a critical alert within a short period of time after it fires so
 they can respond with corrective action quickly.
 
@@ -189,15 +189,15 @@ Example critical alert: [KubeAPIDown](https://github.com/openshift/cluster-monit
     severity: critical
 ```
 
-This alert fires if no Kubernetes API server instance has reported metrics successfully in the last 15 minutes.  
-This is a clear example of a critical control-plane issue that represents a threat to the operability of the cluster as a whole, and likely warrants paging someone.  
+This alert fires if no Kubernetes API server instance has reported metrics successfully in the last 15 minutes.
+This is a clear example of a critical control-plane issue that represents a threat to the operability of the cluster as a whole, and likely warrants paging someone.
 The alert has clear summary and description annotations, and it links to a runbook with information on investigating and resolving the issue.
 
 The group of critical alerts should be small, very well defined, highly documented, polished and with a high bar set for entry.
 
 ##### Warning Alerts
 
-The vast majority of alerts should use this severity.  
+The vast majority of alerts should use this severity.
 Issues at the warning level should be addressed in a timely manner, but don't pose an immediate threat to the operation of the cluster as a whole.
 
 Timeline:  ~60 minutes
@@ -205,8 +205,8 @@ Timeline:  ~60 minutes
 If your alert does not meet the criteria in "Critical Alerts" above, it belongs to the warning level or lower.
 
 Use warning level alerts for reporting conditions that may lead to inability to deliver individual features of the cluster, but not service for the cluster as a
-whole. Most alerts are likely to be warnings.  
-Configure warning level alerts so that they do not fire until components have sufficient time to try to recover from the interruption automatically.  
+whole. Most alerts are likely to be warnings.
+Configure warning level alerts so that they do not fire until components have sufficient time to try to recover from the interruption automatically.
 Expect users to be notified of a warning, but for them not to respond with corrective action immediately.
 
 Example warning alert: [ClusterNotUpgradeable](https://github.com/openshift/cluster-version-operator/blob/513a2fc/install/0000_90_cluster-version-operator_02_servicemonitor.yaml#L68-L76)
@@ -225,13 +225,13 @@ Example warning alert: [ClusterNotUpgradeable](https://github.com/openshift/clus
       severity: warning
 ```
 
-This alert fires if one or more operators have not reported their `Upgradeable` condition as true in more than an hour.  
-The alert has a clear name and informative summary and description annotations.  
+This alert fires if one or more operators have not reported their `Upgradeable` condition as true in more than an hour.
+The alert has a clear name and informative summary and description annotations.
 The timeline is appropriate for allowing the operator a chance to resolve the issue automatically, avoiding the need to alert an administrator.
 
 ##### Info Alerts
 
-Info level alerts represent situations an administrator should be aware of, but they don't necessarily require any action.  
+Info level alerts represent situations an administrator should be aware of, but they don't necessarily require any action.
 Use these sparingly, and consider instead reporting this information via Kubernetes events.
 
 Example info alert: [MultipleContainersOOMKilled](https://github.com/openshift/cluster-monitoring-operator/blob/79cdf68/assets/cluster-monitoring-operator/prometheus-rule.yaml#L326-L338)
@@ -251,7 +251,7 @@ Example info alert: [MultipleContainersOOMKilled](https://github.com/openshift/c
     severity: info
 ```
 
-This alert fires if multiple containers have been terminated due to out of memory conditions in the last 15 minutes.  
+This alert fires if multiple containers have been terminated due to out of memory conditions in the last 15 minutes.
 This is something the administrator should be aware of, but may not require immediate action.
 
 ### Alerts, Metrics and Recording Rules Tests

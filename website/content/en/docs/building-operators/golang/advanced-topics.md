@@ -116,13 +116,13 @@ func init() {
 ### Monitoring and Observability
 This section covers how to create custom metrics, [alerts] and [recording rules] for your operator. It focuses on the technical aspects, and demonstrates the implementation by updating the sample [memcached-operator].
 
-For more information regarding monitoring best practices, take a look at our docs on [observability-best-practices].  
+For more information regarding monitoring best practices, take a look at our docs on [observability-best-practices].
 
 #### Prerequisites
 The following steps are required in order to inspect the operator's custom metrics, alerts and recording rules:
 - Install Prometheus and Prometheus Operator. We recommend using [kube-prometheus] in production if you don’t have your own monitoring system. If you are just experimenting, you can only install Prometheus and Prometheus Operator.
 - Make sure Prometheus has access to the operator's namespace, by setting the corresponding RBAC rules.
-  
+
   Example: [prometheus_role.yaml] and [prometheus_role_binding.yaml]
 
 #### Publishing Custom Metrics
@@ -175,7 +175,7 @@ func init() {
 }
 ```
 
-The next step would be to set the controller's logic according to which we update the metric's value. In this case, the new metric type is `Counter`, thus a valid update operation would be to increment its value. 
+The next step would be to set the controller's logic according to which we update the metric's value. In this case, the new metric type is `Counter`, thus a valid update operation would be to increment its value.
 
 [Metric update example]:
 
@@ -225,7 +225,7 @@ func NewPrometheusRuleSpec() *monitoringv1.PrometheusRuleSpec {
 		Groups: []monitoringv1.RuleGroup{{
 			Name: "memcached.rules",
 			Rules: []monitoringv1.Rule{
-				createOperatorUpTotalRecordingRule(), 
+				createOperatorUpTotalRecordingRule(),
 				createOperatorDownAlertRule()
 			},
 		}},
@@ -275,7 +275,7 @@ func (r *MemcachedReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
             return ctrl.Result{}, nil
         }
     }
-    
+
     if err == nil {
     // Check if prometheus rule spec was changed, if so set as desired
     desiredRuleSpec := monitoring.NewPrometheusRuleSpec()
@@ -311,7 +311,7 @@ Now you can access Prometheus UI using `http://localhost:9090`. For more details
 ### Handle Cleanup on Deletion
 
 Operators may create objects as part of their operational duty. Object accumulation can consume unnecessary resources, slow down the API and clutter the user interface. As such it is important for operators to keep good hygiene and to clean up resources when they are not needed. Here are a few common scenarios.
- 
+
 #### Internal Resources
 
 A typical example of correct resource cleanup is the [Jobs][jobs] implementation. When a Job is created, one or multiple Pods are created as child resources. When a Job is deleted, the associated Pods are deleted as well. This is a very common pattern easily achieved by setting an owner reference from the parent (Job) to the child (Pod) object. Here is a code snippet for doing so, where "r" is the reconcilier and "ctrl" the controller-runtime library:

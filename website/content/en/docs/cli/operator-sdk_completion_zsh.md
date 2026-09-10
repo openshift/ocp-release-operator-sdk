@@ -39,4 +39,3 @@ $ operator-sdk completion zsh > "${fpath[1]}/_operator-sdk"
 ### SEE ALSO
 
 * [operator-sdk completion](../operator-sdk_completion)	 - Load completions for the specified shell
-

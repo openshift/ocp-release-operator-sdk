@@ -5,24 +5,24 @@ weight: 30
 description: An in-depth walkthrough of admission webhooks.
 ---
 
-## Create a validating or mutating Admission Webhook 
+## Create a validating or mutating Admission Webhook
 
 Admission webhooks are HTTP callbacks that receive admission requests and do something with them. It is registered with Kubernetes, and
 will be called by Kubernetes to validate or mutate a resource before being stored. There are two types of admission webhooks.
 
 #### 1. Validating admission webhook
 
-Validating webhooks can be used to perform validations that go beyond the capabilities of OpenAPI schema validation, 
-such as ensuring a field is immutable after creation or higher level permissions checks based on the user that is making 
+Validating webhooks can be used to perform validations that go beyond the capabilities of OpenAPI schema validation,
+such as ensuring a field is immutable after creation or higher level permissions checks based on the user that is making
 the request to the API server. It can reject the request, but it cannot modify the object that they are receiving in the request.
 
 #### 2. Mutating admission webhook
 
-Mutating webhooks are most frequently used for defaulting, by adding default values for unset fields in the resource on creation. 
+Mutating webhooks are most frequently used for defaulting, by adding default values for unset fields in the resource on creation.
 They can modify objects by creating a patch that will be sent back in the admission response.
 
-For more background on Admission webhooks, refer to the [Kubebuilder documentation](https://book.kubebuilder.io/reference/admission-webhook.html) or the [official Kubernetes documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/). 
-You can also refer to the [Kubebuilder webhook walkthrough](https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation.html), which is similar in content to this guide. 
+For more background on Admission webhooks, refer to the [Kubebuilder documentation](https://book.kubebuilder.io/reference/admission-webhook.html) or the [official Kubernetes documentation](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/).
+You can also refer to the [Kubebuilder webhook walkthrough](https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation.html), which is similar in content to this guide.
 
 ### Create Validation Webhook
 
@@ -40,7 +40,7 @@ Writing scaffold for you to edit...
 api/v1alpha1/memcached_webhook.go
 ```
 
-The `--defaulting` flag will scaffold the resources required for a mutating webhook, and the `--programmatic-validation` flag will scaffold the resources required for a validating webhook. 
+The `--defaulting` flag will scaffold the resources required for a mutating webhook, and the `--programmatic-validation` flag will scaffold the resources required for a validating webhook.
 In this case we have scaffolded both.
 
 After running the `create webhook` command the file structure would be:
@@ -81,7 +81,7 @@ Following this, there are a few steps which need to be done in your operator pro
 **Note**
 If OLM is being used to deploy the operator, then the section prefixed with `[CERT-MANAGER]` need not be uncommented. This is because, OLM currently handles the cert generation and rotation for webhook deployment using self-signed certs. It also does not allow users to specify the name or mount location for the certs. More documentation on this issue can be found [here](https://olm.operatorframework.io/docs/advanced-tasks/adding-admission-and-conversion-webhooks/#deploying-an-operator-with-webhooks-using-olm).
 
-### Generate webhook manifests and enable webhook deployment 
+### Generate webhook manifests and enable webhook deployment
 
 Once your webhooks are implemented, all that’s left is to create the `WebhookConfiguration` manifests required to register your webhooks with Kubernetes:
 
@@ -89,7 +89,7 @@ Once your webhooks are implemented, all that’s left is to create the `WebhookC
 $ make manifests
 ```
 
-## Run your operator and webhooks 
+## Run your operator and webhooks
 
 There are two ways to test your operator project with webhooks.
 

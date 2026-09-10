@@ -32,7 +32,7 @@ jobs:
 
     - name: Cleanup Unused Disk Space
       run: |
-        .github/workflows/clean-unused-disk-space.sh    
+        .github/workflows/clean-unused-disk-space.sh
 
     - uses: actions/setup-go@v6
       with:

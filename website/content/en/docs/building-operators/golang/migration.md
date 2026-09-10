@@ -448,4 +448,3 @@ For further steps regarding the deployment of the operator, creation of custom r
 [plugins-phase1-design-doc]: https://github.com/kubernetes-sigs/kubebuilder/blob/master/designs/extensible-cli-and-scaffolding-plugins-phase-1.md
 [migration-doc]: /docs/upgrading-sdk-version/
 [tutorial-deploy]: /docs/building-operators/golang/tutorial/#run-the-operator
-

@@ -66,4 +66,3 @@ operator-sdk generate kustomize manifests [flags]
 ### SEE ALSO
 
 * [operator-sdk generate kustomize](../operator-sdk_generate_kustomize)	 - Contains subcommands that generate operator-framework kustomize data for the operator
-

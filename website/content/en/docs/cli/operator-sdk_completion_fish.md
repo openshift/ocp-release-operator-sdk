@@ -36,4 +36,3 @@ $ operator-sdk completion fish > ~/.config/fish/completions/operator-sdk.fish
 ### SEE ALSO
 
 * [operator-sdk completion](../operator-sdk_completion)	 - Load completions for the specified shell
-

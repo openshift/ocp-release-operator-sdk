@@ -1,7 +1,7 @@
 # Ansible based-Operator Proposal for Operator SDK
 
 > Status: **implemented**
-> 
+>
 > This proposal has been implemented, please see the [Ansible User Guide for Operator SDK](http://sdk.operatorframework.io/docs/ansible/) for current documentation.
 
 - [Background](#background)
@@ -84,5 +84,3 @@ Optional: --defaults-file - A path to the defaults file to use to generate a new
 `operator-sdk up local` - This should use the known structure and the ansible operator code to run the operator from this location. This will need to be changed to determine if it is an ansible operator or a golang operator. The command works by running the operator-sdk binary, which includes the ansible operator code, as the operator process. This is slightly different than the current up local command.
 
 `operator-sdk build <image-name>` - This builds the operator image. This will need to be changed to determine if ansbile operator or golang operator.
-
-

@@ -43,5 +43,4 @@ operator-sdk scorecard [flags]
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

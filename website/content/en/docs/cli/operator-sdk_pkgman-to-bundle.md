@@ -106,5 +106,4 @@ Images for the both the bundles will be built with the following names: quay.io/
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

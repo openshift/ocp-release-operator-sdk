@@ -24,9 +24,9 @@ This documentation describes the pattern and library useful for implementing a s
 
 ## operator-lib prune library
 
-A simple pruning implementation can be found in the [operator-lib prune package][operator-lib-prune]. This 
-package is written in Go and is meant to be used within Go-based operators. This package was 
-developed to include common pruning strategies as found in common operators. The package also allow 
+A simple pruning implementation can be found in the [operator-lib prune package][operator-lib-prune]. This
+package is written in Go and is meant to be used within Go-based operators. This package was
+developed to include common pruning strategies as found in common operators. The package also allow
 for customization of hooks and strategies.
 
 ### Pruning Configuration
@@ -88,7 +88,7 @@ Adding a logger.Logger to the context can be done with [logr.NewContext][logr-ne
 
 A strategy of leaving a finite set of resources is implemented called *maxcount*. This strategy
 seeks to leave a specific number of resources, sorted by latest, on your cluster. For example, if
-you have 10 resources that would be pruned, and you specified a *maxcount* value of 4, then 6 
+you have 10 resources that would be pruned, and you specified a *maxcount* value of 4, then 6
 resources would be pruned (removed) from your cluster starting with the oldest resources.
 
 ### maxage Strategy
@@ -102,7 +102,7 @@ pruned.  Durations are specified using golang's [time.Duration formatting] (e.g.
 
 ### preDelete Hook
 
-Users can provide a *preDelete* hook when using the [operator-lib prune package][operator-lib-prune].  
+Users can provide a *preDelete* hook when using the [operator-lib prune package][operator-lib-prune].
 This hook function will be called by the library before removing a resource.  This provides a means to examine
 the resource logs for example, extracting any valued content, before the resource is removed
 from the cluster.

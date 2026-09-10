@@ -1,4 +1,4 @@
-.of-masthead--home {   
+.of-masthead--home {
     background: var(--of--color-black--100) url("/build/images/bg-masthead-SDK.svg") no-repeat;
     background-position: -22vw -30vw ;
     background-size: 70% auto;
@@ -64,7 +64,7 @@
     &__header {
         background: var(--of--color-white--200);
         padding: var(--of--spacer--lg);
-        
+
         @media (min-width: $ov--breakpoint--lg) {
                 padding: var(--of--spacer--2xl) 0 var(--of--spacer--2xl) calc(var(--of--spacer--2xl) + var(--of--spacer--xl));
             &--overlay {
@@ -94,7 +94,7 @@
                 padding: var(--of--spacer--lg);
             }
         }
-         
+
         @media (min-width: $ov--breakpoint--lg) {
             margin: var(--of--spacer--xl) calc(var(--of--spacer--2xl) + var(--of--spacer--xl)) var(--of--spacer--2xl) calc(var(--of--spacer--2xl) + var(--of--spacer--xl));
             &--overlay {
@@ -111,7 +111,7 @@
                     margin-bottom: var(--of--spacer--md);
                 }
             }
-             
+
         }
     }
     &__footer {
@@ -126,7 +126,7 @@
             grid-template-columns: 1fr 1fr 1fr;
             margin: 0 var(--of--spacer--2xl);
         }
-        
+
     }
 
     &__item {

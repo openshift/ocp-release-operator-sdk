@@ -25,4 +25,3 @@ operator-sdk completion powershell [flags]
 ### SEE ALSO
 
 * [operator-sdk completion](../operator-sdk_completion)	 - Load completions for the specified shell
-

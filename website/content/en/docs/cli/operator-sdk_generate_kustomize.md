@@ -22,4 +22,3 @@ Contains subcommands that generate operator-framework kustomize data for the ope
 
 * [operator-sdk generate](../operator-sdk_generate)	 - Invokes a specific generator
 * [operator-sdk generate kustomize manifests](../operator-sdk_generate_kustomize_manifests)	 - Generates kustomize bases and a kustomization.yaml for operator-framework manifests
-

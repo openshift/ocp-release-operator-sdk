@@ -89,7 +89,7 @@ operator-sdk create api \
     --kind=Memcached
 ```
 
-Running the above command creates an empty `roles/<kind>`. We can copy over the content of our old `roles/<kind>` to the new one.   
+Running the above command creates an empty `roles/<kind>`. We can copy over the content of our old `roles/<kind>` to the new one.
 
 ### Migrating your Custom Resource samples
 
@@ -158,7 +158,7 @@ and the values `60m` and `1h` would be equivalent to the `3600s` that is used.
 
 ### Migrating your Molecule tests
 
-If you are using [Molecule][molecule] in your project will be required to port the tests for the new layout.  
+If you are using [Molecule][molecule] in your project will be required to port the tests for the new layout.
 
 See that default structure changed from:
 
@@ -236,7 +236,7 @@ New projects are configured to watch all namespaces by default, so they need a `
 
 The following rules were used in earlier versions of ansible-operator to automatically create and manage services and `servicemonitors` for metrics collection. If your operator's don't require these rules, they can safely be left out of the new `config/rbac/role.yaml` file:
 
-```yaml  
+```yaml
   - apiGroups:
     - monitoring.coreos.com
     resources:

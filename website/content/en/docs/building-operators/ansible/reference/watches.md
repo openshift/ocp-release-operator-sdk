@@ -27,7 +27,7 @@ be monitored for updates and cached.
   current project directory.
 * **vars**: This is an arbitrary map of key-value pairs. The contents will be
   passed as `extra_vars` to the playbook or role specified for this watch.
-* **reconcilePeriod** (optional): The maximum interval that the operator will wait before beginning another reconcile, even if no watched events are received. When an operator watches many resources, each reconcile can become expensive, and a low value here can actually reduce performance. Typically, this option should only be used in advanced use cases where `watchDependentResources` is set to `False`  and when is not possible to use the watch feature. E.g To manage external resources that don’t emit Kubernetes events. The format for the duration string is a sequence of decimal numbers, each with optional fraction and a unit suffix, such as "300ms", "1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h". Defaults to 10 hours. 
+* **reconcilePeriod** (optional): The maximum interval that the operator will wait before beginning another reconcile, even if no watched events are received. When an operator watches many resources, each reconcile can become expensive, and a low value here can actually reduce performance. Typically, this option should only be used in advanced use cases where `watchDependentResources` is set to `False`  and when is not possible to use the watch feature. E.g To manage external resources that don’t emit Kubernetes events. The format for the duration string is a sequence of decimal numbers, each with optional fraction and a unit suffix, such as "300ms", "1.5h" or "2h45m". Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h". Defaults to 10 hours.
 * **manageStatus** (optional): When true (default), the operator will manage
   the status of the CR generically. Set to false, the status of the CR is
   managed elsewhere, by the specified role/playbook or in a separate controller.
@@ -128,7 +128,7 @@ Some features can be overridden per resource via an annotation on that CR. The o
 
 **Note:** By using the command `operator-sdk add api` you are able to add additional CRDs to the project API, which can aid in designing your solution using concepts such as encapsulation, single responsibility principle, and cohesion, which could make the project easier to read, debug, and maintain. With this approach, you are able to customize and optimize the configurations more specifically per GVK via the `watches.yaml` file.
 
-**Example:** 
+**Example:**
 
 ```YaML
 ---

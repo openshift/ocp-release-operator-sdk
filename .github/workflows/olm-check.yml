@@ -5,7 +5,7 @@ on:
    branches:
     - 'release-*'
  workflow_dispatch:
-   
+
 
 jobs:
   check-olm-minor-releases:
@@ -15,5 +15,3 @@ jobs:
       - uses: actions/checkout@v6
       - id: run-check-olm
         run: ./hack/check-olm.sh
-    
-    

@@ -24,7 +24,6 @@ Scaffold a Kubernetes API or webhook.
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
+* [operator-sdk](../operator-sdk)	 -
 * [operator-sdk create api](../operator-sdk_create_api)	 - Scaffold a Kubernetes API
 * [operator-sdk create webhook](../operator-sdk_create_webhook)	 - Scaffold a webhook for an API resource
-
