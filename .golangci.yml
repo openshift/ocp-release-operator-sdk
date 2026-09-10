@@ -43,6 +43,7 @@ linters:
           files:
             - "!**/*_test.go"
             - "!**/test/**"
+            - "!**/testutils/**"
     revive:
       rules:
         - name: var-naming

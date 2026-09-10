@@ -91,8 +91,14 @@ verify-file: ## Fast checks for a single Go file (FILE=path required).
 	@test -n "$(FILE)" || (echo "Error: FILE is required, e.g. make verify-file FILE=internal/olm/client/client.go" && exit 1)
 	./hack/verify-file.sh "$(FILE)"
 
+PRECOMMIT_VERSION = 4.0.1
+
+.PHONY: setup-precommit
+setup-precommit: ## Install the pinned pre-commit version if not already on PATH.
+	@command -v pre-commit >/dev/null 2>&1 || python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"
+
 .PHONY: precommit
-precommit: ## Run pre-commit hooks on all files.
+precommit: setup-precommit ## Run pre-commit hooks on all files.
 	pre-commit run --all-files
 
 .PHONY: check-file-size
@@ -193,7 +199,7 @@ test-docs: ## Test doc links
 	./hack/check-links.sh
 
 .PHONY: test-unit
-TEST_PKGS = $(shell $(GO) list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
+TEST_PKGS = $(shell $(GO) list -tags=$(GO_BUILD_TAGS) ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
 test-unit: ## Run unit tests
 	CGO_ENABLED=1 $(GO) test -race -tags=$(GO_BUILD_TAGS) -coverprofile=coverage.out -covermode=atomic -short $(TEST_PKGS)
 
