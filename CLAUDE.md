@@ -100,3 +100,8 @@ For in-depth guides, see the `harness-evals/harness-docs/` directory:
 - `architecture/` -- Repo layout, design rationale
 - `OSDK_DEVELOPMENT.md` -- Code style, conventions, common pitfalls
 - `OSDK_TESTING.md` -- Unit, E2E, integration testing
+
+For design intent (preconditions, invariants, rationale), see `docs/design/`:
+- `helm-reconciler.md` -- Reconcile loop, watch dedup, status updates, concurrency
+- `olm-lifecycle.md` -- Install/uninstall, timeout contexts, polling patterns
+- `plugin-system.md` -- Plugin naming, scaffolding contracts, extension points

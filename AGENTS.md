@@ -32,7 +32,7 @@ A toolkit for building, testing, and packaging Kubernetes operators. This reposi
 2. **DO NOT forget the build tag** -- All Go commands require `-tags containers_image_openpgp`. Use Makefile targets.
 3. **DO NOT mix logging frameworks** -- logrus for `operator-sdk` CLI, logr for `helm-operator` runtime.
 4. **DO NOT commit vendor changes with source changes** -- Vendor updates are separate commits with `UPSTREAM: <drop>: Update vendor directory`.
-5. **Update design docs** when changing architectural boundaries -- see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+5. **Update design docs** when changing architectural boundaries -- see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/design/](docs/design/) for preconditions, invariants, and rationale.
 
 ## Documentation Structure
 
@@ -77,6 +77,9 @@ harness-evals/harness-docs/
 | Downstream patch | `patches/03-setversion.patch` | `.claude/skills/downstream-patch/SKILL.md` |
 | Upstream merge | `UPSTREAM-MERGE.sh` | `.claude/skills/upstream-sync/SKILL.md` |
 | Generated artifacts | `hack/generate/cli-doc/gen-cli-doc.go` | `.claude/skills/generate-artifacts/SKILL.md` |
+| OLM lifecycle operation | `internal/olm/installer/manager.go` | `docs/design/olm-lifecycle.md` |
+| Scorecard test addition | `internal/scorecard/tests/bundle_test.go` | `docs/patterns/scorecard-tests.md` |
+| Bundle validation change | `internal/validate/validators.go` | `docs/patterns/bundle-validation.md` |
 
 ## Downstream Fork Conventions
 
