@@ -37,10 +37,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Status aggregates the status of all OLM-managed resources.
 type Status struct {
 	Resources []ResourceStatus
 }
 
+// ResourceStatus holds the observed state of a single OLM-managed resource.
 type ResourceStatus struct {
 	NamespacedName types.NamespacedName
 	Resource       *unstructured.Unstructured

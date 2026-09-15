@@ -29,6 +29,7 @@ const (
 	SDKOperatorGroupName = "operator-sdk-og"
 )
 
+// CatalogNameForPackage returns the CatalogSource name derived from an operator package name.
 func CatalogNameForPackage(pkg string) string {
 	return fmt.Sprintf("%s-catalog", pkg)
 }

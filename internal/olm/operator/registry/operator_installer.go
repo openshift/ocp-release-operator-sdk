@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// OperatorInstaller manages the OLM-based installation of an operator via CatalogSource and Subscription.
 type OperatorInstaller struct {
 	CatalogSourceName     string
 	PackageName           string
@@ -48,6 +49,7 @@ type OperatorInstaller struct {
 	cfg *operator.Configuration
 }
 
+// NewOperatorInstaller creates an OperatorInstaller with the given configuration.
 func NewOperatorInstaller(cfg *operator.Configuration) *OperatorInstaller {
 	return &OperatorInstaller{cfg: cfg}
 }
