@@ -79,7 +79,7 @@ harness-evals/harness-docs/
 | Generated artifacts | `hack/generate/cli-doc/gen-cli-doc.go` | `.claude/skills/generate-artifacts/SKILL.md` |
 | OLM lifecycle operation | `internal/olm/installer/manager.go` | `docs/design/olm-lifecycle.md` |
 | Scorecard test addition | `internal/scorecard/tests/bundle_test.go` | `docs/patterns/scorecard-tests.md` |
-| Bundle validation change | `internal/validate/validators.go` | `docs/patterns/bundle-validation.md` |
+| Bundle validation change | `internal/validate/external.go` | `docs/patterns/bundle-validation.md` |
 
 ## Downstream Fork Conventions
 

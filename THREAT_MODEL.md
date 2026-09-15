@@ -58,9 +58,8 @@ Developer --> GitHub PR --> CI (GitHub Actions / Prow) --> Release artifacts
 
 1. Should fetched tool binaries (golangci-lint, kind, kubectl) include SHA256 checksum verification?
 2. Should goreleaser be vendored or pinned by checksum rather than fetched at build time?
-3. Should CodeQL analysis run on a schedule in addition to PR triggers?
-4. Should GitHub Actions be pinned by full commit SHA instead of semver tags (M2)? Deferred for now to match existing repo convention.
-5. Should container images be signed with cosign/Sigstore in addition to binary checksum signing (M3)?
+3. Should GitHub Actions be pinned by full commit SHA instead of semver tags (M2)? Deferred for now to match existing repo convention.
+4. Should container images be signed with cosign/Sigstore in addition to binary checksum signing (M3)?
 
 ## Provenance
 

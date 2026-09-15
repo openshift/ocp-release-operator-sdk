@@ -59,7 +59,7 @@ Always pass `false` for the `immediate` parameter (third arg) to avoid running t
 
 - The `WatchedSecrets` wrapper (`internal/helm/client/secrets_watch.go`) exists specifically to reduce API server load. Helm queries release secrets multiple times per reconciliation. The wrapper intercepts `List` calls matching `owner=helm` and serves them from the informer lister instead of hitting the API server. If a List call includes options beyond a label selector (checked via `hasListOptionsOtherThanLabelSelector` at line 107), it falls through to the direct API call with a log warning. Do not bypass this wrapper.
 
-- Dependent resource watches are deduplicated via a `map[schema.GroupVersionKind]struct{}` guarded by `sync.RWMutex` (`controller.go:101-102`). A watch is registered at most once per GVK regardless of how many releases include that resource kind.
+- Dependent resource watches are deduplicated via a `map[schema.GroupVersionKind]struct{}` guarded by `sync.RWMutex` (`controller.go:101-102`). Under normal operation a watch is registered once per GVK, but the TOCTOU race described above means concurrent reconciles can register duplicate watches for the same GVK before either records the entry. This is wasteful (duplicate event deliveries) but not harmful, since the reconciler handles duplicates idempotently.
 
 - Use `predicate.DependentPredicate{}` on all dependent resource watches to filter out events that do not represent meaningful changes (`controller.go:145,155`).
 

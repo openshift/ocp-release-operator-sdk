@@ -6,7 +6,7 @@ When adding or modifying OLM bundle validation rules in the `operator-sdk bundle
 
 ## Reference implementation
 
-`internal/validate/validators.go` -- validator registration and execution.
+`internal/validate/external.go` -- validator registration and execution.
 
 ## Steps
 
