@@ -98,6 +98,5 @@ bash -n hack/verify-file.sh
 For in-depth guides, see the `harness-evals/harness-docs/` directory:
 - `domain/` -- CLI commands, plugin system, helm-operator
 - `architecture/` -- Repo layout, design rationale
-- `decisions/` -- Architecture Decision Records
 - `OSDK_DEVELOPMENT.md` -- Code style, conventions, common pitfalls
 - `OSDK_TESTING.md` -- Unit, E2E, integration testing

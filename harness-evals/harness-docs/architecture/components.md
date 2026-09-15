@@ -69,5 +69,3 @@ This repository is a downstream fork. Key conventions:
 - **Commit prefixes**: `UPSTREAM: <carry>:` (persistent) or `UPSTREAM: <drop>:` (temporary)
 - **Patch system**: `patches/` applied by `make -f ci/prow.Makefile patch`
 - **Vendored deps**: Committed `vendor/` directory (required by downstream build infra)
-
-See [decisions/](../decisions/) for architectural decision records.
