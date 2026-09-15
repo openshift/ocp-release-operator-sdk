@@ -95,7 +95,15 @@ PRECOMMIT_VERSION = 4.0.1
 
 .PHONY: setup-precommit
 setup-precommit: ## Install the pinned pre-commit version if not already on PATH.
-	@command -v pre-commit >/dev/null 2>&1 || python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		installed=$$(pre-commit --version | awk '{print $$2}'); \
+		if [ "$$installed" != "$(PRECOMMIT_VERSION)" ]; then \
+			echo "pre-commit version mismatch: installed $$installed, expected $(PRECOMMIT_VERSION); upgrading..."; \
+			python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"; \
+		fi; \
+	else \
+		python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"; \
+	fi
 
 .PHONY: precommit
 precommit: setup-precommit ## Run pre-commit hooks on all files.
