@@ -328,6 +328,7 @@ ol {
             padding: 0 var(--of--spacer--sm);
         }
     }
+
         width: 100%;
         max-width: 1250px;
         li {
@@ -529,7 +530,6 @@ ol {
           }
       }
       @media (max-width: $ov--breakpoint--lg) {
-
           border: 0;
 
          thead {

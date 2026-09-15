@@ -18,7 +18,8 @@ validate_header() {
   [[ -z "$header" ]] && return 1
   [[ ${#header} -gt 70 ]] && return 1
   # Downstream carry/drop format
-  [[ "$header" =~ ^UPSTREAM:[[:space:]]+\<(carry|drop)\>:[[:space:]]+[^[:space:]] ]] && return 0
+  local upstream_re='^UPSTREAM:[[:space:]]+<(carry|drop)>:[[:space:]]+[^[:space:]]'
+  [[ "$header" =~ $upstream_re ]] && return 0
   # Subsystem or conventional commits format
   [[ "$header" =~ ^[a-zA-Z][a-zA-Z0-9/_.\(\)-]*:[[:space:]]+[^[:space:]] ]] && return 0
   return 1
