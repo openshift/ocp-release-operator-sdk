@@ -57,10 +57,10 @@ default-key $GPG_KEY_ID
 ```
 export GPG_TTY=`tty`
 ```
-- Restart your Terminal or source your ~/.*rc file 
+- Restart your Terminal or source your ~/.*rc file
 - Then, make sure git uses gpg2 and not gpg
 ```bash
-$ git config --global gpg.program gpg2 
+git config --global gpg.program gpg2
 ```
 - To make sure gpg2 itself is working
 ```bash
