@@ -8,7 +8,7 @@ The Helm reconciler (`internal/helm/controller/`) bridges controller-runtime's r
 
 1. **One controller per GVK.** `Add()` registers exactly one controller-runtime controller per `WatchOptions.GVK`. Multiple watches for the same GVK are not supported and would conflict on the controller name.
 
-2. **Watch deduplication is append-only.** The `watches` map (`map[schema.GroupVersionKind]struct{}`) in `watchDependentResources` only grows; watches are never removed. Once a GVK is watched, it remains watched for the lifetime of the process. This is safe because `c.Watch()` is idempotent for the same source.
+2. **Watch deduplication is append-only.** The `watches` map (`map[schema.GroupVersionKind]struct{}`) in `watchDependentResources` only grows; watches are never removed. A TOCTOU race between the `RLock` check and the later `Lock` registration means concurrent reconciles for the same GVK can both call `c.Watch()` before either registers the entry. This can result in duplicate watch registrations (wasteful but not crash-inducing, since duplicate event deliveries are handled idempotently by the reconciler). Fixing this race is tracked separately.
 
 3. **Status updates are conditional.** The reconciler snapshots `originalStatus` via `DeepCopy` at the top of `Reconcile` (line 108) and only issues a status sub-resource update when `!reflect.DeepEqual(status, originalStatus)` (line 424). New reconcilers must preserve this pattern to avoid unnecessary API writes.
 

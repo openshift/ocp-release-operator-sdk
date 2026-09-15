@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository uses multiple code generation systems: kubebuilder machinery for scaffolding, CSV/bundle generators for OLM packaging, `go-bindata` for embedding manifests, `counterfeiter` for test fakes, `controller-gen` for deepcopy and marker help, and cobra/doc for CLI documentation. All generation runs through `make generate`.
+This repository uses multiple code generation systems: kubebuilder machinery for scaffolding, CSV/bundle generators for OLM packaging, `go-bindata` for embedding manifests, `counterfeiter` for test fakes, `controller-gen` for deepcopy and marker help, and cobra/doc for CLI documentation. Most generation runs through `make generate`. The exception is OLM bindata updates, which use the separate `make bindata` target (see `hack/generate/olm_bindata.sh`).
 
 ## Makefile `generate` Target
 
