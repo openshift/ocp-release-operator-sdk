@@ -67,7 +67,7 @@ Always pass `false` for the `immediate` parameter (third arg) to avoid running t
 
 ## Goroutine Patterns
 
-- Scorecard parallel test execution uses `sync.WaitGroup` + buffered channel (`internal/scorecard/scorecard.go:127-137`). The channel is pre-allocated to `len(tests)` capacity. Follow this pattern for bounded fan-out: pre-size the channel, launch goroutines, `wg.Wait()`, then close and drain.
+- Scorecard parallel test execution uses `sync.WaitGroup` + buffered channel (`internal/scorecard/scorecard.go:127-137`). The channel is pre-allocated to `len(tests)` capacity. Follow this pattern for buffered result collection: pre-size the channel, launch goroutines, `wg.Wait()`, then close and drain. Note that this pattern does not limit concurrency -- all goroutines run simultaneously. Add a semaphore or worker pool if an actual concurrency cap is needed.
 
 - Background streaming (e.g., `storage.go:68`) launches a goroutine that owns `io.Pipe` writers. Always `defer` closing both `outStream` and `errStream` inside the goroutine to prevent reader hangs.
 
@@ -75,7 +75,7 @@ Always pass `false` for the `immediate` parameter (third arg) to avoid running t
 
 ## Context and Timeout Conventions
 
-- Long-running operations (OLM install/uninstall, scorecard, bundle run) use `context.WithTimeout(context.Background(), timeout)` where timeout defaults to 2 minutes (`installer/manager.go:76,95,123`). Always call `defer cancel()` immediately after creating the context.
+- Long-running operations without a caller context (OLM install/uninstall, scorecard) use `context.WithTimeout(context.Background(), timeout)` where timeout defaults to 2 minutes (`installer/manager.go:76,95,123`). `operator-sdk run bundle` instead derives its timeout from `cmd.Context()` (`run/bundle/cmd.go:48`), since a caller context is available. Always call `defer cancel()` immediately after creating the context.
 
 - Cleanup operations after a primary context expires must use a fresh context: `context.WithTimeout(context.Background(), cleanupTimeout)` with a 30-second ceiling (`scorecard.go:70,108`). Do not reuse the expired parent context for cleanup.
 
@@ -93,7 +93,7 @@ Always pass `false` for the `immediate` parameter (third arg) to avoid running t
 
 ## Logging Performance
 
-- Use `log.V(1).Info(...)` for per-reconcile diagnostics, not `log.Info(...)`. The `V(1)` guard prevents string formatting when debug logging is disabled. The diff output in `reconcile.go:151,276,353` is additionally guarded by `log.V(1).Enabled()` to avoid computing the diff at all.
+- Use `log.V(1).Info(...)` for per-reconcile diagnostics, not `log.Info(...)`. The `V(1)` guard suppresses log emission when debug logging is disabled, but Go still evaluates all call arguments. The diff output in `reconcile.go:151,276,353` is additionally guarded by an explicit `log.V(1).Enabled()` check to avoid computing the diff string at all -- use this `.Enabled()` pattern whenever arguments are expensive to construct.
 
 - Helm debug logs use a closure (`debugLog` in `actionconfig.go:47-49`) that checks `log.Enabled()` before formatting. Follow this pattern when passing log functions to third-party libraries.
 
