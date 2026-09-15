@@ -3,7 +3,7 @@
 **Component**: Operator SDK (OSDK)
 **Repository**: openshift/ocp-release-operator-sdk
 
-> **AI agents**: Read `harness-evals/harness-docs/domain/` first for CLI and plugin system, then `harness-evals/harness-docs/architecture/` for implementation patterns. Check `harness-evals/harness-docs/decisions/` before making architectural changes.
+> **AI agents**: Read `harness-evals/harness-docs/domain/` first for CLI and plugin system, then `harness-evals/harness-docs/architecture/` for implementation patterns.
 > **Platform Patterns**: See [openshift/enhancements/ai-docs/](https://github.com/openshift/enhancements/tree/master/ai-docs/) for operator patterns, testing, security, and cross-repo ADRs.
 
 ## What is Operator SDK?
@@ -32,7 +32,7 @@ A toolkit for building, testing, and packaging Kubernetes operators. This reposi
 2. **DO NOT forget the build tag** -- All Go commands require `-tags containers_image_openpgp`. Use Makefile targets.
 3. **DO NOT mix logging frameworks** -- logrus for `operator-sdk` CLI, logr for `helm-operator` runtime.
 4. **DO NOT commit vendor changes with source changes** -- Vendor updates are separate commits with `UPSTREAM: <drop>: Update vendor directory`.
-5. **Update design docs** when changing architectural boundaries -- see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and `harness-evals/harness-docs/decisions/`.
+5. **Update design docs** when changing architectural boundaries -- see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Documentation Structure
 
@@ -43,17 +43,13 @@ harness-evals/harness-docs/
 │   └── helm-operator.md        # helm-operator: reconciler, watches.yaml
 ├── architecture/
 │   └── components.md           # Repo layout, two binaries, internal-only, OLM
-├── decisions/
-│   ├── adr-0001-downstream-mirror-patch-isolation.md
-│   ├── adr-0002-vendored-dependency-policy.md
-│   └── adr-0003-release-signing-build-automation.md
 ├── references/
 │   └── ecosystem.md            # Links to Platform patterns, guidelines, docs
 ├── OSDK_DEVELOPMENT.md         # Build, code style, conventions, common pitfalls
 └── OSDK_TESTING.md             # Unit (Ginkgo), E2E (KIND), test data
 ```
 
-**AI Agent Path**: `harness-evals/harness-docs/domain/` -> `harness-evals/harness-docs/architecture/` -> `harness-evals/harness-docs/decisions/` -> `harness-evals/harness-docs/OSDK_DEVELOPMENT.md` or `harness-evals/harness-docs/OSDK_TESTING.md` (as relevant)
+**AI Agent Path**: `harness-evals/harness-docs/domain/` -> `harness-evals/harness-docs/architecture/` -> `harness-evals/harness-docs/OSDK_DEVELOPMENT.md` or `harness-evals/harness-docs/OSDK_TESTING.md` (as relevant)
 
 ## Quick Reference
 
@@ -98,12 +94,12 @@ harness-evals/harness-docs/
                               |
               +---------------+---------------+
               |               |               |
-  [harness-docs/domain/] [harness-docs/      [harness-docs/
-     CLI commands          architecture/]       decisions/]
-     Helm operator         Repo layout          ADR history
-     Plugin system         OLM integration      (3 ADRs)
-              |                    |                    |
-              +--------------------+--------------------+
+  [harness-docs/domain/] [harness-docs/
+     CLI commands          architecture/]
+     Helm operator         Repo layout
+     Plugin system         OLM integration
+              |                    |
+              +--------------------+
                                    |
                  [harness-docs/OSDK_DEVELOPMENT.md]
                  [harness-docs/OSDK_TESTING.md]

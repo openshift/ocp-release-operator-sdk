@@ -121,7 +121,7 @@ After changing `go.mod`:
 
 ### Patch System
 
-Downstream patches in `patches/` are applied by `make -f ci/prow.Makefile patch`. See [decisions/adr-0001](decisions/adr-0001-downstream-mirror-patch-isolation.md).
+Downstream patches in `patches/` are applied by `make -f ci/prow.Makefile patch`.
 
 ### Changelog
 

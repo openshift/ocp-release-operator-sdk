@@ -183,14 +183,6 @@ Rebasing to a new upstream release uses `UPSTREAM-MERGE.sh`, which:
 
 Downstream-specific commits use prefixes: `UPSTREAM: <carry>:` (persists across rebases) or `UPSTREAM: <drop>:` (regenerated each rebase, e.g., vendor updates).
 
-## Architecture Decision Records
-
-See [harness-evals/harness-docs/decisions/](../harness-evals/harness-docs/decisions/) for ADRs:
-
-- [ADR-0001: Downstream mirror and patch isolation](../harness-evals/harness-docs/decisions/adr-0001-downstream-mirror-patch-isolation.md)
-- [ADR-0002: Vendored dependency policy](../harness-evals/harness-docs/decisions/adr-0002-vendored-dependency-policy.md)
-- [ADR-0003: Release signing and build automation](../harness-evals/harness-docs/decisions/adr-0003-release-signing-build-automation.md)
-
 ## Extension Points Summary
 
 | To add... | Where |
