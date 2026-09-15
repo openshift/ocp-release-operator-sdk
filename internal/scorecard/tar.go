@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// WriteToTar writes a single file entry from r into the tar writer tw using the given header.
 func WriteToTar(tw *tar.Writer, r io.Reader, hdr *tar.Header) error {
 	if err := tw.WriteHeader(hdr); err != nil {
 		return err

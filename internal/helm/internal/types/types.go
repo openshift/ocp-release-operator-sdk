@@ -22,12 +22,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// HelmAppList is a list of HelmApp resources.
 type HelmAppList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []HelmApp `json:"items"`
 }
 
+// HelmApp represents a Helm-based custom resource with spec and status.
 type HelmApp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
@@ -35,12 +37,19 @@ type HelmApp struct {
 	Status            HelmAppStatus `json:"status,omitempty"`
 }
 
+// HelmAppSpec holds the user-supplied values for a Helm release as an untyped map.
 type HelmAppSpec map[string]any
 
+// HelmAppConditionType identifies the category of a Helm app condition.
 type HelmAppConditionType string
+
+// ConditionStatus represents the truth value of a condition (True, False, Unknown).
 type ConditionStatus string
+
+// HelmAppConditionReason provides a machine-readable reason for a condition transition.
 type HelmAppConditionReason string
 
+// HelmAppCondition describes an observed condition of a Helm app.
 type HelmAppCondition struct {
 	Type    HelmAppConditionType   `json:"type"`
 	Status  ConditionStatus        `json:"status"`
@@ -50,6 +59,7 @@ type HelmAppCondition struct {
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 }
 
+// HelmAppRelease holds the name and rendered manifest of a deployed Helm release.
 type HelmAppRelease struct {
 	Name     string `json:"name,omitempty"`
 	Manifest string `json:"manifest,omitempty"`
@@ -74,6 +84,7 @@ const (
 	ReasonUninstallError      HelmAppConditionReason = "UninstallError"
 )
 
+// HelmAppStatus represents the observed state of a Helm-based custom resource.
 type HelmAppStatus struct {
 	Conditions      []HelmAppCondition `json:"conditions"`
 	DeployedRelease *HelmAppRelease    `json:"deployedRelease,omitempty"`

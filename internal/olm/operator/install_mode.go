@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/set"
 )
 
+// InstallMode specifies the OLM install mode type and target namespaces for operator installation.
 type InstallMode struct {
 	InstallModeType  v1alpha1.InstallModeType
 	TargetNamespaces []string
