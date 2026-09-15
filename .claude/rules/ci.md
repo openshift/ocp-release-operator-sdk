@@ -26,7 +26,7 @@ make test-static                              # test-sanity + test-unit + test-d
 
 ## Security Scanning
 
-`security.yml` runs `govulncheck`, OSV scanning, and Trivy Dockerfile scanning. Exceptions must be documented in `docs/security-exceptions.md`.
+Security scanning (govulncheck, OSV, Trivy) is handled by OpenShift Prow CI downstream. Exceptions must be documented in `docs/security-exceptions.md`.
 
 ## Prow Patches
 
