@@ -15,4 +15,4 @@ https://access.redhat.com/security/team/contact
 - [THREAT_MODEL.md](THREAT_MODEL.md) — Assets, trust boundaries, threats, and mitigations
 - [docs/security-guidelines.md](docs/security-guidelines.md) — RBAC, TLS, container security patterns
 - [docs/security-exceptions.md](docs/security-exceptions.md) — Reviewed and accepted findings
-- [.github/workflows/security.yml](.github/workflows/security.yml) — Automated security scanning (govulncheck, OSV, Trivy)
+- CI security scanning is handled by OpenShift Prow (downstream) and `make test-sanity` checks

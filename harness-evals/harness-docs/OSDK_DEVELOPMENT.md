@@ -148,4 +148,4 @@ Excluded gosec rules: G110, G601, G404, G204, G306.
 
 - **GitHub Actions** (`.github/workflows/`): `quality-gate.yml` is the primary required gate.
 - **OpenShift Prow** (`ci/prow.Makefile`): Downstream CI; always applies patches before builds.
-- **Security scanning** (`security.yml`): govulncheck, OSV scan, Trivy image scan.
+- **Security scanning**: govulncheck, OSV scan, Trivy image scan are handled by Prow CI downstream.

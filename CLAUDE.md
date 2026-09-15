@@ -72,7 +72,7 @@ go vet -tags containers_image_openpgp ./...
 - **Upstream CI**: GitHub Actions (`.github/workflows/`), primary gate: `quality-gate.yml`
 - **Downstream CI**: OpenShift Prow (`ci/prow.Makefile`, `ci/tests/`)
 - **Patches**: Downstream patches in `patches/` applied via `make -f ci/prow.Makefile patch`
-- **Security**: `security.yml` runs govulncheck, OSV scan, Trivy image scan
+- **Security**: `govulncheck` runs via `make test-sanity`; downstream Prow handles additional scanning
 
 ### Single-File Verification
 

@@ -79,11 +79,11 @@ Developer --> GitHub PR --> CI (GitHub Actions / Prow) --> Release artifacts
 | M2 | GitHub Actions pinned to semver tags (e.g. `@v6`), consistent with existing repo workflows | T2 | Partial — full SHA pinning is a future improvement |
 | M3 | goreleaser signs `checksums.txt` with GPG for binary releases; only `OWNERS` approve release commits | T3 | Partial — container images are not cosign/Sigstore-signed; consumers can only verify binary checksums today |
 | M4 | `govulncheck` + Dependabot + OSV scan in CI | T4 | Implemented |
-| M5 | Trivy Dockerfile scanning in `security.yml` | T5 | Implemented |
+| M5 | Trivy Dockerfile scanning in Prow CI | T5 | Implemented |
 | M6 | Tool versions pinned in Makefile; downloaded over HTTPS to git-ignored `tools/bin/` | T6 | Partial |
 | M7 | `testdata/` regenerated deterministically; `git diff --exit-code` in CI | T7 | Implemented |
 | M8 | No secrets in repo or images; ephemeral CI credentials | T8 | Implemented |
-| M9 | CodeQL SAST scanning in `.github/workflows/codeql.yml` | T1, T4 | Implemented |
+| M9 | CodeQL SAST scanning (available via GitHub Advanced Security) | T1, T4 | Planned |
 | M10 | Documented exceptions in `docs/security-exceptions.md` | T4, T5 | Implemented |
 
 ## Cross-References
@@ -91,5 +91,4 @@ Developer --> GitHub PR --> CI (GitHub Actions / Prow) --> Release artifacts
 - [SECURITY.md](SECURITY.md) — Vulnerability reporting process
 - [docs/security-guidelines.md](docs/security-guidelines.md) — RBAC, TLS, container security patterns
 - [docs/security-exceptions.md](docs/security-exceptions.md) — Accepted vulnerability exceptions
-- [.github/workflows/security.yml](.github/workflows/security.yml) — Automated security scanning
-- [.github/workflows/codeql.yml](.github/workflows/codeql.yml) — CodeQL SAST scanning
+- CI security scanning is handled by OpenShift Prow (downstream) and `make test-sanity` checks

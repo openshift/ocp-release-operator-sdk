@@ -2,9 +2,6 @@ name: quality-gate
 on:
   pull_request: {}
 
-permissions:
-  contents: read
-
 jobs:
   check_docs_only:
     name: check_docs_only
@@ -15,13 +12,11 @@ jobs:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
-        persist-credentials: false
     - id: check_docs_only
-      env:
-        BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
-        REF="${BASE_SHA:-HEAD^}"
-        echo "skip=$(.github/workflows/check-docs-only.sh "${REF}")" >> "$GITHUB_OUTPUT"
+        REF="HEAD^"
+        [[ -z "${{ github.base_ref }}" ]] || REF=$(git show-ref ${{ github.base_ref }} | head -1 | cut -d' ' -f2)
+        echo "skip=$(.github/workflows/check-docs-only.sh $REF)" >> $GITHUB_OUTPUT
 
   gate:
     name: gate
@@ -33,7 +28,6 @@ jobs:
       with:
         fetch-depth: 0
         submodules: recursive
-        persist-credentials: false
 
     - name: Cleanup Unused Disk Space
       run: .github/workflows/clean-unused-disk-space.sh
@@ -45,8 +39,6 @@ jobs:
     - run: sudo rm -rf /usr/local/bin/kustomize
     - name: Bootstrap tools
       run: make setup
-    - name: Install pre-commit
-      run: python3 -m pip install --user "pre-commit==4.0.1"
     - name: Run pre-commit checks
       run: make precommit
     - name: Build binaries
