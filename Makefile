@@ -107,7 +107,7 @@ setup-precommit: ## Install the pinned pre-commit version if not already on PATH
 
 .PHONY: precommit
 precommit: setup-precommit ## Run pre-commit hooks on all files.
-	pre-commit run --all-files
+	python3 -m pre_commit run --all-files
 
 .PHONY: check-file-size
 check-file-size: ## Check first-party Go files against size limit.
