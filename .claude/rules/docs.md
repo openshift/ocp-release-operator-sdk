@@ -2,7 +2,6 @@
 paths:
   - "docs/**"
   - "website/**"
-  - "harness-evals/**"
 ---
 # Documentation Rules
 

@@ -89,6 +89,5 @@ Developer --> GitHub PR --> CI (GitHub Actions / Prow) --> Release artifacts
 ## Cross-References
 
 - [SECURITY.md](SECURITY.md) — Vulnerability reporting process
-- [docs/security-guidelines.md](docs/security-guidelines.md) — RBAC, TLS, container security patterns
 - [docs/security-exceptions.md](docs/security-exceptions.md) — Accepted vulnerability exceptions
 - CI security scanning is handled by OpenShift Prow (downstream) and `make test-sanity` checks

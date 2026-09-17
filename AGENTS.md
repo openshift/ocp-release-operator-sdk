@@ -3,7 +3,7 @@
 **Component**: Operator SDK (OSDK)
 **Repository**: openshift/ocp-release-operator-sdk
 
-> **AI agents**: Read `harness-evals/harness-docs/domain/` first for CLI and plugin system, then `harness-evals/harness-docs/architecture/` for implementation patterns.
+> **AI agents**: Start with this file for conventions and architecture, then see `CLAUDE.md` for build commands and quick reference.
 > **Platform Patterns**: See [openshift/enhancements/ai-docs/](https://github.com/openshift/enhancements/tree/master/ai-docs/) for operator patterns, testing, security, and cross-repo ADRs.
 
 ## What is Operator SDK?
@@ -32,24 +32,24 @@ A toolkit for building, testing, and packaging Kubernetes operators. This reposi
 2. **DO NOT forget the build tag** -- All Go commands require `-tags containers_image_openpgp`. Use Makefile targets.
 3. **DO NOT mix logging frameworks** -- logrus for `operator-sdk` CLI, logr for `helm-operator` runtime.
 4. **DO NOT commit vendor changes with source changes** -- Vendor updates are separate commits with `UPSTREAM: <drop>: Update vendor directory`.
-5. **Update design docs** when changing architectural boundaries -- see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/design/](docs/design/) for preconditions, invariants, and rationale.
+5. **Update design docs** when changing architectural boundaries -- see [docs/design/](docs/design/) for preconditions, invariants, and rationale.
 
 ## Documentation Structure
 
 ```text
-harness-evals/harness-docs/
-├── domain/
-│   ├── cli.md                  # operator-sdk CLI: commands, plugins, patterns
-│   └── helm-operator.md        # helm-operator: reconciler, watches.yaml
-├── architecture/
-│   └── components.md           # Repo layout, two binaries, internal-only, OLM
-├── references/
-│   └── ecosystem.md            # Links to Platform patterns, guidelines, docs
-├── OSDK_DEVELOPMENT.md         # Build, code style, conventions, common pitfalls
-└── OSDK_TESTING.md             # Unit (Ginkgo), E2E (KIND), test data
+docs/
+├── design/
+│   ├── helm-reconciler.md      # Reconcile loop, watch dedup, status updates, concurrency
+│   ├── olm-lifecycle.md        # Install/uninstall, timeout contexts, polling patterns
+│   └── plugin-system.md        # Plugin naming, scaffolding contracts, extension points
+└── patterns/
+    ├── cli-changes.md           # Adding or modifying CLI commands
+    ├── downstream-patches.md    # Creating and applying downstream patches
+    ├── upstream-sync.md         # Merging upstream releases
+    └── ...                      # Additional pattern guides
 ```
 
-**AI Agent Path**: `harness-evals/harness-docs/domain/` -> `harness-evals/harness-docs/architecture/` -> `harness-evals/harness-docs/OSDK_DEVELOPMENT.md` or `harness-evals/harness-docs/OSDK_TESTING.md` (as relevant)
+**AI Agent Path**: `AGENTS.md` -> `CLAUDE.md` -> `docs/design/` or `docs/patterns/` (as relevant)
 
 ## Quick Reference
 
@@ -93,23 +93,19 @@ harness-evals/harness-docs/
 ## Knowledge Graph
 
 ```text
-                         [AGENTS.md] <- Start here
-                              |
-              +---------------+---------------+
-              |               |               |
-  [harness-docs/domain/] [harness-docs/
-     CLI commands          architecture/]
-     Helm operator         Repo layout
-     Plugin system         OLM integration
-              |                    |
-              +--------------------+
-                                   |
-                 [harness-docs/OSDK_DEVELOPMENT.md]
-                 [harness-docs/OSDK_TESTING.md]
-                                   |
-              [harness-docs/references/ecosystem.md]
-                   Links to Platform, guidelines,
-                   patterns, external docs
+        [AGENTS.md] <- Start here
+             |
+      +------+------+
+      |             |
+  [CLAUDE.md]  [docs/design/]
+  Quick ref    Invariants
+  Commands     Rationale
+      |             |
+      +------+------+
+             |
+      [docs/patterns/]
+      Common changes
+      Step-by-step
 ```
 
 ## External References

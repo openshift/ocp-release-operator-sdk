@@ -13,6 +13,6 @@ https://access.redhat.com/security/team/contact
 ## Additional Resources
 
 - [THREAT_MODEL.md](THREAT_MODEL.md) — Assets, trust boundaries, threats, and mitigations
-- [docs/security-guidelines.md](docs/security-guidelines.md) — RBAC, TLS, container security patterns
+- [docs/security-exceptions.md](docs/security-exceptions.md) — Reviewed and accepted security exceptions
 - [docs/security-exceptions.md](docs/security-exceptions.md) — Reviewed and accepted findings
 - CI security scanning is handled by OpenShift Prow (downstream) and `make test-sanity` checks

@@ -22,19 +22,10 @@ to build downstream Operator SDK for OpenShift releases.
 The downstream documentation can be found: [Downstream Docs][downstream_docs].
 You can also refer to the upstream [Operator SDK website][sdk-docs].
 
-For contributors and AI agents, see the detailed development guides:
+For contributors and AI agents, see:
 
-- [AGENTS.md](AGENTS.md) -- Repository conventions, code style, build targets, and architectural context
-- [docs/build-release-guidelines.md](docs/build-release-guidelines.md) -- Downstream fork workflow, patches, CI/CD, container images
-- [docs/testing-guidelines.md](docs/testing-guidelines.md) -- Test framework, layout, and conventions
-- [docs/api-contracts-guidelines.md](docs/api-contracts-guidelines.md) -- OLM API groups, CRD conventions, CSV descriptors
-- [docs/cli-architecture-guidelines.md](docs/cli-architecture-guidelines.md) -- Command structure, plugin system, logging
-- [docs/code-generation-guidelines.md](docs/code-generation-guidelines.md) -- Template machinery, scaffold patterns
-- [docs/error-handling-guidelines.md](docs/error-handling-guidelines.md) -- Error wrapping, reconciler errors, validation
-- [docs/integration-guidelines.md](docs/integration-guidelines.md) -- OLM lifecycle, webhook integration, Helm watches
-- [docs/kubernetes-operator-patterns-guidelines.md](docs/kubernetes-operator-patterns-guidelines.md) -- Reconciliation loop, finalizers, owner refs
-- [docs/performance-guidelines.md](docs/performance-guidelines.md) -- Concurrency, caching, watch efficiency
-- [docs/security-guidelines.md](docs/security-guidelines.md) -- RBAC, TLS, container security, credential handling
+- [AGENTS.md](AGENTS.md) -- Repository conventions, build targets, and architectural context
+- [CLAUDE.md](CLAUDE.md) -- Quick reference for AI agents (commands, build tags, conventions)
 
 ## License
 

@@ -35,7 +35,7 @@ Branch from `main` for new work. Use a descriptive branch name (e.g., `fix-csv-g
 ### 2. Make Changes
 
 - All implementation code lives in `internal/` -- nothing is exported as a Go library.
-- CLI commands follow the `NewCmd() *cobra.Command` pattern (see [docs/cli-architecture-guidelines.md](docs/cli-architecture-guidelines.md)).
+- CLI commands follow the `NewCmd() *cobra.Command` pattern (see `internal/cmd/operator-sdk/` for examples).
 - Never hand-edit generated files (`zz_generated*`, `testdata/`, `internal/bindata/`, `*fakes/`). Edit the generator or template instead.
 
 ### 3. Run Pre-commit Checks
@@ -128,7 +128,7 @@ If running `go test` directly, you **must** include the build tag:
 go test -tags containers_image_openpgp ./...
 ```
 
-For testing conventions (Ginkgo/Gomega, table-driven tests, async assertions), see [docs/testing-guidelines.md](docs/testing-guidelines.md).
+For testing conventions (Ginkgo/Gomega, table-driven tests, async assertions), see [CLAUDE.md](CLAUDE.md).
 
 ## Vendor Directory
 
@@ -164,22 +164,9 @@ For plugin changes, prefix the description with `(<language>/<plugin version>)`.
 
 Downstream patches live in `patches/` and are applied during CI via `make -f ci/prow.Makefile patch`. Before modifying build behavior, check whether a patch already exists. Patches use `diff -up` format. See the [README](README.md#patching) for the full patching workflow using `gendiff`.
 
-## Domain-Specific Guidelines
+## Domain-Specific Documentation
 
-Before working in a specific area, read the relevant guide in `docs/`:
-
-| Area | Guide |
-|------|-------|
-| Security (RBAC, TLS, credentials) | [docs/security-guidelines.md](docs/security-guidelines.md) |
-| Performance (caching, concurrency) | [docs/performance-guidelines.md](docs/performance-guidelines.md) |
-| Error handling | [docs/error-handling-guidelines.md](docs/error-handling-guidelines.md) |
-| OLM API contracts | [docs/api-contracts-guidelines.md](docs/api-contracts-guidelines.md) |
-| Testing | [docs/testing-guidelines.md](docs/testing-guidelines.md) |
-| OLM/Helm/webhook integration | [docs/integration-guidelines.md](docs/integration-guidelines.md) |
-| Kubernetes operator patterns | [docs/kubernetes-operator-patterns-guidelines.md](docs/kubernetes-operator-patterns-guidelines.md) |
-| CLI architecture | [docs/cli-architecture-guidelines.md](docs/cli-architecture-guidelines.md) |
-| Code generation and scaffolding | [docs/code-generation-guidelines.md](docs/code-generation-guidelines.md) |
-| Build, release, and CI/CD | [docs/build-release-guidelines.md](docs/build-release-guidelines.md) |
+For design rationale and architectural constraints, see `docs/design/`. For common change patterns, see `docs/patterns/`. For build commands and conventions, see [CLAUDE.md](CLAUDE.md) and [AGENTS.md](AGENTS.md).
 
 ## For AI Agents
 
