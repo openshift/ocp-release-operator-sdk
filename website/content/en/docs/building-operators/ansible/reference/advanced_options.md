@@ -147,7 +147,7 @@ spec: {}
 
 ## Custom Resources with OpenAPI Validation
 
-Currently, SDK tool does not support and will not generate automatically the CRD's using the [OpenAPI](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#validation) spec to perform validations. 
+Currently, SDK tool does not support and will not generate automatically the CRD's using the [OpenAPI](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#validation) spec to perform validations.
 
 However, it can be done manually by adding its validations as you can check in the following example.
 
@@ -214,7 +214,7 @@ spec:
 
 ## Passing Arbitrary Arguments to Ansible
 
-You are able to use the flag `--ansible-args` to pass an arbitrary argument to the Ansible-based Operator. With this option we can, for example, allow a playbook to run a specific part of the configuration without running the whole playbook:  
+You are able to use the flag `--ansible-args` to pass an arbitrary argument to the Ansible-based Operator. With this option we can, for example, allow a playbook to run a specific part of the configuration without running the whole playbook:
 
 ```shell
 ansible-operator run --ansible-args='--tags "configuration,packages"'
@@ -247,7 +247,7 @@ Now, let's also assume that we have a password file, `pwd.yml`, that contains th
 ```
 --------------------------- Ansible Task StdOut -------------------------------
 
- TASK [debug] ******************************** 
+ TASK [debug] ********************************
 ok: [localhost] => {
     "msg": "The decrypted value is DECRYPTED-TEST-VALUE"
 }
@@ -270,7 +270,7 @@ If you want more control over the logs that are outputted, consider using the [Z
 You can specify the reconcile period for an Ansible Operator by adding the ansible.sdk.operatorframework.io/reconcile-period key to the custom resource annotations.
 This feature specifies the maximum interval in which a cluster will get reconciled, and defaults to 10 hours if not manually set. If changes are detected in the desired state, the cluster may be reconciled sooner than the specified interval.
 
-The reconcile period can be specified in the custom resource's annotations in the following manner: 
+The reconcile period can be specified in the custom resource's annotations in the following manner:
 
 ```yaml
 ...
@@ -284,7 +284,7 @@ metadata:
 The key only accepts a value in the `h/m/s` format, such as `1h2m4s`, `3m0s`, or `4s`. Values such as `1x3m9s` are invalid.
 
 **NOTE**: Alternatively, you can specify the reconcile period for Ansible-based Operators in the following ways:
-- Using the `--reconcile-period` command-line flag 
+- Using the `--reconcile-period` command-line flag
 - Using the 'reconcilePeriod' key in the `watches.yaml` file
 You should not use all three methods to specify a single reconcile period. If all three methods are used simultaneously, the order of precedence is as follows: Custom resource annotations > `watches.yaml` file > command-line flag.
 
@@ -292,4 +292,3 @@ You should not use all three methods to specify a single reconcile period. If al
 [ansible-vault-doc]: https://docs.ansible.com/ansible/latest/user_guide/vault.html
 [Zap-Logger]: https://github.com/operator-framework/operator-sdk/blob/master/website/content/en/docs/building-operators/golang/references/logging.md#default-zap-logger
 [verbosity-annotations]: https://sdk.operatorframework.io/docs/building-operators/ansible/reference/advanced_options/#ansible-verbosity
-

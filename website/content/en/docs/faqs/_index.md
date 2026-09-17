@@ -49,7 +49,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
         }
         return ctrl.Result{Requeue: true}, nil
     }
-    // This code will be invoked only after pod deletion    
+    // This code will be invoked only after pod deletion
     r.DeployBiggerPod(ctx)
     ...
 }
@@ -250,12 +250,12 @@ Though this is a bug with controller-gen which is used by Operator SDK to genera
 
 ## What is the bundle limit size? Was this amount increased?
 
-Bundles have a size limitation because their manifests are used to create a configMap, and the Kubernetes API does not 
-allow configMaps larger than `~1MB`. Beginning with [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0` 
-and [OPM](https://github.com/operator-framework/operator-registry) `1.17.5`, 
+Bundles have a size limitation because their manifests are used to create a configMap, and the Kubernetes API does not
+allow configMaps larger than `~1MB`. Beginning with [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0`
+and [OPM](https://github.com/operator-framework/operator-registry) `1.17.5`,
 these values are now compressed accommodating larger bundles. ([More info](https://github.com/operator-framework/operator-registry/pull/685)).
 
-The change to allow bigger bundles from [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0` only impacts the full bundle size amount. 
+The change to allow bigger bundles from [OLM](https://github.com/operator-framework/operator-lifecycle-manager) version `v0.19.0` only impacts the full bundle size amount.
 Any single manifest within the bundle such as the CRD will still make the bundle uninstallable if it exceeds the default file size limit on clusters (`~1MB`).
 
 ## The size of my Operator bundle is too big. What can I do?
@@ -272,7 +272,7 @@ releases. If you are using an older version of Operator-SDK, sometimes
 the dependencies will need to be updated in the images. For users in
 this situation we recommend updating to the latest version. If this is
 not possible, users can build and push their own versions of any of the
-images provided by the Operator-SDK. 
+images provided by the Operator-SDK.
 
 **Operator-SDK**
 docker buildx build  -t quay.io/operator-framework/operator-sdk:dev -f ./images/operator-sdk/Dockerfile --load .
@@ -314,7 +314,7 @@ and push this image, which can be added to your operator's  `FROM`.
 
 ## Running `operator-sdk create api` results in an error with `/usr/local/go/src/net/cgo_linux.go:13:8: no such package located` in the error message
 
-By default Go will set the `CGO_ENABLED` environment variable to `1` which means that [cgo][cgo-docs] is enabled. Depending on the architecture and OS of your system you may run into an issue similar to this one: 
+By default Go will set the `CGO_ENABLED` environment variable to `1` which means that [cgo][cgo-docs] is enabled. Depending on the architecture and OS of your system you may run into an issue similar to this one:
 
 ```sh
 /usr/local/go/src/net/cgo_linux.go:13:8: no such package located
@@ -335,15 +335,15 @@ If neither of those solutions work for you, please [open an issue][open-issue]
 
 **Valid only for Golang/Hybrid projects using webhooks**
 
-> `Error: remove operation does not apply:doc is missing path: "/spec/template/spec/containers/1/volumeMounts/0": missing value` 
+> `Error: remove operation does not apply:doc is missing path: "/spec/template/spec/containers/1/volumeMounts/0": missing value`
 
 The error occurs due to a change in the Kustomize 4.x versions where the containers used in the Deployment spec of your CSV
 are no longer added at the same order. To sort it out you can update replace the target `/spec/template/spec/containers/1/volumeMounts/0`
 with `/spec/template/spec/containers/0/volumeMounts/0` in `config/manifest/kustomization.yaml`.
 
-**NOTE** You MUST use SDK CLI versions > 1.22. Previous versions have a bug 
+**NOTE** You MUST use SDK CLI versions > 1.22. Previous versions have a bug
 where the command `operator-sdk generate kustomize manifests` is not respecting the changes
-made on this manifest. 
+made on this manifest.
 
 [cgo-docs]: https://pkg.go.dev/cmd/cgo
 [open-issue]: https://github.com/operator-framework/operator-sdk/issues/new/choose

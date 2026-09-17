@@ -43,5 +43,4 @@ operator-sdk edit [flags]
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

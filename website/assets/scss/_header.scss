@@ -9,7 +9,7 @@
     grid-template-areas:
     "brand search search"
     "nav nav nav";
-    
+
     @media (min-width: $ov--breakpoint--lg) {
         display: flex;
         align-items: center;
@@ -21,7 +21,7 @@
         grid-area: brand;
         display: flex;
         margin: var(--of--spacer--sm);
-        
+
         @media (min-width: $ov--breakpoint--lg) {
           &__picture {
             min-width: 177px;
@@ -65,10 +65,10 @@
         grid-template-columns: 1fr 1fr;
         grid-template-rows: min-content min-content;
         @media (min-width: $ov--breakpoint--lg) {
-            display: flex; 
-            margin: 0;   
+            display: flex;
+            margin: 0;
         }
-        
+
         &__li {
             @media (min-width: $ov--breakpoint--lg) {
                 border: none;
@@ -83,10 +83,10 @@
             &:not(:last-of-type):not(:nth-last-child(-n+2)){
                 border-bottom: none;
             }
-                
+
         }
         &__a {
-            width: 100%;            
+            width: 100%;
             display: inline-block;
             position: relative;
             padding: var(--of--spacer--xs) var(--of--spacer--md);
@@ -104,7 +104,7 @@
             // &.has-dropdown {
             //   grid-area: link;
             // }
-            
+
         }
     }
 }

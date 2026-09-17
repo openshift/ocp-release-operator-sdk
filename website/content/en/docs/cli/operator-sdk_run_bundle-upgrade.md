@@ -43,4 +43,3 @@ operator-sdk run bundle-upgrade <bundle-image> [flags]
 ### SEE ALSO
 
 * [operator-sdk run](../operator-sdk_run)	 - Run an Operator in a variety of environments
-

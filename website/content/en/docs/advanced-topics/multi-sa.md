@@ -93,4 +93,3 @@ cat << EOF >> config/rbac/kustomization.yaml
 - additional_role_binding.yaml
 EOF
 ```
-

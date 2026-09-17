@@ -64,4 +64,3 @@ Default project version: "3"
 * [operator-sdk run](../operator-sdk_run)	 - Run an Operator in a variety of environments
 * [operator-sdk scorecard](../operator-sdk_scorecard)	 - Runs scorecard
 * [operator-sdk version](../operator-sdk_version)	 - Print the operator-sdk version
-

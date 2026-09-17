@@ -35,7 +35,7 @@ AVAILABLE_VERSIONS=($(cat internal/bindata/olm/versions.go | awk '/var available
 
 ACTUAL=""
 for i in {1..3}
-do 
+do
     ACTUAL+=" ${AVAILABLE_VERSIONS[i]}"
 done
 

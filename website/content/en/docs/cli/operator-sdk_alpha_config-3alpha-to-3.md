@@ -35,4 +35,3 @@ operator-sdk alpha config-3alpha-to-3 [flags]
 ### SEE ALSO
 
 * [operator-sdk alpha](../operator-sdk_alpha)	 - Alpha-stage subcommands
-

@@ -73,14 +73,14 @@ spec:
   scope: Namespaced
   subresources:
     status: {}
-...   
-``` 
+...
+```
 
 
 
 [manager_options]: https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/manager#Options
 [manager_user_guide]:/docs/building-operators/golang/tutorial/#manager
-[k8s_crd_scope]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#create-a-customresourcedefinition 
+[k8s_crd_scope]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#create-a-customresourcedefinition
 [kubebuilder_crd_markers]: https://book.kubebuilder.io/reference/markers/crd.html
 [kubebuilder_multigroup]: https://book.kubebuilder.io/migration/multi-group.html
 [RBAC]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/

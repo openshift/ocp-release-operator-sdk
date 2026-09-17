@@ -14,8 +14,8 @@ and have read the SDK-OLM integration [design proposal][sdk-olm-design].
 since these commands create a transient image registry that should not be used in production.
 Typically a registry is deployed separately and a set of catalog manifests are created in the cluster
 to inform OLM of that registry and which Operator versions it can deploy and where to deploy the Operator.
-- `run bundle` and `run packagemanifests` can only deploy one Operator and one version of that Operator at a time, 
-and `run bundle-upgrade` can only upgrade one Operator and one version of that Operator at a time, 
+- `run bundle` and `run packagemanifests` can only deploy one Operator and one version of that Operator at a time,
+and `run bundle-upgrade` can only upgrade one Operator and one version of that Operator at a time,
 hence their intended purpose being testing only.
 - If testing a bundle or catalog whose image will be hosted in a registry that is private and/or
 has a custom CA, these [configuration steps][image-reg-config] must be complete.
@@ -116,17 +116,17 @@ Let's look at the anatomy of the `run packagemanifests` configuration model:
 
 ## `operator-sdk run bundle-upgrade` command overview
 
-`operator-sdk run bundle-upgrade` assumes OLM is already installed and running on your 
-cluster and that the Operator has a valid [bundle][bundle-format]. It also assumes that 
-the previous version of the Operator was either deployed on the cluster using `run bundle` 
+`operator-sdk run bundle-upgrade` assumes OLM is already installed and running on your
+cluster and that the Operator has a valid [bundle][bundle-format]. It also assumes that
+the previous version of the Operator was either deployed on the cluster using `run bundle`
 command or traditionally via OLM. Another assumption of this command is that the newer operator bundle
-should not exist in the index image, if the previous version of the operator bundle was installed 
-traditionally using OLM. This will cause the registry pod to fail as the bundle is already added to the 
-index that provides package and csv. See the [CLI overview][doc-cli-overview] for commands to work with 
+should not exist in the index image, if the previous version of the operator bundle was installed
+traditionally using OLM. This will cause the registry pod to fail as the bundle is already added to the
+index that provides package and csv. See the [CLI overview][doc-cli-overview] for commands to work with
 an OLM installation and generate a bundle.
 
 ```
-operator-sdk run bundle-upgrade <bundle-image> [--kubeconfig=] [--namespace=] [--timeout=] 
+operator-sdk run bundle-upgrade <bundle-image> [--kubeconfig=] [--namespace=] [--timeout=]
 ```
 Let's look at the anatomy of the `run bundle-upgrade` configuration model:
 

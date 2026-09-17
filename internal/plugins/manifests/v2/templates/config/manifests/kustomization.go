@@ -77,7 +77,7 @@ resources:
 #    - op: remove
 {{ if .SupportsKustomizeV4 }}
 #      path: /spec/template/spec/containers/0/volumeMounts/0
-{{ else -}} 
+{{ else -}}
 #      path: /spec/template/spec/containers/1/volumeMounts/0
 {{ end -}}
 #    # Remove the "cert" volume, since OLM will create and mount a set of certs.

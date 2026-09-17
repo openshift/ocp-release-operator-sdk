@@ -117,4 +117,3 @@ operator-sdk generate bundle [flags]
 ### SEE ALSO
 
 * [operator-sdk generate](../operator-sdk_generate)	 - Invokes a specific generator
-

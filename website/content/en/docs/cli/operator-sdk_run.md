@@ -24,7 +24,6 @@ This command has subcommands that will deploy your Operator with OLM.
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
+* [operator-sdk](../operator-sdk)	 -
 * [operator-sdk run bundle](../operator-sdk_run_bundle)	 - Deploy an Operator in the bundle format with OLM
 * [operator-sdk run bundle-upgrade](../operator-sdk_run_bundle-upgrade)	 - Upgrade an Operator previously installed in the bundle format with OLM
-

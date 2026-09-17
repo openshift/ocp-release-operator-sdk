@@ -20,17 +20,17 @@ operator-sdk init --plugins=kustomize
 
 Also, see the topic [External Plugins][kb-language-plugins] to understand how it works.
 
-### Common scaffolds 
+### Common scaffolds
 
 Following the default common scaffolds for the projects which are built with SDK.
 
-| File/Directory | Description | 
+| File/Directory | Description |
 | ------ | ----- |
-|  Dockerfile |  Defines the operator(manager) image |  
-|  Makefile |  Provides the helpers and options for the users. (e.g. `make bundle` which generate/update the OLM [bundle][bundle] manifests ) |  
-|  PROJECT |  Project configuration. Stores the data used to do the scaffolds. For further information see [Project Config][kb-project] | 
-|  bundle.Dockerfile | Docker image which is used to provide the helpers to integrate the project with OLM. (e.g. [operator-sdk run ./bundle][sdk-cli-run-bundle]) | 
-|  config/ |  Directory which has all [kustomize's][kustomize] manifest to configure and test the project | 
+|  Dockerfile |  Defines the operator(manager) image |
+|  Makefile |  Provides the helpers and options for the users. (e.g. `make bundle` which generate/update the OLM [bundle][bundle] manifests ) |
+|  PROJECT |  Project configuration. Stores the data used to do the scaffolds. For further information see [Project Config][kb-project] |
+|  bundle.Dockerfile | Docker image which is used to provide the helpers to integrate the project with OLM. (e.g. [operator-sdk run ./bundle][sdk-cli-run-bundle]) |
+|  config/ |  Directory which has all [kustomize's][kustomize] manifest to configure and test the project |
 
 You can check the [Project Layout][project-layout] to better understand the files and directories scaffolded by SDK CLI, which may be common for each language-type.
 
@@ -38,7 +38,7 @@ You can check the [Project Layout][project-layout] to better understand the file
 
 By default plugins are used by the Operator SDK to provide the following features:
 
-- [manifests.sdk.operatorframework.io][plugin-manifest]: perform the required scaffolds to provide the helpers to allow the projects to be integrated with OLM. 
+- [manifests.sdk.operatorframework.io][plugin-manifest]: perform the required scaffolds to provide the helpers to allow the projects to be integrated with OLM.
 - [scorecard.sdk.operatorframework.io][plugin-scorecard]: perform the required scaffolds to provide the [Scorecard][scorecard] feature.
 
 ### Optional/custom plugins
@@ -77,4 +77,4 @@ If you are looking to develop similar solutions to allow users for example to cr
 [kb-issue]: https://github.com/kubernetes-sigs/kubebuilder/issues/1378
 [create-your-own-plugins]: https://book.kubebuilder.io/plugins/extending
 [scorecard]: /docs/testing-operators/scorecard/
-[kubebuilder]: https://github.com/kubernetes-sigs/kubebuilder 
+[kubebuilder]: https://github.com/kubernetes-sigs/kubebuilder

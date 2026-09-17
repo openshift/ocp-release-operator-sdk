@@ -5,4 +5,3 @@ menu:
   main:
     weight: 2
 ---
-

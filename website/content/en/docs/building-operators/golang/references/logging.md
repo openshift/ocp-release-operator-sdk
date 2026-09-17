@@ -156,7 +156,7 @@ When deploying your operator to a cluster you can set additional flags using an 
 ```yaml
 - op: add
   path: /spec/template/spec/containers/0/args/0
-  value: --zap-log-level=debug 
+  value: --zap-log-level=debug
 - op: add
   path: /spec/template/spec/containers/0/args/0
   value: --zap-encoder=console

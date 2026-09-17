@@ -53,5 +53,4 @@ operator-sdk init [flags]
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

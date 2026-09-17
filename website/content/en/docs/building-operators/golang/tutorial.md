@@ -40,7 +40,7 @@ operator-sdk init --domain example.com --repo github.com/example/memcached-opera
 `--domain` will be used as the prefix of the API group your custom resources will be created in.
 API groups are a mechanism to group portions of the Kubernetes API. You're probably already familiar with
 some of the core Kubernetes API groups, such as `apps` or `rbac.authorization.k8s.io`. API groups are used
-internally to version your Kubernetes resources and are thus used for many things. Importantly, you should 
+internally to version your Kubernetes resources and are thus used for many things. Importantly, you should
 name your domain to group your resource types in meaningful group(s) for ease of understanding and because these
 groups determine how access can be controlled to your resource types using RBAC. For more information, see [the core Kubernetes docs](https://kubernetes.io/docs/reference/using-api/#api-groups) and [the Kubebuilder docs](https://book.kubebuilder.io/cronjob-tutorial/gvks.html).
 
@@ -183,7 +183,7 @@ See the [OpenAPI validation][openapi-validation] doc for details.
 
 ## Implement the Controller
 
-For this example replace the generated controller file `controllers/memcached_controller.go` with the example [`memcached_controller.go`][memcached_controller] implementation. 
+For this example replace the generated controller file `controllers/memcached_controller.go` with the example [`memcached_controller.go`][memcached_controller] implementation.
 
 **Note**: If you used a value other than `github.com/example/memcached-operator` for repository (`--repo` flag) when running the `operator-sdk init` command, modify accordingly in the `import` block of the file.
 
@@ -192,7 +192,7 @@ If you'd like to skip this section, head to the [deploy](#run-the-operator) sect
 
 ### Setup a Recorder
 
-First, add a recorder when you initialize the Memcached reconciler in `main.go`. 
+First, add a recorder when you initialize the Memcached reconciler in `main.go`.
 
 ```Go
 if err = (&controllers.MemcachedReconciler{
@@ -321,7 +321,7 @@ The `ClusterRole` manifest at `config/rbac/role.yaml` is generated from the abov
 make manifests
 ```
 
-NOTE: If you receive an error, please run the specified command in the error and re-run `make manifests`. 
+NOTE: If you receive an error, please run the specified command in the error and re-run `make manifests`.
 
 ## Configure the operator's image registry
 
