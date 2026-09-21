@@ -15,12 +15,11 @@
 #   DEST_ORG_REPO          GitHub org/repo for PRs (default: openshift/ocp-release-operator-sdk).
 #   GITHUB_TOKEN           Token for push + gh pr create (minted by the periodic job).
 #   DRY_RUN                If set to 1, only report what would happen (no merge/push/PR).
-#   SKIP_PUSH              If set to 1, run merge + patch gate but do not push/PR.
 #   SKIP_BUILD             If set to 1, only run `make -f ci/prow.Makefile patch`.
 #   FORCE_ORIGIN_URL       If set to 1, allow rewriting an existing origin remote whose
 #                          org/repo differs from DEST_ORG_REPO (e.g. a developer fork).
 #                          Default 0 — the script aborts instead to protect local config.
-#   ALLOW_BRANCH_DELETE     If set to 1, allow deleting stale local rebase branches.
+#   ALLOW_BRANCH_DELETE    If set to 1, allow deleting stale local rebase branches.
 #                          Automatically enabled in CI (OPENSHIFT_CI / CI / JOB_NAME).
 #   GIT_AUTHOR_NAME        Git identity for commits (default: openshift-app-platform-shift-bot).
 #   GIT_AUTHOR_EMAIL       Git identity email (default: 267347085+openshift-app-platform-shift-bot@users.noreply.github.com).
@@ -37,7 +36,6 @@ DEST_ORG_REPO=${DEST_ORG_REPO:-openshift/ocp-release-operator-sdk}
 UPSTREAM_URL=${UPSTREAM_URL:-https://github.com/operator-framework/operator-sdk.git}
 ORIGIN_URL=${ORIGIN_URL:-https://github.com/${DEST_ORG_REPO}.git}
 DRY_RUN=${DRY_RUN:-0}
-SKIP_PUSH=${SKIP_PUSH:-0}
 SKIP_BUILD=${SKIP_BUILD:-0}
 FORCE_ORIGIN_URL=${FORCE_ORIGIN_URL:-0}
 GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
@@ -45,6 +43,14 @@ GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+# --- Cleanup (credential file only) ---
+_cred_file=""
+_cleanup() {
+  [[ -n "$_cred_file" ]] && rm -f "$_cred_file"
+  git config --unset credential.helper 2>/dev/null || true
+}
+trap _cleanup EXIT
 
 is_ci_context() {
   [[ -n "${OPENSHIFT_CI:-}" || -n "${CI:-}" || -n "${JOB_NAME:-}" ]]
@@ -61,8 +67,6 @@ maybe_delete_stale_branch() {
   die "Local branch ${branch} already exists. Delete it manually or set ALLOW_BRANCH_DELETE=1."
 }
 
-# Compare release-only semver tags (vMAJOR.MINOR.PATCH). sort -V does not
-# guarantee correct ordering for pre-release suffixes.
 version_gt() {
   local a=${1#v} b=${2#v}
   [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)" == "$a" && "$a" != "$b" ]]
@@ -73,7 +77,6 @@ _redact_url() {
   printf '%s\n' "${url//:\/\/*@/:\/\/***@}"
 }
 
-# Extract owner/repo from a GitHub URL (strips scheme, host, .git, trailing slash).
 _extract_org_repo() {
   local url=$1
   url=${url%.git}
@@ -109,90 +112,21 @@ ensure_remote() {
   fi
 }
 
-load_github_token() {
-  [[ -n "${GITHUB_TOKEN:-}" ]]
+ensure_gh() {
+  command -v gh >/dev/null 2>&1 || die "gh CLI is required but not found in PATH"
 }
-
-setup_gh() {
-  load_github_token || die "GITHUB_TOKEN required for GitHub API operations"
-  ensure_gh
-  export GH_TOKEN="$GITHUB_TOKEN"
-}
-
-_cleanup_items=()
-_cleanup() {
-  for item in "${_cleanup_items[@]}"; do
-    case "$item" in
-      file:*)  rm -f "${item#file:}" ;;
-      git_identity)
-        if [[ -n "${_orig_git_name+set}" ]]; then
-          git config user.name "$_orig_git_name" 2>/dev/null || git config --unset user.name 2>/dev/null || true
-        else
-          git config --unset user.name 2>/dev/null || true
-        fi
-        if [[ -n "${_orig_git_email+set}" ]]; then
-          git config user.email "$_orig_git_email" 2>/dev/null || git config --unset user.email 2>/dev/null || true
-        else
-          git config --unset user.email 2>/dev/null || true
-        fi
-        ;;
-      git_credential)
-        git config --unset credential.helper 2>/dev/null || true
-        ;;
-    esac
-  done
-}
-trap _cleanup EXIT
 
 configure_git_identity() {
-  _orig_git_name=$(git config user.name 2>/dev/null) || true
-  _orig_git_email=$(git config user.email 2>/dev/null) || true
   git config user.name "$GIT_AUTHOR_NAME"
   git config user.email "$GIT_AUTHOR_EMAIL"
-  _cleanup_items+=(git_identity)
 }
 
-_CRED_CONFIGURED=0
 setup_credential_helper() {
-  [[ "$_CRED_CONFIGURED" -eq 0 ]] || return 0
   [[ -n "${GITHUB_TOKEN:-}" ]] || return 0
-  local cred_file
-  cred_file=$(mktemp)
-  chmod 600 "$cred_file"
-  printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" >"$cred_file"
-  git config credential.helper "store --file=${cred_file}"
-  _cleanup_items+=("file:${cred_file}" git_credential)
-  _CRED_CONFIGURED=1
-}
-
-configure_origin_auth() {
-  setup_credential_helper
-}
-
-ensure_gh() {
-  if command -v gh >/dev/null 2>&1; then
-    return 0
-  fi
-  local gh_version=2.62.0
-  local arch
-  case "$(uname -m)" in
-    x86_64)  arch="amd64" ;;
-    aarch64) arch="arm64" ;;
-    *)       die "Unsupported architecture: $(uname -m)" ;;
-  esac
-  local tarball="gh_${gh_version}_linux_${arch}.tar.gz"
-  local tmpdir
-  tmpdir=$(mktemp -d)
-  log "Installing gh ${gh_version} (${arch})"
-  curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/${tarball}" \
-    -o "${tmpdir}/${tarball}"
-  tar -C "$tmpdir" -xzf "${tmpdir}/${tarball}"
-  mkdir -p "${HOME}/bin"
-  install -m 0755 "${tmpdir}/gh_${gh_version}_linux_${arch}/bin/gh" /usr/local/bin/gh || \
-    install -m 0755 "${tmpdir}/gh_${gh_version}_linux_${arch}/bin/gh" "${HOME}/bin/gh"
-  rm -rf "$tmpdir"
-  export PATH="${HOME}/bin:${PATH}"
-  command -v gh >/dev/null 2>&1 || die "gh CLI is required but could not be installed"
+  _cred_file=$(mktemp)
+  chmod 600 "$_cred_file"
+  printf 'https://x-access-token:%s@github.com\n' "$GITHUB_TOKEN" >"$_cred_file"
+  git config credential.helper "store --file=${_cred_file}"
 }
 
 current_pin() {
@@ -204,10 +138,8 @@ current_pin() {
 
 newest_upstream_tag() {
   local pin=$1 tag newest=""
-  # Query upstream directly so local/destination tags cannot pollute results.
   while IFS=$'\t' read -r _ ref; do
     tag=${ref#refs/tags/}
-    # Release tags only: vMAJOR.MINOR.PATCH (skip ^{} dereferenced entries)
     [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
     if version_gt "$tag" "$pin"; then
       if [[ -z "$newest" ]] || version_gt "$tag" "$newest"; then
@@ -311,7 +243,6 @@ EOF
 main() {
   local pin tag branch patch_ok=1
 
-  # Fetch upstream tags using URL directly — avoid rewriting remotes before DRY_RUN.
   log "Fetching upstream tags"
   git fetch -t "$UPSTREAM_URL"
 
@@ -336,33 +267,11 @@ main() {
   branch="${tag}-rebase-${REBASE_BRANCH}"
   log "Candidate rebase: ${pin} -> ${tag} (branch ${branch})"
 
-  # If the remote branch already exists, only open a PR when one is missing.
-  # This recovers from a prior run where push succeeded but gh pr create failed.
-  if git ls-remote --exit-code --heads "$ORIGIN_URL" "$branch" >/dev/null 2>&1; then
-    if [[ "$DRY_RUN" == "1" ]]; then
-      log "DRY_RUN=1: remote branch ${branch} exists; would open PR if none is open"
-      exit 0
-    fi
-    setup_gh
-    if open_pr_exists "$tag"; then
-      log "Open PR for ${tag} already exists; skipping"
-      exit 0
-    fi
-    # Use patch_ok=0 (draft) because we cannot verify whether the prior run's
-    # gate passed or failed; a human can mark it ready-for-review after checking.
-    log "Remote branch ${branch} exists with no open PR; creating draft PR (recovery)"
-    create_pr "$tag" "$branch" 0 "$pin"
-    log "Auto-rebase PR recovery complete for ${tag}"
-    exit 0
-  fi
-
   if [[ "$DRY_RUN" == "1" ]]; then
     log "DRY_RUN=1: would run ./UPSTREAM-MERGE.sh ${tag} ${REBASE_BRANCH} ${UPSTREAM_REMOTE}"
     exit 0
   fi
 
-  # Beyond this point we mutate the tree — reject untracked files that git clean
-  # in run_patch_gate would destroy.
   if [[ -n "$(git status --porcelain)" ]]; then
     die "Working tree must be clean (including untracked files) before mutating"
   fi
@@ -372,7 +281,7 @@ main() {
 
   git fetch "$ORIGIN_REMOTE" "$REBASE_BRANCH" || git fetch "$ORIGIN_REMOTE"
 
-  load_github_token || log "WARNING: no GITHUB_TOKEN; push/PR may fail"
+  [[ -n "${GITHUB_TOKEN:-}" ]] || log "WARNING: no GITHUB_TOKEN; push/PR may fail"
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     ensure_gh
     export GH_TOKEN="$GITHUB_TOKEN"
@@ -383,14 +292,11 @@ main() {
   fi
 
   configure_git_identity
-  configure_origin_auth
+  setup_credential_helper
 
-  # Ensure rebase target branch exists locally and tracks origin.
   git checkout -B "$REBASE_BRANCH" "$ORIGIN_REMOTE/$REBASE_BRANCH"
   git branch --set-upstream-to="$ORIGIN_REMOTE/$REBASE_BRANCH" "$REBASE_BRANCH"
 
-  # Export before maybe_delete_stale_branch so both the wrapper and
-  # UPSTREAM-MERGE.sh (child process) use the same CI-aware policy.
   if is_ci_context; then
     export ALLOW_BRANCH_DELETE=1
   fi
@@ -406,11 +312,6 @@ main() {
 
   if ! run_patch_gate; then
     patch_ok=0
-  fi
-
-  if [[ "$SKIP_PUSH" == "1" ]]; then
-    log "SKIP_PUSH=1: merge complete on ${branch}; not pushing"
-    exit 0
   fi
 
   [[ -n "${GITHUB_TOKEN:-}" ]] || die "GITHUB_TOKEN required to push and open PR"
