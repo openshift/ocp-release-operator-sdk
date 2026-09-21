@@ -46,16 +46,19 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # --- Cleanup (credential file only) ---
 _cred_file=""
+# EXIT trap: remove credential file and unset git credential helper.
 _cleanup() {
   [[ -n "$_cred_file" ]] && rm -f "$_cred_file"
   git config --unset credential.helper 2>/dev/null || true
 }
 trap _cleanup EXIT
 
+# True when running inside Prow / CI (checked env vars).
 is_ci_context() {
   [[ -n "${OPENSHIFT_CI:-}" || -n "${CI:-}" || -n "${JOB_NAME:-}" ]]
 }
 
+# Delete a leftover local rebase branch, but only in CI or with opt-in.
 maybe_delete_stale_branch() {
   local branch=$1
   git show-ref --verify --quiet "refs/heads/${branch}" || return 0
@@ -67,16 +70,19 @@ maybe_delete_stale_branch() {
   die "Local branch ${branch} already exists. Delete it manually or set ALLOW_BRANCH_DELETE=1."
 }
 
+# Return 0 if $1 is a strictly newer semver than $2 (release tags only).
 version_gt() {
   local a=${1#v} b=${2#v}
   [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n1)" == "$a" && "$a" != "$b" ]]
 }
 
+# Replace userinfo in a URL with *** before logging.
 _redact_url() {
   local url=$1
   printf '%s\n' "${url//:\/\/*@/:\/\/***@}"
 }
 
+# Extract "org/repo" from any GitHub URL form.
 _extract_org_repo() {
   local url=$1
   url=${url%.git}
@@ -86,6 +92,7 @@ _extract_org_repo() {
   printf '%s\n' "$url"
 }
 
+# Add or update a git remote; protects origin from silent fork overwrites.
 ensure_remote() {
   local name=$1 url=$2
   if git remote get-url "$name" >/dev/null 2>&1; then
@@ -112,15 +119,18 @@ ensure_remote() {
   fi
 }
 
+# Die if gh CLI is not on PATH (CI image must provide it).
 ensure_gh() {
   command -v gh >/dev/null 2>&1 || die "gh CLI is required but not found in PATH"
 }
 
+# Set git user.name and user.email for the bot's commits.
 configure_git_identity() {
   git config user.name "$GIT_AUTHOR_NAME"
   git config user.email "$GIT_AUTHOR_EMAIL"
 }
 
+# Write GITHUB_TOKEN to a temp file and configure git credential.helper.
 setup_credential_helper() {
   [[ -n "${GITHUB_TOKEN:-}" ]] || return 0
   _cred_file=$(mktemp)
@@ -129,6 +139,7 @@ setup_credential_helper() {
   git config credential.helper "store --file=${_cred_file}"
 }
 
+# Read the current upstream version pin from UPSTREAM-VERSION.
 current_pin() {
   local pin
   pin=$(tr -d '[:space:]' <UPSTREAM-VERSION)
@@ -136,6 +147,7 @@ current_pin() {
   printf '%s\n' "$pin"
 }
 
+# Query upstream for the newest vMAJOR.MINOR.PATCH tag beyond the pin.
 newest_upstream_tag() {
   local pin=$1 tag newest=""
   while IFS=$'\t' read -r _ ref; do
@@ -150,6 +162,7 @@ newest_upstream_tag() {
   printf '%s\n' "$newest"
 }
 
+# Return 0 if an open PR already targets the rebase branch for this tag.
 open_pr_exists() {
   local tag=$1
   command -v gh >/dev/null 2>&1 || return 1
@@ -161,6 +174,7 @@ open_pr_exists() {
   [[ "$count" -gt 0 ]]
 }
 
+# Bump golang builder pins in .ci-operator.yaml and Dockerfile if needed.
 update_golang_builder() {
   local new_go current_go
   new_go=$(awk '/^go /{split($2, a, "."); print a[1]"."a[2]}' go.mod)
@@ -189,6 +203,7 @@ update_golang_builder() {
   fi
 }
 
+# Apply patches and optionally build; restore tree afterward.
 run_patch_gate() {
   local failed=0
   log "Running patch gate"
@@ -209,6 +224,7 @@ run_patch_gate() {
   return "$failed"
 }
 
+# Open a PR (or draft if gate failed) for the rebase branch.
 create_pr() {
   local tag=$1 branch=$2 patch_ok=$3 old_pin=$4
   local title body
@@ -240,6 +256,7 @@ EOF
   fi
 }
 
+# Orchestrate: discover tag, merge, gate, push, PR.
 main() {
   local pin tag branch patch_ok=1
 
