@@ -6,7 +6,7 @@
 # Uses ./UPSTREAM-MERGE.sh for the merge. Opens a PR; does not auto-merge.
 #
 # Environment:
-#   FORCE_TAG              Optional. Rebase this tag instead of scanning for newest.
+#   OVERRIDE_TAG           Optional. Override tag discovery; rebase this specific tag.
 #   REBASE_BRANCH          Downstream branch to rebase onto (default: main).
 #   UPSTREAM_REMOTE        Remote name for upstream SDK (default: upstream).
 #   UPSTREAM_URL           URL for the upstream remote (default: https://github.com/operator-framework/operator-sdk.git).
@@ -16,8 +16,8 @@
 #   GITHUB_TOKEN           Token for push + gh pr create (minted by the periodic job).
 #   DRY_RUN                If set to 1, only report what would happen (no merge/push/PR).
 #   SKIP_BUILD             If set to 1, only run `make -f ci/prow.Makefile patch`.
-#   FORCE_ORIGIN_URL       If set to 1, allow rewriting an existing origin remote whose
-#                          org/repo differs from DEST_ORG_REPO (e.g. a developer fork).
+#   FORCE_REMOTE_URLS      If set to 1, allow rewriting an existing remote whose
+#                          org/repo differs from the expected value (e.g. a developer fork).
 #                          Default 0 — the script aborts instead to protect local config.
 #   ALLOW_BRANCH_DELETE    If set to 1, allow deleting stale local rebase branches.
 #                          Automatically enabled in CI (OPENSHIFT_CI / CI / JOB_NAME).
@@ -37,7 +37,7 @@ UPSTREAM_URL=${UPSTREAM_URL:-https://github.com/operator-framework/operator-sdk.
 ORIGIN_URL=${ORIGIN_URL:-https://github.com/${DEST_ORG_REPO}.git}
 DRY_RUN=${DRY_RUN:-0}
 SKIP_BUILD=${SKIP_BUILD:-0}
-FORCE_ORIGIN_URL=${FORCE_ORIGIN_URL:-0}
+FORCE_REMOTE_URLS=${FORCE_REMOTE_URLS:-0}
 GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
 GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@users.noreply.github.com}
 
@@ -59,7 +59,7 @@ is_ci_context() {
 }
 
 # Delete a leftover local rebase branch, but only in CI or with opt-in.
-maybe_delete_stale_branch() {
+cleanup_stale_branch() {
   local branch=$1
   git show-ref --verify --quiet "refs/heads/${branch}" || return 0
   if is_ci_context || [[ "${ALLOW_BRANCH_DELETE:-0}" == "1" ]]; then
@@ -92,24 +92,22 @@ _extract_org_repo() {
   printf '%s\n' "$url"
 }
 
-# Add or update a git remote; protects origin from silent fork overwrites.
+# Add or update a git remote; protects all remotes from silent org/repo overwrites.
 ensure_remote() {
   local name=$1 url=$2
   if git remote get-url "$name" >/dev/null 2>&1; then
     local current
     current=$(git remote get-url "$name")
     if [[ "$current" != "$url" ]]; then
-      if [[ "$name" == "$ORIGIN_REMOTE" ]]; then
-        local cur_repo exp_repo
-        cur_repo=$(_extract_org_repo "$current")
-        exp_repo=$(_extract_org_repo "$url")
-        if [[ "$cur_repo" == "$exp_repo" ]]; then
-          log "Origin org/repo matches (${cur_repo}); keeping existing URL"
-          return 0
-        fi
-        if [[ "$FORCE_ORIGIN_URL" != "1" ]]; then
-          die "Origin remote points at ${cur_repo} but expected ${exp_repo}. Set FORCE_ORIGIN_URL=1 to overwrite, or set ORIGIN_URL to match your fork."
-        fi
+      local cur_repo exp_repo
+      cur_repo=$(_extract_org_repo "$current")
+      exp_repo=$(_extract_org_repo "$url")
+      if [[ "$cur_repo" == "$exp_repo" ]]; then
+        log "Remote ${name} org/repo matches (${cur_repo}); keeping existing URL"
+        return 0
+      fi
+      if [[ "$FORCE_REMOTE_URLS" != "1" ]]; then
+        die "Remote ${name} points at ${cur_repo} but expected ${exp_repo}. Set FORCE_REMOTE_URLS=1 to overwrite, or set the matching URL env var to match your config."
       fi
       log "Rewriting remote ${name}: $(_redact_url "$current") -> $(_redact_url "$url")"
       git remote set-url "$name" "$url"
@@ -174,32 +172,81 @@ open_pr_exists() {
   [[ "$count" -gt 0 ]]
 }
 
+# Resolve the correct OCP version for a given Go builder image.
+# Queries the ocp/builder imagestream (single API call). Returns the OCP
+# version on stdout, or non-zero if oc is unavailable or no image is found.
+_resolve_builder_ocp() {
+  local new_go=$1 current_ocp=$2
+
+  command -v oc >/dev/null 2>&1 || return 1
+
+  local all_tags
+  all_tags=$(oc get is builder -n ocp \
+    -o jsonpath='{.status.tags[*].tag}' 2>/dev/null) || return 1
+  [[ -n "$all_tags" ]] || return 1
+
+  # Fast path: same OCP version already has the builder
+  # shellcheck disable=SC2086
+  if printf '%s\n' $all_tags | grep -qF "rhel-9-golang-${new_go}-openshift-${current_ocp}"; then
+    printf '%s\n' "$current_ocp"
+    return 0
+  fi
+
+  # Fallback: find the highest OCP version that has this Go builder
+  local best_ocp
+  # shellcheck disable=SC2086
+  best_ocp=$(printf '%s\n' $all_tags \
+    | sed -n "s/^rhel-9-golang-${new_go}-openshift-\([0-9][0-9]*\.[0-9][0-9]*\)$/\1/p" \
+    | sort -V | tail -1)
+  if [[ -n "$best_ocp" ]]; then
+    printf '%s\n' "$best_ocp"
+    return 0
+  fi
+
+  return 1
+}
+
+_builder_todo=""
+
 # Bump golang builder pins in .ci-operator.yaml and Dockerfile if needed.
+# Verifies the target builder image exists via oc before committing.
 update_golang_builder() {
-  local new_go current_go
+  local new_go current_go current_ocp
   new_go=$(awk '/^go /{split($2, a, "."); print a[1]"."a[2]}' go.mod)
   [[ -n "$new_go" ]] || { log "WARNING: could not parse go version from go.mod"; return 0; }
 
   current_go=$(sed -n 's/.*golang-\([0-9]*\.[0-9]*\).*/\1/p' .ci-operator.yaml | head -1)
-  [[ -n "$current_go" ]] || { log "WARNING: could not parse golang version from .ci-operator.yaml"; return 0; }
+  current_ocp=$(sed -n 's/.*openshift-\([0-9]*\.[0-9]*\).*/\1/p' .ci-operator.yaml | head -1)
+  [[ -n "$current_go" && -n "$current_ocp" ]] \
+    || { log "WARNING: could not parse builder tag from .ci-operator.yaml"; return 0; }
 
   if [[ "$new_go" == "$current_go" ]]; then
     log "Golang version unchanged (${current_go}); no builder update needed"
     return 0
   fi
 
-  log "Updating golang builder: ${current_go} -> ${new_go}"
-  local escaped="${current_go//./\\.}"
-  sed -i "s/golang-${escaped}/golang-${new_go}/" .ci-operator.yaml
+  local target_ocp
+  if target_ocp=$(_resolve_builder_ocp "$new_go" "$current_ocp"); then
+    log "Verified builder image: golang-${new_go}-openshift-${target_ocp}"
+  else
+    log "WARNING: no builder image found for golang-${new_go}; skipping builder bump"
+    _builder_todo="Go ${current_go} -> ${new_go} (builder image not found; update \`.ci-operator.yaml\` and \`release/helm/Dockerfile\` manually)"
+    return 0
+  fi
 
+  local old_suffix="golang-${current_go}-openshift-${current_ocp}"
+  local new_suffix="golang-${new_go}-openshift-${target_ocp}"
+  log "Updating golang builder: ${old_suffix} -> ${new_suffix}"
+
+  sed -i "s/release-${old_suffix}/release-${new_suffix}/" .ci-operator.yaml
   if [[ -f release/helm/Dockerfile ]]; then
-    sed -i "s/golang-${escaped}/golang-${new_go}/" release/helm/Dockerfile
+    sed -i "s/${old_suffix}/${new_suffix}/" release/helm/Dockerfile
   fi
 
   git add .ci-operator.yaml
   git add release/helm/Dockerfile 2>/dev/null || true
   if ! git diff --staged --quiet; then
-    git commit -m "UPSTREAM: <carry>: updates golang version from ${current_go} to ${new_go}"
+    git commit -m "UPSTREAM: <carry>: updates golang builder from ${old_suffix} to ${new_suffix}"
   fi
 }
 
@@ -239,6 +286,7 @@ Automated rebase of downstream Helm Operator midstream onto upstream Operator SD
 ## Manual follow-up
 - Review conflict fallout (script prefers upstream on conflicts).
 - Add any needed \`UPSTREAM: <carry>:\` commits.
+$([[ -n "$_builder_todo" ]] && printf '%s\n' "- [ ] **Builder image update needed**: ${_builder_todo}")
 - Do **not** auto-merge until patches and CI are green.
 
 ## Test plan
@@ -264,9 +312,9 @@ main() {
   git fetch -t "$UPSTREAM_URL"
 
   pin=$(current_pin)
-  if [[ -n "${FORCE_TAG:-}" ]]; then
-    tag=$FORCE_TAG
-    log "FORCE_TAG set: ${tag}"
+  if [[ -n "${OVERRIDE_TAG:-}" ]]; then
+    tag=$OVERRIDE_TAG
+    log "OVERRIDE_TAG set: ${tag}"
   else
     tag=$(newest_upstream_tag "$pin")
   fi
@@ -276,7 +324,7 @@ main() {
     exit 0
   fi
 
-  if ! version_gt "$tag" "$pin" && [[ -z "${FORCE_TAG:-}" ]]; then
+  if ! version_gt "$tag" "$pin" && [[ -z "${OVERRIDE_TAG:-}" ]]; then
     log "Selected tag ${tag} is not newer than pin ${pin}; nothing to do"
     exit 0
   fi
@@ -318,7 +366,7 @@ main() {
     export ALLOW_BRANCH_DELETE=1
   fi
 
-  maybe_delete_stale_branch "$branch"
+  cleanup_stale_branch "$branch"
 
   trap 'log "FAILED (rc=$?) on branch $(git rev-parse --abbrev-ref HEAD 2>/dev/null)"' ERR
 

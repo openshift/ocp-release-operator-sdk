@@ -81,7 +81,7 @@ DRY_RUN=1 ./hack/auto-rebase.sh
 Force a specific tag (for testing):
 
 ```bash
-FORCE_TAG=v1.42.3 DRY_RUN=1 ./hack/auto-rebase.sh
+OVERRIDE_TAG=v1.42.3 DRY_RUN=1 ./hack/auto-rebase.sh
 ```
 
 ### Verify upstream
