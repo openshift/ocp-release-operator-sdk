@@ -98,6 +98,19 @@ build: ## Build operator-sdk and helm-operator.
 build/operator-sdk build/helm-operator:
 	$(GO) build $(GO_BUILD_ARGS) -tags=$(GO_BUILD_TAGS) -o $(BUILD_DIR)/$(@F) ./cmd/$(@F)
 
+.PHONY: build-coverage-helm-operator build-coverage
+build-coverage-helm-operator: ## Build helm-operator with Go coverage instrumentation for e2e.
+	@mkdir -p $(BUILD_DIR)
+	$(GO) build $(GO_BUILD_ARGS) -tags=$(GO_BUILD_TAGS) \
+		-cover -covermode=atomic -coverpkg=./... \
+		-o $(BUILD_DIR)/helm-operator ./cmd/helm-operator
+
+build-coverage: build-coverage-helm-operator ## Alias used by Dockerfile.coverage in CI.
+
+.PHONY: e2e-coverage-collect
+e2e-coverage-collect: ## Collect e2e coverage from the cluster and optionally upload to Codecov.
+	./hack/e2e-coverage.sh collect
+
 # Build scorecard binaries.
 .PHONY: build/scorecard-test build/scorecard-test-kuttl build/custom-scorecard-tests
 build/scorecard-test build/scorecard-test-kuttl build/custom-scorecard-tests:
