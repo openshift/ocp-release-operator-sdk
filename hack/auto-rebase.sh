@@ -223,7 +223,18 @@ _builder_ocp_candidates() {
 _builder_image_exists() {
   local new_go=$1 ocp=$2
   local ref="registry.ci.openshift.org/ocp/builder:rhel-9-golang-${new_go}-openshift-${ocp}"
-  oc image info "$ref" --filter-by-os=linux/amd64 >/dev/null 2>&1
+  local -a args=("$ref" --filter-by-os=linux/amd64)
+  local secret
+  # Build-farm / ci-operator pods often mount a pull secret for registry.ci.
+  for secret in \
+      /var/run/secrets/ci-pull-credentials/.dockerconfigjson \
+      /var/run/secrets/registry-pull--build-farms/.dockerconfigjson; do
+    if [[ -f "$secret" ]]; then
+      args+=(--registry-config="$secret")
+      break
+    fi
+  done
+  oc image info "${args[@]}" >/dev/null 2>&1
 }
 
 # Resolve the correct OCP version for a given Go builder image.
