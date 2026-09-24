@@ -41,7 +41,9 @@ FORCE_REMOTE_URLS=${FORCE_REMOTE_URLS:-0}
 GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
 GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@users.noreply.github.com}
 
-log() { printf '==> %s\n' "$*"; }
+# Log to stderr so messages are not captured by $(...) command substitutions
+# (e.g. target_ocp=$(_resolve_builder_ocp ...)).
+log() { printf '==> %s\n' "$*" >&2; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # --- Cleanup (credential file only) ---
@@ -172,36 +174,120 @@ open_pr_exists() {
   [[ "$count" -gt 0 ]]
 }
 
-# Resolve the correct OCP version for a given Go builder image.
-# Queries the ocp/builder imagestream (single API call). Returns the OCP
-# version on stdout, or non-zero if oc is unavailable or no image is found.
-_resolve_builder_ocp() {
-  local new_go=$1 current_ocp=$2
-
-  command -v oc >/dev/null 2>&1 || return 1
-
-  local all_tags
-  all_tags=$(oc get is builder -n ocp \
-    -o jsonpath='{.status.tags[*].tag}' 2>/dev/null) || return 1
-  [[ -n "$all_tags" ]] || return 1
+# Pick the best OCP version from a space-separated tag list for a given Go
+# version. $3 is the tag regex prefix (without the OCP suffix), e.g.
+# "rhel-9-golang-1.26-openshift-" or "rhel-9-release-golang-1.26-openshift-".
+_pick_ocp_from_tags() {
+  local new_go=$1 current_ocp=$2 prefix=$3
+  local all_tags=$4
+  local best_ocp
 
   # Fast path: same OCP version already has the builder
   # shellcheck disable=SC2086
-  if printf '%s\n' $all_tags | grep -qF "rhel-9-golang-${new_go}-openshift-${current_ocp}"; then
+  if printf '%s\n' $all_tags | grep -qF "${prefix}${current_ocp}"; then
     printf '%s\n' "$current_ocp"
     return 0
   fi
 
-  # Fallback: find the highest OCP version that has this Go builder
-  local best_ocp
+  # Fallback: highest OCP version that has this Go builder
   # shellcheck disable=SC2086
   best_ocp=$(printf '%s\n' $all_tags \
-    | sed -n "s/^rhel-9-golang-${new_go}-openshift-\([0-9][0-9]*\.[0-9][0-9]*\)$/\1/p" \
+    | sed -n "s/^${prefix}\([0-9][0-9]*\.[0-9][0-9]*\)$/\1/p" \
     | sort -V | tail -1)
   if [[ -n "$best_ocp" ]]; then
     printf '%s\n' "$best_ocp"
     return 0
   fi
+  return 1
+}
+
+# Generate candidate OCP versions to probe when imagestreams are unavailable.
+# Includes the current pin, a few forward minors, and the 5.x stream when on 4.x.
+_builder_ocp_candidates() {
+  local current=$1
+  local major=${current%%.*}
+  local minor=${current#*.}
+  local i
+  [[ "$minor" =~ ^[0-9]+$ ]] || return 0
+  for ((i = 0; i <= 4; i++)); do
+    printf '%s.%s\n' "$major" "$((minor + i))"
+  done
+  if [[ "$major" -eq 4 ]]; then
+    for i in 0 1 2 3; do
+      printf '5.%s\n' "$i"
+    done
+  fi
+}
+
+# True if the ocp/builder image for go+ocp is pullable/inspectable.
+_builder_image_exists() {
+  local new_go=$1 ocp=$2
+  local ref="registry.ci.openshift.org/ocp/builder:rhel-9-golang-${new_go}-openshift-${ocp}"
+  local -a args=("$ref" --filter-by-os=linux/amd64)
+  local secret
+  # Build-farm / ci-operator pods often mount a pull secret for registry.ci.
+  for secret in \
+      /var/run/secrets/ci-pull-credentials/.dockerconfigjson \
+      /var/run/secrets/registry-pull--build-farms/.dockerconfigjson; do
+    if [[ -f "$secret" ]]; then
+      args+=(--registry-config="$secret")
+      break
+    fi
+  done
+  oc image info "${args[@]}" >/dev/null 2>&1
+}
+
+# Resolve the correct OCP version for a given Go builder image.
+# Tries, in order:
+#   1. ocp/builder imagestream (app.ci — has rhel-9-golang-* tags)
+#   2. openshift/release imagestream (build farms — has rhel-9-release-golang-* tags)
+#   3. oc image info against registry.ci.openshift.org for candidate OCP versions
+# Returns the OCP version on stdout, or non-zero if nothing is found.
+_resolve_builder_ocp() {
+  local new_go=$1 current_ocp=$2
+  local all_tags best_ocp ocp
+
+  if ! command -v oc >/dev/null 2>&1; then
+    log "oc not on PATH; cannot resolve builder image"
+    return 1
+  fi
+
+  # 1) app.ci-style: ocp/builder with rhel-9-golang-* tags
+  if all_tags=$(oc get is builder -n ocp \
+      -o jsonpath='{.status.tags[*].tag}' 2>/dev/null) && [[ -n "$all_tags" ]]; then
+    if best_ocp=$(_pick_ocp_from_tags "$new_go" "$current_ocp" \
+        "rhel-9-golang-${new_go}-openshift-" "$all_tags"); then
+      printf '%s\n' "$best_ocp"
+      return 0
+    fi
+    log "ocp/builder has tags but none for golang-${new_go}; trying other sources"
+  else
+    log "ocp/builder imagestream unavailable; trying openshift/release"
+  fi
+
+  # 2) build-farm-style: openshift/release with rhel-9-release-golang-* tags
+  #    (what .ci-operator.yaml pins; Dockerfile builder tags share the same OCP)
+  if all_tags=$(oc get is release -n openshift \
+      -o jsonpath='{.status.tags[*].tag}' 2>/dev/null) && [[ -n "$all_tags" ]]; then
+    if best_ocp=$(_pick_ocp_from_tags "$new_go" "$current_ocp" \
+        "rhel-9-release-golang-${new_go}-openshift-" "$all_tags"); then
+      printf '%s\n' "$best_ocp"
+      return 0
+    fi
+    log "openshift/release has tags but none for golang-${new_go}; trying registry probe"
+  else
+    log "openshift/release imagestream unavailable; trying registry probe"
+  fi
+
+  # 3) Direct registry inspect for a small set of candidate OCP versions
+  #    (newest first so we stop at the best match)
+  while IFS= read -r ocp; do
+    [[ -n "$ocp" ]] || continue
+    if _builder_image_exists "$new_go" "$ocp"; then
+      printf '%s\n' "$ocp"
+      return 0
+    fi
+  done < <(_builder_ocp_candidates "$current_ocp" | sort -uVr)
 
   return 1
 }
