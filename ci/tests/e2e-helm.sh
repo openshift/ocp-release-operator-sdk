@@ -150,6 +150,11 @@ fi
 echo "running make deploy"
 make deploy IMG=$IMAGE
 
+if [[ -n "${COVERAGE_IMAGE:-}" ]]; then
+    echo "running e2e coverage setup"
+    "${ROOTDIR}/hack/e2e-coverage.sh" setup
+fi
+
 # create clusterrolebinding for metrics
 kubectl create clusterrolebinding memcached-operator-metrics-reader-rolebinding --clusterrole=memcached-operator-metrics-reader --serviceaccount=memcached-operator-system:default
 

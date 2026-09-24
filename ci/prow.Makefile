@@ -15,6 +15,9 @@ patch:
 build:
 	$(MAKE) -f Makefile build/helm-operator
 
+build-coverage-helm-operator:
+	$(MAKE) -f Makefile build-coverage-helm-operator
+
 test-e2e-go: patch
 	./ci/tests/e2e-go.sh $(ARGS)
 

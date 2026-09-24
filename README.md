@@ -15,6 +15,19 @@ You can also refer to the upstream [Operator SDK website][sdk-docs].
 
 Operator SDK is under Apache 2.0 license. See the [LICENSE][license_file] file for details.
 
+## E2E coverage (helm-operator)
+
+Helm e2e tests can publish **runtime coverage** from the in-cluster `helm-operator` to Codecov (flag `e2e`). CI uses a coverage-instrumented image (`osdk-helm-e2e-coverage`) and [`hack/e2e-coverage.sh`](hack/e2e-coverage.sh).
+
+Local workflow (requires a cluster and `oc`):
+
+1. Build and push a coverage e2e image (or set `COVERAGE_IMAGE` to a CI-built pullspec).
+2. Run helm e2e with coverage enabled, for example:
+   `COVERAGE_IMAGE=<pullspec> IMAGE_FORMAT=<pullspec> ./ci/tests/e2e-helm.sh` after `make -f ci/prow.Makefile patch`.
+3. Collect and optionally upload: `make e2e-coverage-collect` (set `CODECOV_TOKEN` to upload).
+
+`hack/e2e-coverage.sh check-freshness` queries Codecov for e2e coverage on the target commit (from Prow metadata or `git HEAD`); exit `1` skips provisioning when coverage is already current.
+
 ## Downstream structure
 
 This repo is a mirror of the upstream
