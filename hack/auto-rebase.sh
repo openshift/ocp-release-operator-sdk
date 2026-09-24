@@ -41,7 +41,9 @@ FORCE_REMOTE_URLS=${FORCE_REMOTE_URLS:-0}
 GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-openshift-app-platform-shift-bot}
 GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-267347085+openshift-app-platform-shift-bot@users.noreply.github.com}
 
-log() { printf '==> %s\n' "$*"; }
+# Log to stderr so messages are not captured by $(...) command substitutions
+# (e.g. target_ocp=$(_resolve_builder_ocp ...)).
+log() { printf '==> %s\n' "$*" >&2; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # --- Cleanup (credential file only) ---
@@ -234,7 +236,10 @@ _resolve_builder_ocp() {
   local new_go=$1 current_ocp=$2
   local all_tags best_ocp ocp
 
-  command -v oc >/dev/null 2>&1 || return 1
+  if ! command -v oc >/dev/null 2>&1; then
+    log "oc not on PATH; cannot resolve builder image"
+    return 1
+  fi
 
   # 1) app.ci-style: ocp/builder with rhel-9-golang-* tags
   if all_tags=$(oc get is builder -n ocp \
