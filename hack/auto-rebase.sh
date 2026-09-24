@@ -184,7 +184,7 @@ _pick_ocp_from_tags() {
 
   # Fast path: same OCP version already has the builder
   # shellcheck disable=SC2086
-  if printf '%s\n' $all_tags | grep -qF "${prefix}${current_ocp}"; then
+  if printf '%s\n' $all_tags | grep -qxF "${prefix}${current_ocp}"; then
     printf '%s\n' "$current_ocp"
     return 0
   fi
@@ -280,9 +280,13 @@ _resolve_builder_ocp() {
   fi
 
   # 3) Direct registry inspect for a small set of candidate OCP versions
-  #    (newest first so we stop at the best match)
+  #    (current pin first, matching _pick_ocp_from_tags; then newest first)
+  if _builder_image_exists "$new_go" "$current_ocp"; then
+    printf '%s\n' "$current_ocp"
+    return 0
+  fi
   while IFS= read -r ocp; do
-    [[ -n "$ocp" ]] || continue
+    [[ -n "$ocp" && "$ocp" != "$current_ocp" ]] || continue
     if _builder_image_exists "$new_go" "$ocp"; then
       printf '%s\n' "$ocp"
       return 0
