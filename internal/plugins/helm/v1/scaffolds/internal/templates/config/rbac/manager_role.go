@@ -146,6 +146,17 @@ rules:
   - events
   verbs:
   - create
+# We need to read the cluster's centralized TLS security profile (OpenShift only)
+# so the metrics server can honor it. Non-OpenShift clusters simply won't have
+# this API and the watch will never trigger.
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - apiservers
+  verbs:
+  - get
+  - list
+  - watch
 
 %s
 `

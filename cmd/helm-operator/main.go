@@ -22,6 +22,11 @@ import (
 
 	"github.com/operator-framework/operator-sdk/internal/cmd/helm-operator/run"
 	"github.com/operator-framework/operator-sdk/internal/cmd/helm-operator/version"
+
+	// Registers the OpenShift centralized TLS security profile policy (see
+	// internal/helm/openshifttls) with the run.ClusterTLSPolicy extension
+	// point (OCPSTRAT-2611). Downstream-only: not part of upstream operator-sdk.
+	_ "github.com/operator-framework/operator-sdk/internal/helm/openshifttls"
 )
 
 func main() {
