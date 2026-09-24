@@ -34,5 +34,4 @@ operator-sdk version
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

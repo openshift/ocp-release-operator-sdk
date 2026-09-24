@@ -36,11 +36,3 @@ weight: 20
 ### Ansible Runner
  * Ansible is run and has its own process.
  * Ansible-runner-http package allows runner to set us ansible events as ansible is being run. ansible runner uses the socket and the controller is watching the events as they come through the channel.
-
-
-
-
-
-
-
-

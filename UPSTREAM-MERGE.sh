@@ -144,7 +144,7 @@ git --no-pager log --oneline "$(git merge-base origin/"$rebase_branch" tags/"$ve
 
 # update vendor directory, abort if there's an error encountered
 go mod tidy && go mod vendor || { echo "go mod vendor failed. Aborting!"; exit 1; }
-# make sure that the vendor directory is actually updated 
+# make sure that the vendor directory is actually updated
 if ! git diff --quiet vendor/; then
   # add the changes of go mod vendor
   git add vendor

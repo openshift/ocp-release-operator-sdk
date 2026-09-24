@@ -13,7 +13,7 @@ All projects initialized with `operator-sdk init` have a common base structure w
 
 The common structure contains the following items:
 
-| File/Directory | Description | 
+| File/Directory | Description |
 | ------ | ----- |
 | `Dockerfile` | The Dockerfile of your operator project, used to build the image with `make docker-build`. |
 | `Makefile` | Build file with helper targets to help you work with your project. |
@@ -38,7 +38,7 @@ The common structure contains the following items:
 
 Now, let's look at the files and directories specific to Ansible-based operators.
 
-| File/Directory | Description | 
+| File/Directory | Description |
 | ------ | ----- |
 |`config/testing/` | Manifest files to help you test your project. For example, to change the image policy for your [Molecule tests][ansible-test-guide] or to enable debug level in the Ansible logs. |
 |`molecule/` | Contain the manifests for your [Molecule][molecule] tests. |
@@ -49,7 +49,7 @@ Now, let's look at the files and directories specific to Ansible-based operators
 |`requirements.yml` | This file specifies Ansible dependencies that need to be installed for your operator to function. |
 |`watches.yaml` | Contains Group, Version, Kind, and the playbooks and rules location. Used to configure the [Ansible watches][ansible-watches]. |
 
-### Golang 
+### Golang
 
 Now, let's look at the files and directories specific to Go-based operators.
 
@@ -62,11 +62,11 @@ Now, let's look at the files and directories specific to Go-based operators.
 |`main.go` | Implements the project initialization. |
 | `hack/` | Contains utility files, e.g. the file used to scaffold the license header for your project files. |
 
-### Helm 
+### Helm
 
 Now, let's look at the files and directories specific to Helm-based operators.
 
-| File/Directory | Description | 
+| File/Directory | Description |
 | ------ | ----- |
 |`helm-charts` | Contains the Helm charts for each Kind scaffold which can be initialized with `operator-sdk init --plugins=helm [options]` or `operator-sdk create api [options]` . |
 |`watches.yaml` | Contains Group, Version, Kind, and Helm chart location. Used to configure the [Helm watches][helm-watches]. |
@@ -81,7 +81,7 @@ Now, let's look at the files and directories specific to Helm-based operators.
 [k8s-crd-doc]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/
 [scorecard]: /docs/testing-operators/scorecard/
 [olm-integrate]: /docs/olm-integration/
-[olm-manifests]: https://github.com/operator-framework/operator-registry/tree/v1.5.3#manifest-format  
+[olm-manifests]: https://github.com/operator-framework/operator-registry/tree/v1.5.3#manifest-format
 [olm-metadata]: https://github.com/operator-framework/operator-registry/blob/v1.16.1/docs/design/operator-bundle.md#bundle-manifest-format
 [bundle]:https://github.com/operator-framework/operator-registry/blob/v1.16.1/docs/design/operator-bundle.md
 [molecule]: https://molecule.readthedocs.io/

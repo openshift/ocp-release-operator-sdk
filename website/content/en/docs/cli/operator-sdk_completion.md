@@ -27,9 +27,8 @@ Detailed instructions on how to do this for each shell are provided in their own
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
+* [operator-sdk](../operator-sdk)	 -
 * [operator-sdk completion bash](../operator-sdk_completion_bash)	 - Load bash completions
 * [operator-sdk completion fish](../operator-sdk_completion_fish)	 - Load fish completions
 * [operator-sdk completion powershell](../operator-sdk_completion_powershell)	 - Load powershell completions
 * [operator-sdk completion zsh](../operator-sdk_completion_zsh)	 - Load zsh completions
-

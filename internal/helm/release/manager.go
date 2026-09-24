@@ -79,9 +79,16 @@ type manager struct {
 	dryRunOption string
 }
 
+// InstallOption configures a Helm install action before execution.
 type InstallOption func(*action.Install) error
+
+// UpgradeOption configures a Helm upgrade action before execution.
 type UpgradeOption func(*action.Upgrade) error
+
+// UninstallOption configures a Helm uninstall action before execution.
 type UninstallOption func(*action.Uninstall) error
+
+// RollBackOption configures a Helm rollback action before execution.
 type RollBackOption func(*action.Rollback) error
 
 // ReleaseName returns the name of the release.
@@ -200,6 +207,7 @@ func (m manager) InstallRelease(opts ...InstallOption) (*rpb.Release, error) {
 	return installedRelease, nil
 }
 
+// ForceUpgrade returns an UpgradeOption that sets the --force flag on the upgrade action.
 func ForceUpgrade(force bool) UpgradeOption {
 	return func(u *action.Upgrade) error {
 		u.Force = force
@@ -207,6 +215,7 @@ func ForceUpgrade(force bool) UpgradeOption {
 	}
 }
 
+// ErrUpgradeFailed indicates a Helm upgrade failed and a rollback is required.
 var ErrUpgradeFailed = errors.New("upgrade failed; rollback required")
 
 // UpgradeRelease performs a Helm release upgrade.
@@ -238,6 +247,7 @@ func (m manager) UpgradeRelease(opts ...UpgradeOption) (*rpb.Release, *rpb.Relea
 	return m.deployedRelease, upgradedRelease, err
 }
 
+// ForceRollback returns a RollBackOption that sets the --force flag on the rollback action.
 func ForceRollback(force bool) RollBackOption {
 	return func(r *action.Rollback) error {
 		r.Force = force

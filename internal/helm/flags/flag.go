@@ -70,7 +70,7 @@ func (f *Flags) AddTo(flagSet *pflag.FlagSet) {
 	)
 
 	_ = flagSet.MarkDeprecated("config",
-		`controller-runtime has deprecated the ComponentConfig package 
+		`controller-runtime has deprecated the ComponentConfig package
 and as such, the ability to load the configuation from a file. Since the helm operator relies on controller-runtime
 this flag will be removed when upgrading to a version of controller-runtime where the ComponentConfig package has been removed.
 see https://github.com/kubernetes-sigs/controller-runtime/issues/895 for more information.`)

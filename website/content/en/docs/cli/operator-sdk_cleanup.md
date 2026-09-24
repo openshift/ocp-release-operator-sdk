@@ -34,5 +34,4 @@ operator-sdk cleanup <operatorPackageName> [flags]
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
-
+* [operator-sdk](../operator-sdk)	 -

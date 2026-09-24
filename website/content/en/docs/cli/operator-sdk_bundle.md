@@ -33,6 +33,5 @@ https://sdk.operatorframework.io/docs/olm-integration
 
 ### SEE ALSO
 
-* [operator-sdk](../operator-sdk)	 - 
+* [operator-sdk](../operator-sdk)	 -
 * [operator-sdk bundle validate](../operator-sdk_bundle_validate)	 - Validate an operator bundle
-

@@ -7,12 +7,12 @@
         display: grid;
         grid-template-columns: minmax(50%, 600px) 1fr;
         grid-gap: var(--of--spacer--xl);
-        grid-template-areas: 
+        grid-template-areas:
         "meta social"
         "copy copy "
         ;
 
-    } 
+    }
     &:before {
         content:'';
         height: 5px;
@@ -42,12 +42,12 @@
             flex-direction: row;
             padding: 0 0 0 var(--of--spacer--2xl);
             .of-link-list__li {
-                
+
                 &:not(:last-of-type) {
                     margin-right: var(--of--spacer--sm);
                     border-right: 1px solid var(--of--color-brand--100);
                     padding-right: var(--of--spacer--sm);
-                }             
+                }
             }
             .of-link-list__a {
                 text-decoration: underline;

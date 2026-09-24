@@ -5,7 +5,7 @@ weight: 20
 ---
 
 The Ansible Operator comes with three internal metrics that provide an insight to the frequency and time of operator reconciliations. These metrics can be
-scraped by a Prometheus instance or any other openmetrics system. To publish operator metrics and scrape them with an openmetrics system such as Prometheus, view 
+scraped by a Prometheus instance or any other openmetrics system. To publish operator metrics and scrape them with an openmetrics system such as Prometheus, view
 [Kubebuilder documentation](https://book.kubebuilder.io/reference/metrics.html) on publishing metrics.
 
 The default metrics recorded in Operator SDK are collected in a [histogram](https://prometheus.io/docs/practices/histograms/).
@@ -14,7 +14,7 @@ The following three metrics are derived from the histogram:
 1. `ansible_operator_reconciles_bucket` - Each bucket in the histogram counts the number of reconciliations that have a period (in seconds) less than or equal
 to the upper limit of the bucket.
 3. `ansible_operator_reconciles_count` - The total number of reconciliations that have occurred up to that instance of time while running an Ansible operator.
-4. `ansible_operator_reconciles_sum` - The cumulative amount of time (in seconds) of all reconciliations that have occurred up to that instance of time while 
+4. `ansible_operator_reconciles_sum` - The cumulative amount of time (in seconds) of all reconciliations that have occurred up to that instance of time while
 running an Ansible operator.
 
 These metrics can be queried in the Prometheus UI.

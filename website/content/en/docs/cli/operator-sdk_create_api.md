@@ -74,4 +74,3 @@ operator-sdk create api [flags]
 ### SEE ALSO
 
 * [operator-sdk create](../operator-sdk_create)	 - Scaffold a Kubernetes API or webhook
-

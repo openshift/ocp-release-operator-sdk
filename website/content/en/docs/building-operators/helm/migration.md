@@ -122,7 +122,7 @@ https://github.com/operator-framework/operator-sdk/issues/3447
 
 The following rules were used in earlier versions of helm-operator to automatically create and manage services and servicemonitors for metrics collection. If your operator's charts don't require these rules, they can safely be left out of the new `config/rbac/role.yaml` file:
 
-```yaml  
+```yaml
   - apiGroups:
     - monitoring.coreos.com
     resources:
@@ -189,4 +189,3 @@ For further steps regarding the deployment of the operator, creation of custom r
 [marker]: https://book.kubebuilder.io/reference/markers.html?highlight=markers#marker-syntax
 [migration-doc]: /docs/upgrading-sdk-version/
 [tutorial-deploy]: /docs/building-operators/helm/tutorial/#run-the-operator
-

@@ -15,7 +15,7 @@ Considerations for Operator developers:
 
 - If there is significant orchestration and sequencing involved, an Operator should be written that represents the entire stack, in turn delegating to other Operators for orchestrating their part of it.
 
-- Operators should own a CRD and only one Operator should control a CRD on a cluster. Two Operators managing the same CRD is not a recommended best practice. An API that exists with multiple implementations is a typical example of a no-op Operator. The no-op Operator doesn't have any deployment or reconciliation loop to define the shared API and other Operators depend on this Operator to provide one implementation of the API, e.g. similar to PVCs or Ingress. 
+- Operators should own a CRD and only one Operator should control a CRD on a cluster. Two Operators managing the same CRD is not a recommended best practice. An API that exists with multiple implementations is a typical example of a no-op Operator. The no-op Operator doesn't have any deployment or reconciliation loop to define the shared API and other Operators depend on this Operator to provide one implementation of the API, e.g. similar to PVCs or Ingress.
 
 - Inside an Operator, multiple controllers should be used if multiple CRDs are managed. This helps in separation of concerns and code readability. Note that this doesn't necessarily mean that we need to have one container image per controller, but rather one reconciliation loop (which could be running as part of the same Operator binary) per CRD.
 
@@ -67,7 +67,7 @@ Considerations for on-cluster behavior
 
 - Operators need to support updating managed applications (Operands) that were set up by an older version of the Operator. There are multiple models for this:
 
-| Model | Description | 
+| Model | Description |
 | ------ | ----- |
 | **Operator fan-out** | where the Operator allows the user to specify the version in the custom resource |
 | **single version** | where the Operator is tied to the version of the operand. |

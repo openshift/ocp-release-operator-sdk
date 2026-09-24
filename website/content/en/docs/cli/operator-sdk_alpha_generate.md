@@ -7,12 +7,12 @@ Re-scaffold an existing Kuberbuilder project
 
 ### Synopsis
 
-It's an experimental feature that has the purpose of re-scaffolding the whole project from the scratch 
+It's an experimental feature that has the purpose of re-scaffolding the whole project from the scratch
 using the current version of KubeBuilder binary available.
 # make sure the PROJECT file is in the 'input-dir' argument, the default is the current directory.
 $ kubebuilder alpha generate --input-dir="./test" --output-dir="./my-output"
 Then we will re-scaffold the project by Kubebuilder in the directory specified by 'output-dir'.
-		
+
 
 ```
 operator-sdk alpha generate [flags]
@@ -36,4 +36,3 @@ operator-sdk alpha generate [flags]
 ### SEE ALSO
 
 * [operator-sdk alpha](../operator-sdk_alpha)	 - Alpha-stage subcommands
-

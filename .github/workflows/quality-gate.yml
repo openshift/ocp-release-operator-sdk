@@ -1,0 +1,58 @@
+name: quality-gate
+on:
+  pull_request: {}
+
+jobs:
+  check_docs_only:
+    name: check_docs_only
+    runs-on: ubuntu-24.04
+    outputs:
+      skip: ${{ steps.check_docs_only.outputs.skip }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - id: check_docs_only
+      run: |
+        REF="HEAD^"
+        [[ -z "${{ github.base_ref }}" ]] || REF=$(git show-ref ${{ github.base_ref }} | head -1 | cut -d' ' -f2)
+        echo "skip=$(.github/workflows/check-docs-only.sh $REF)" >> $GITHUB_OUTPUT
+
+  gate:
+    name: gate
+    runs-on: ubuntu-24.04
+    needs: check_docs_only
+    if: needs.check_docs_only.outputs.skip != 'true'
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Cleanup Unused Disk Space
+      run: .github/workflows/clean-unused-disk-space.sh
+
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: "go.mod"
+
+    - run: sudo rm -rf /usr/local/bin/kustomize
+    - name: Bootstrap tools
+      run: make setup
+    - name: Run pre-commit checks
+      run: make precommit
+    - name: Build binaries
+      run: make build
+    - name: Run linters
+      run: make lint
+    - name: Run type check
+      run: go vet -tags containers_image_openpgp ./...
+    - name: Run tests
+      run: make test-static
+    - name: Upload coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage
+        path: coverage.out
+        if-no-files-found: ignore

@@ -7,19 +7,19 @@ description: This guide describes best practices for security standards for Oper
 
 ## Overview
 
-The [PodSecurityPolicy][pod-security] API is deprecated and will be removed from Kubernetes in version 1.25. 
-This API is replaced by a new built-in admission controller ([KEP-2579: Pod Security Admission Control][2579-psp-replacement]) which allows cluster admins to [enforce 
+The [PodSecurityPolicy][pod-security] API is deprecated and will be removed from Kubernetes in version 1.25.
+This API is replaced by a new built-in admission controller ([KEP-2579: Pod Security Admission Control][2579-psp-replacement]) which allows cluster admins to [enforce
  Pod Security Standards Labels][enforce-standards-namespace-labels].
 
 ### What does that mean?
 
-Namespace and Pod/Container can be defined with three different policies which are; **Privileged, Baseline and Restricted.** 
-([More info][security-standards]). Therefore, Pod(s)/Container(s) that 
+Namespace and Pod/Container can be defined with three different policies which are; **Privileged, Baseline and Restricted.**
+([More info][security-standards]). Therefore, Pod(s)/Container(s) that
 are **not** configured according to the enforced security standards defined globally or
 on the namespace level will **not** be admitted and it will **not** be possible to run them.
 
-**As a best practice, you must ensure that workloads (Operators and Operands) are defined to run under 
-restricted permissions unless they need further privileges. For the cases where Pod/Container(s) requires 
+**As a best practice, you must ensure that workloads (Operators and Operands) are defined to run under
+restricted permissions unless they need further privileges. For the cases where Pod/Container(s) requires
 escalating permissions, the recommendation is to use the label as described below**
 
 ### How should I configure my Operators and Operands to comply with the criteria?
@@ -70,12 +70,12 @@ dep:= &appsv1.Deployment{
      Template: corev1.PodTemplateSpec{
        ….
         Spec: corev1.PodSpec{
-           // Ensure restricted context for the Pod    
+           // Ensure restricted context for the Pod
            SecurityContext: &corev1.PodSecurityContext{
               RunAsNonRoot: &[]bool{true}[0],
 			  // Please ensure that you can use SeccompProfile and do NOT use
 			  // this filed if your project must work on old Kubernetes
-			  // versions < 1.19 or on vendors versions which 
+			  // versions < 1.19 or on vendors versions which
 			  // do NOT support this field by default (i.e. Openshift < 4.11)
               SeccompProfile: &corev1.SeccompProfile{
                  Type: corev1.SeccompProfileTypeRuntimeDefault,
@@ -84,13 +84,13 @@ dep:= &appsv1.Deployment{
            Containers: []corev1.Container{{
               Image:   "memcached:1.4.36-alpine",
               Name:    "memcached",
-              // Ensure restricted context for the container  
+              // Ensure restricted context for the container
               SecurityContext: &corev1.SecurityContext{
 				 // WARNING: Ensure that the image used defines an UserID in the Dockerfile
 				 // otherwise the Pod will not run and will fail with `container has runAsNonRoot and image has non-numeric user`.
-				 // If you want your workloads admitted in namespaces enforced with the restricted mode in OpenShift/OKD vendors 
+				 // If you want your workloads admitted in namespaces enforced with the restricted mode in OpenShift/OKD vendors
 				 // then, you MUST ensure that the Dockerfile defines a User ID OR you MUST leave the `RunAsNonRoot` and
-				 // RunAsUser fields empty. 
+				 // RunAsUser fields empty.
                  RunAsNonRoot:  &[]bool{true}[0],
                  AllowPrivilegeEscalation:  &[]bool{false}[0],
                  Capabilities: &corev1.Capabilities{
@@ -106,37 +106,37 @@ dep:= &appsv1.Deployment{
 }
 ```
 
-**For Ansible and Helm language based Operators:** Ansible playbooks or Helm charts MUST create manifests that comply 
-with the requirements in the same way. You can find some examples by looking at the samples under the 
+**For Ansible and Helm language based Operators:** Ansible playbooks or Helm charts MUST create manifests that comply
+with the requirements in the same way. You can find some examples by looking at the samples under the
 [testdata](https://github.com/operator-framework/operator-sdk/tree/master/testdata) directory.
 
-- **For workloads that need elevated permissions:** it is recommended that you ensure the namespace containing your 
-solution is labeled accordingly. You can either update your operator to manage the namespace labels or include 
-the namespace labeling as part of the manual install instructions. 
+- **For workloads that need elevated permissions:** it is recommended that you ensure the namespace containing your
+solution is labeled accordingly. You can either update your operator to manage the namespace labels or include
+the namespace labeling as part of the manual install instructions.
 
 It is recommended that you provide a description to help cluster admins understand why elevated permissions are required.
-You can add this information and the prerequisites to the description of your 
+You can add this information and the prerequisites to the description of your
 Operator Bundle (CSV).
 
-Following you will find a detailed description of how to configure and test your solutions. 
-The most straightforward way to ensure if your workloads will work in a restricted namespace is verifying if your solution can run in namespaces enforced as restricted. 
+Following you will find a detailed description of how to configure and test your solutions.
+The most straightforward way to ensure if your workloads will work in a restricted namespace is verifying if your solution can run in namespaces enforced as restricted.
 
 **NOTE**: It is recommended that you test the desired behavior as part of an e2e test suite. Examples of an e2e test for this will be shown in a later section.
 
 ### How the Operator bundle (CSV) must be configured to apply the standards to the Pod/Containers which are installed by OLM (Operator itself)?
 
-For Operators integrated with OLM, there is an Operator bundle with a CSV where the `spec.install.spec.deployments` has a Deployment 
-which defines the Pod/Container(s) that will be installed by OLM to get your Operator running on the cluster. 
+For Operators integrated with OLM, there is an Operator bundle with a CSV where the `spec.install.spec.deployments` has a Deployment
+which defines the Pod/Container(s) that will be installed by OLM to get your Operator running on the cluster.
 In order for the security standards to be followed you will need to ensure the configurations are set correctly.
 
-**Note: Ensure the configuration is carried to the Pod/Containers on the bundle CSV after running make bundle**. See that 
+**Note: Ensure the configuration is carried to the Pod/Containers on the bundle CSV after running make bundle**. See that
 the Operator bundle generated with the target is built from the manifests under the `config` directory. To know more about
 the layout of your operator built with Operator-SDK see [Project Layout][project-layout].
 
 To check an example of a CSV which complies with the [restricted][restricted] policy, see the Golang sample
 under the [testdata/go/v4/memcached-operator/bundle/manifests/memcached-operator.clusterserviceversion.yaml](https://github.com/operator-framework/operator-sdk/blob/master/testdata/go/v4/memcached-operator/bundle/manifests/memcached-operator.clusterserviceversion.yaml)
 
-### How can I verify my manifest? 
+### How can I verify my manifest?
 
 #### Using Kind
 
@@ -172,8 +172,8 @@ spec:
  containers:
   - name: test
     securityContext:
-     # see that we are allowing privilege escalation  
-     allowPrivilegeEscalation: true 
+     # see that we are allowing privilege escalation
+     allowPrivilegeEscalation: true
     image: 'busybox:1.28'
     ports:
      - containerPort: 8080
@@ -183,7 +183,7 @@ spec:
 4. Then, when we try to apply the Pod manifest above we should see an error:
 
 ```sh
-$ kubectl apply -f mypodtest.yaml 
+$ kubectl apply -f mypodtest.yaml
 Error from server (Forbidden): error when creating "mypodtest.yaml": pods "example" is forbidden: violates PodSecurity "restricted:v1.24": allowPrivilegeEscalation != false (container "test" must set securityContext.allowPrivilegeEscalation=false), unrestricted capabilities (container "test" must set securityContext.capabilities.drop=["ALL"]), runAsNonRoot != true (pod or container "test" must set securityContext.runAsNonRoot=true), seccompProfile (pod or container "test" must set securityContext.seccompProfile.type to "RuntimeDefault" or "Localhost")
 ```
 
@@ -222,7 +222,7 @@ spec:
 ...
 ```
 
-- Now, add the CSV deployment to this test (`spec.install.spec.deployments`) 
+- Now, add the CSV deployment to this test (`spec.install.spec.deployments`)
 - Then, you can run the tool and check if its result will be `restricted` as expected (i.e.):
 
 ```sh
@@ -232,11 +232,11 @@ system: restricted
 
 ### Can I use the metrics to check if my Pod/Containers are violating the PodSecurity policies?
 
-Yes, you can. You need to label the namespaces with `pod-security.kubernetes.io/audit: restricted` 
+Yes, you can. You need to label the namespaces with `pod-security.kubernetes.io/audit: restricted`
 (i.e. `kubectl label --overwrite ns --all pod-security.kubernetes.io/enforce-version=v1.24 pod-security.kubernetes.io/audit=restricted`).
- It is important to note that the results may include metrics that do not come from your Operator and Operand(s). 
+ It is important to note that the results may include metrics that do not come from your Operator and Operand(s).
 If you are looking to use the metrics to do the checks, ensure that you check the
-results before and after performing the tests, for example: 
+results before and after performing the tests, for example:
 
 ```sh
 kubectl get --raw /metrics | prom2json | jq '[.[] | select(.name=="pod_security_evaluations_total") ]'
@@ -344,13 +344,13 @@ const namespace = "my-operator-system"
 var _ = Describe("my operator test", func() {
     BeforeEach(func() {
         ...
-        
+
         // Where we will create the namespace for to install the Operator and Operands
         By("creating namespace")
         cmd := exec.Command("kubectl", "create", "ns", namespace)
         _, _ = utils.Run(cmd)
-        
-        // We will label as follows all namespaces so that we can check if warnings will be raised when 
+
+        // We will label as follows all namespaces so that we can check if warnings will be raised when
 		// a manifest be applied. (Not that some namespaces might not acced the label, i.e. if it
 		// has a container running with a less restrictive policy )
         By("labeling all namespaces to warn against what can violate the restricted policy")
@@ -360,7 +360,7 @@ var _ = Describe("my operator test", func() {
             "pod-security.kubernetes.io/warn=restricted")
         _, err := utils.Run(cmd)
         ExpectWithOffset(1, err).NotTo(HaveOccurred())
-        
+
 		// We will enforce the restricted policy so that if our Operator
 		// or Operand be unable to run as restricted we will be able to check
 		// it by validating their status
@@ -373,21 +373,21 @@ var _ = Describe("my operator test", func() {
         Expect(err).To(Not(HaveOccurred()))
         })
     })
-    
+
     AfterEach(func() {
         ...
     })
 
     It("should successfully run the Operator and Operand(s)", func() {
         // Then, here we build the operator and deploy the
-        // manager as the operand in the namespaces were 
+        // manager as the operand in the namespaces were
         // the policy restricted was enforced.
-		
+
         // Therefore, we can check the Operator and Operand
         // status to ensure that all is Running.
-		
+
         // Note that we can also verify if warns like with
-        // the message Warning: would violate PodSecurity were 
+        // the message Warning: would violate PodSecurity were
         // returned when the manifest were applied on the cluster
     })
 })
@@ -395,11 +395,11 @@ var _ = Describe("my operator test", func() {
 
 ### After following the recommendations to be restricted my workload is not running (CreateContainerConfigError). What should I do?
 
-If you are encountering errors similar to `Error: container has runAsNonRoot and image has non-numeric user` 
+If you are encountering errors similar to `Error: container has runAsNonRoot and image has non-numeric user`
 or `container has runAsNonRoot and image will run as root` that means that the image used does not have a non-zero numeric user defined, i.e.:
 
 ```shell
-USER 65532:65532 
+USER 65532:65532
 OR
 USER 1001
 ```
@@ -407,9 +407,9 @@ USER 1001
 Due to the `RunAsNonRoot` field being set to `true`, we need to force the user in the
 container to a non-zero numeric user.
 It is recommended that the images used by your operator have a non-zero numeric user set in the image itself (similar to the example above). For further information check the note [Consider an explicit UID/GID][docker-good-practices-doc] in the Dockerfile best practices guide.
-If your Operator will be distributed and used in vanilla Kubernetes clusters you can also fix the issue by defining the user via the security context configuration). (i.e. `RunAsUser: &[]int64{1000}[0],`). 
+If your Operator will be distributed and used in vanilla Kubernetes clusters you can also fix the issue by defining the user via the security context configuration). (i.e. `RunAsUser: &[]int64{1000}[0],`).
 
-**NOTE** If your Operator should work with specific vendors please ensure that you check if they have specific rules for Pod Security Admission.  For example, we know that if you use `RunAsUser` on OpenShift it will disqualify the Pod from their restricted-v2 SCC. 
+**NOTE** If your Operator should work with specific vendors please ensure that you check if they have specific rules for Pod Security Admission.  For example, we know that if you use `RunAsUser` on OpenShift it will disqualify the Pod from their restricted-v2 SCC.
 Therefore, if you want your workloads running in namespaces labeled to enforce restricted you must leave `RunAsUser` and `RunAsNonRoot` fields empty or if you want set `RunAsNonRoot` then, you MUST ensure that the image itself properly defines the UserID.
 
 [project-layout]: /docs/overview/project-layout

@@ -23,6 +23,6 @@ While running locally, this flag can also be added to the helm binary. For examp
 helm-operator --max-concurrent-reconciles=10
 ```
 
-**NOTE**: If you're using the default scaffolding, it is necessary to also apply this change to the `config/default/manager_metrics_patch.yaml` file. 
-This file is a `kustomize` patch to the operator deployment that configures metrics to require authorization for accessing 
+**NOTE**: If you're using the default scaffolding, it is necessary to also apply this change to the `config/default/manager_metrics_patch.yaml` file.
+This file is a `kustomize` patch to the operator deployment that configures metrics to require authorization for accessing
 your operator metrics. When `kustomize` applies this patch, it overrides the args defined in `config/manager/manager.yaml`

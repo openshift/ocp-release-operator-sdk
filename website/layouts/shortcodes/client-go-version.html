@@ -9,6 +9,6 @@
 {{- end -}}
 {{- if eq $done false -}}
     {{- range where .Page.Site.Params.versions "version" "Latest Release" -}}
-        <code>{{- .client_go_version -}}</code> 
+        <code>{{- .client_go_version -}}</code>
     {{- end -}}
 {{- end -}}

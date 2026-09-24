@@ -4,9 +4,9 @@ linkTitle: EnvTest Setup
 weight: 50
 ---
 
-## Overview 
+## Overview
 
-This document describes how to configure the environment for the [controller tests][controller-test] which uses [envtest][envtest] and is supported by the SDK. 
+This document describes how to configure the environment for the [controller tests][controller-test] which uses [envtest][envtest] and is supported by the SDK.
 
 ## Installing prerequisites
 
@@ -18,23 +18,23 @@ This document describes how to configure the environment for the [controller tes
 K8S_VERSION = v1.18.2
 ETCD_VERSION = v3.4.3
 testbin:
-	curl -sSLo setup_envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/kubebuilder/master/scripts/setup_envtest_bins.sh 
+	curl -sSLo setup_envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/kubebuilder/master/scripts/setup_envtest_bins.sh
 	chmod +x setup_envtest.sh
 	./setup_envtest.sh $(K8S_VERSION) $(ETCD_VERSION)
 ```
 
 
-The above script sets these environment variables to specify where test binaries can be found. In case you would like to not use the script then, is possible to do the same configuration to inform the path of your binaries: 
+The above script sets these environment variables to specify where test binaries can be found. In case you would like to not use the script then, is possible to do the same configuration to inform the path of your binaries:
 
 ```shell
 $ export TEST_ASSET_KUBECTL=<kubectl-bin-path>
 $ export TEST_ASSET_KUBE_APISERVER=<api-server-bin-path>
 $ export TEST_ASSET_ETCD=<etcd-bin-path>
-``` 
+```
 
-See that the environment variables also can be specified via your `controllers/suite_test.go` such as the following example. 
+See that the environment variables also can be specified via your `controllers/suite_test.go` such as the following example.
 
-```go 
+```go
 var _ = BeforeSuite(func(done Done) {
 	Expect(os.Setenv("TEST_ASSET_KUBE_APISERVER", "../../testbin/kube-apiserver")).To(Succeed())
 	Expect(os.Setenv("TEST_ASSET_ETCD", "../../testbin/etcd")).To(Succeed())

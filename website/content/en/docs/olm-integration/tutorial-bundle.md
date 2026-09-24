@@ -183,7 +183,7 @@ INFO[0095]   Found ClusterServiceVersion "default/memcached-operator.v0.0.2" pha
 INFO[0095] Successfully upgraded to "memcached-operator.v0.0.2"
 ```
 
-**Note:** If a bundle was installed using [`operator-sdk run bundle`][run-bundle] with a SQLite index image, the `replaces` field *must* be present and populated in the upgraded CSV's spec. 
+**Note:** If a bundle was installed using [`operator-sdk run bundle`][run-bundle] with a SQLite index image, the `replaces` field *must* be present and populated in the upgraded CSV's spec.
 
 #### Upgrading a bundle that was installed traditionally using OLM
 

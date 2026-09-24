@@ -20,22 +20,22 @@
 .breadcrumb-item + .breadcrumb-item {
     padding-left: 0.5rem;
   }
-  
+
 .breadcrumb-item + .breadcrumb-item::before {
     display: inline-block;
     padding-right: 0.5rem;
     color: $breadcrumb-divider-color;
     content: "/";
 }
-  
+
 .breadcrumb-item + .breadcrumb-item:hover::before {
     text-decoration: underline;
 }
-  
+
 .breadcrumb-item + .breadcrumb-item:hover::before {
     text-decoration: none;
 }
-  
+
 .breadcrumb-item.active {
     color: $breadcrumb-active-color;;
 }

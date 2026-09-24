@@ -47,7 +47,7 @@ These values will persist when generating a bundle, so make necessary metadata c
 **For Go Operators only:** the command parses [CSV markers][csv-markers] from Go API type definitions, located
 in `./api` for single group projects and `./apis` for multigroup projects, to populate certain CSV fields.
 You can set an alternative path to the API types root directory with `--apis-dir`. These markers are not available
-to Ansible or Helm project types. 
+to Ansible or Helm project types.
 
 The command attempts to process the local types defined in your API.
 If you import a package that uses the same name as a local type, running the command causes an infinite loop. For example:
@@ -56,14 +56,14 @@ type PodStatus struct {
   SomeField string
   // imported type with the same name will infinitely trigger
   // the parser to process the local PodStatus type
-  Status v1.PodStatus 
+  Status v1.PodStatus
 }
 ```
 To prevent an infinite loop, edit the local type definition to use a different name. For example:
 ```go
 type PodStatusWrapper struct {
   SomeField string
-  Status v1.PodStatus 
+  Status v1.PodStatus
 }
 ```
 
@@ -140,7 +140,7 @@ func main() {
     Port:          <some port>,
     WebhookServer: webhookServer, // Host/Port will not be used if webhookServer is nil.
   })
- 
+
   // Now you can register webhooks.
   ...
 }
@@ -238,9 +238,9 @@ You can list all available optional validators by setting the `--list-optional` 
 ```console
 $ operator-sdk bundle validate --list-optional
 NAME           LABELS                                                DESCRIPTION
-operatorhub    name=operatorhub                                      OperatorHub.io metadata validation. 
-               suite=operatorframework    
-community      name=community                                        (stage: alpha) Community Operator bundle validation      
+operatorhub    name=operatorhub                                      OperatorHub.io metadata validation.
+               suite=operatorframework
+community      name=community                                        (stage: alpha) Community Operator bundle validation
 ...
 ```
 
@@ -256,13 +256,13 @@ bundle: ...
 
 Also, see that you can test the bundle against the suite of test to ensure it against all criteria:
 
-```sh 
-operator-sdk bundle validate ./bundle --select-optional suite=operatorframework 
-```  
+```sh
+operator-sdk bundle validate ./bundle --select-optional suite=operatorframework
+```
 
 **Note**: The `OperatorHub.io` validator in the `operatorframework` optional suite allows you to validate that your manifests can work with a Kubernetes cluster of a particular version using the `k8s-version` optional key value:
 
-```sh 
+```sh
 operator-sdk bundle validate ./bundle --select-optional suite=operatorframework --optional-values=k8s-version=1.22
 ```
 
@@ -271,7 +271,7 @@ Documentation on optional validators:
 
 **Note**: (stage: alpha) The `Community` validator allows you to validate your `bundle.Dockerfile` configuration against its specific criteria using the `image-path` optional key value:
 
-```sh 
+```sh
 operator-sdk bundle validate ./bundle --select-optional name=community --optional-values=image-path=bundle.Dockerfile
 ```
 
