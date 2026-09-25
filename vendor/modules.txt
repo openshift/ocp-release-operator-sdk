@@ -1239,7 +1239,7 @@ google.golang.org/genproto/googleapis/api/httpbody
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.64.1
+# google.golang.org/grpc v1.64.1 => github.com/openshift-sustaining/grpc-go v1.64.1-sec.1
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -2151,3 +2151,4 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
+# google.golang.org/grpc => github.com/openshift-sustaining/grpc-go v1.64.1-sec.1
