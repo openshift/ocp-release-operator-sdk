@@ -34,17 +34,19 @@ type ClusterTLSPolicy interface {
 	// operator startup.
 	Apply(ctx context.Context, cfg *rest.Config, options manager.Options) (manager.Options, error)
 
-	// Watch is invoked once after the manager is constructed, for
+	// WatchIfProfileAvailable is invoked once after the manager is constructed, for
 	// implementations that need to react to policy changes at runtime
 	// (e.g. triggering a graceful restart via cancel).
-	Watch(ctx context.Context, mgr manager.Manager, cancel context.CancelFunc) error
+	WatchIfProfileAvailable(ctx context.Context, mgr manager.Manager, cancel context.CancelFunc) error
 }
 
 var registeredTLSPolicy ClusterTLSPolicy
 
 // RegisterClusterTLSPolicy installs a ClusterTLSPolicy implementation.
-// Intended to be called from an init() in a distribution-specific package,
-// wired in via a blank import in cmd/helm-operator/main.go.
+// Should be called only once.
 func RegisterClusterTLSPolicy(p ClusterTLSPolicy) {
+	if registeredTLSPolicy != nil {
+		panic("ClusterTLSPolicy already registered; only one implementation may be registered")
+	}
 	registeredTLSPolicy = p
 }

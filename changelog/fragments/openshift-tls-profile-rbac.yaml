@@ -1,0 +1,67 @@
+# entries is a list of entries to include in
+# release notes and/or the migration guide
+entries:
+  - description: >
+      For Helm-based operators, the manager now reads OpenShift's centralized
+      TLS security profile (`apiservers.config.openshift.io/cluster`) and
+      applies it to the metrics server, restarting gracefully whenever the
+      profile changes. This is downstream-only (OpenShift) functionality and
+      requires a new RBAC permission that is never scaffolded automatically;
+      see `internal/helm/openshifttls/README.md` for details.
+
+    # kind is one of:
+    # - addition
+    # - change
+    # - deprecation
+    # - removal
+    # - bugfix
+    kind: "addition"
+
+    # Is this a breaking change?
+    breaking: false
+
+    # Migration can be defined to automatically add a section to
+    # the migration guide. This is required for breaking changes.
+    migration:
+      header: Grant RBAC for the OpenShift centralized TLS security profile feature
+      body: |
+        Helm-based operators now attempt to read the cluster's centralized TLS
+        security profile from the `apiservers.config.openshift.io` resource
+        (OpenShift only) and apply it to their metrics server.
+
+        This permission is **never added automatically** -- there is no
+        `operator-sdk init`/`create api` flow, past or present, that
+        scaffolds it into a project's RBAC manifests. If you want your
+        operator to honor the cluster's configured TLS security profile, you
+        must add the following rule to the `ClusterRole` bound to your
+        operator's manager ServiceAccount yourself:
+
+        ```yaml
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
+        ```
+
+        If your operator is packaged with OLM, add the equivalent entry to
+        your CSV's `clusterPermissions` as well, and publish a new CSV
+        version -- OLM only reconciles RBAC as part of installing or
+        upgrading a CSV, it will not retroactively grant permissions to an
+        already-installed operator.
+
+        **This is safe to skip in the short term.** If the permission is
+        absent (or the operator is running on non-OpenShift Kubernetes),
+        the manager logs a warning, falls back to Go's default TLS settings
+        for the metrics server, and continues running normally -- it does
+        not crash or fail to start. Without the permission, however, the
+        operator will not honor cluster-mandated TLS policy (e.g. a stricter
+        minimum TLS version), which may be required for security compliance
+        on some OpenShift clusters.
+
+        See `internal/helm/openshifttls/README.md` for the full migration
+        guide, including the OLM-specific notes and how to verify the rule
+        is working via the manager's logs.

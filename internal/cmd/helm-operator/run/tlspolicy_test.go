@@ -16,7 +16,6 @@ package run
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +37,7 @@ func (s *stubTLSPolicy) Apply(_ context.Context, _ *rest.Config, options manager
 	return options, s.applyErr
 }
 
-func (s *stubTLSPolicy) Watch(_ context.Context, _ manager.Manager, _ context.CancelFunc) error {
+func (s *stubTLSPolicy) WatchIfProfileAvailable(_ context.Context, _ manager.Manager, _ context.CancelFunc) error {
 	s.watchCalled = true
 	return s.watchErr
 }
@@ -53,13 +52,6 @@ func withRegisteredTLSPolicy(t *testing.T, p ClusterTLSPolicy) {
 	registeredTLSPolicy = p
 }
 
-func TestNoClusterTLSPolicyRegisteredByDefault(t *testing.T) {
-	// Guards the upstream operator-sdk default: without a distribution
-	// registering an implementation (e.g. via a blank import of an
-	// OpenShift-specific package), the hook must be a no-op.
-	assert.Nil(t, registeredTLSPolicy)
-}
-
 func TestRegisterClusterTLSPolicy(t *testing.T) {
 	require.Nil(t, registeredTLSPolicy)
 
@@ -69,27 +61,14 @@ func TestRegisterClusterTLSPolicy(t *testing.T) {
 	assert.Same(t, ClusterTLSPolicy(policy), registeredTLSPolicy)
 }
 
-func TestRegisterClusterTLSPolicy_Overwrites(t *testing.T) {
+func TestRegisterClusterTLSPolicy_PanicsOnSecondRegistration(t *testing.T) {
 	first := &stubTLSPolicy{}
 	withRegisteredTLSPolicy(t, first)
 
 	second := &stubTLSPolicy{}
-	RegisterClusterTLSPolicy(second)
-
-	assert.Same(t, ClusterTLSPolicy(second), registeredTLSPolicy)
-}
-
-func TestClusterTLSPolicy_ApplyFailsOpen(t *testing.T) {
-	// Documents the interface contract: Apply may return an error, and
-	// callers (cmd.go's run()) are expected to log and continue with the
-	// input options unchanged rather than fail startup.
-	policy := &stubTLSPolicy{applyErr: errors.New("profile source unreachable")}
-	withRegisteredTLSPolicy(t, policy)
-
-	in := manager.Options{}
-	out, err := registeredTLSPolicy.Apply(context.Background(), &rest.Config{}, in)
-
-	require.Error(t, err)
-	assert.True(t, policy.applyCalled)
-	assert.Equal(t, in, out)
+	assert.PanicsWithValue(t,
+		"ClusterTLSPolicy already registered; only one implementation may be registered",
+		func() { RegisterClusterTLSPolicy(second) },
+	)
+	assert.Same(t, ClusterTLSPolicy(first), registeredTLSPolicy, "the original registration must be left untouched after a rejected second attempt")
 }

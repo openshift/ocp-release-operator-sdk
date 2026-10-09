@@ -13,13 +13,12 @@
 // limitations under the License.
 
 // Package openshifttls implements the OpenShift-specific centralized TLS
-// security profile support required by OCPSTRAT-2611: it reads the TLS
+// security profile support: it reads the TLS
 // profile configured in the cluster's apiservers.config.openshift.io/cluster
 // resource and applies it to the helm-operator's metrics server, then
 // watches for profile changes and triggers a graceful restart to pick them
 // up. This package is downstream-only (never proposed upstream) and wires
-// itself into the generic run.ClusterTLSPolicy extension point via a blank
-// import of this package from cmd/helm-operator/main.go.
+// itself into the generic run.ClusterTLSPolicy extension point from cmd/helm-operator/main.go.
 package openshifttls
 
 import (
@@ -28,8 +27,9 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	tlspkg "github.com/openshift/controller-runtime-common/pkg/tls"
-	apimachruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -39,42 +39,60 @@ import (
 
 var log = logf.Log.WithName("openshifttls")
 
-func init() {
-	run.RegisterClusterTLSPolicy(&clusterTLSPolicy{})
-}
-
 // clusterTLSPolicy implements run.ClusterTLSPolicy by reading the TLS
 // security profile from the cluster's APIServer resource and applying it to
 // the manager's metrics server TLS configuration.
 type clusterTLSPolicy struct {
-	// initialProfile is the profile observed in Apply, carried forward to
-	// Watch so SecurityProfileWatcher can detect drift from it.
+	// initialProfile is the profile observed in Apply for future comparison in Watch.
 	initialProfile configv1.TLSProfileSpec
+
+	// profileSourceAvailable records whether Apply successfully fetched the
+	// profile from a live APIServer object or not
+	profileSourceAvailable bool
+
+	client func(cfg *rest.Config, options ctrlclient.Options) (ctrlclient.Client, error)
+}
+
+// New returns the OpenShift ClusterTLSPolicy implementation that enforces
+// the cluster's centralized TLS security profile
+func New() run.ClusterTLSPolicy {
+	return &clusterTLSPolicy{
+		client: ctrlclient.New,
+	}
 }
 
 // Apply fetches the cluster's TLS security profile and appends the
-// corresponding TLS configuration to options.Metrics.TLSOpts. It fails open:
-// on any error building a client or fetching the profile (e.g. running on a
-// non-OpenShift cluster, or the APIServer CRD/object doesn't exist), it logs
-// a warning and falls back to the default (Intermediate) profile rather than
-// blocking operator startup.
+// corresponding TLS configuration to options.Metrics.TLSOpts.
+// any failure other than client construction is just logged
 func (p *clusterTLSPolicy) Apply(ctx context.Context, cfg *rest.Config, options manager.Options) (manager.Options, error) {
-	scheme := options.Scheme
-	if scheme == nil {
-		scheme = apimachruntime.NewScheme()
-	}
-	if err := configv1.AddToScheme(scheme); err != nil {
+	if err := configv1.AddToScheme(options.Scheme); err != nil {
 		return options, fmt.Errorf("failed to register config.openshift.io/v1 scheme: %w", err)
 	}
-	options.Scheme = scheme
 
-	k8sClient, err := ctrlclient.New(cfg, ctrlclient.Options{Scheme: scheme})
+	// By default, objects are filtered by label: "helm.sdk.operatorframework.io/chart
+	// Below change is needed to ensure apiserver kind watch does not include that filter.
+	if options.Cache.ByObject == nil {
+		options.Cache.ByObject = map[ctrlclient.Object]cache.ByObject{}
+	}
+	options.Cache.ByObject[&configv1.APIServer{}] = cache.ByObject{Label: labels.Everything()}
+
+	k8sClient, err := p.client(cfg, ctrlclient.Options{Scheme: options.Scheme})
 	if err != nil {
-		log.Error(err, "Unable to create client to fetch cluster TLS profile; falling back to default TLS profile")
-		k8sClient = nil
+		return options, fmt.Errorf("failed to create client for cluster TLS profile lookup: %w", err)
 	}
 
-	profile := fetchProfile(ctx, k8sClient)
+	profile, err := tlspkg.FetchAPIServerTLSProfile(ctx, k8sClient)
+	if err != nil {
+		p.profileSourceAvailable = false
+		profile, err = tlspkg.GetTLSProfileSpec(nil)
+		if err != nil {
+			return options, fmt.Errorf("failed to get default TLS profile: %w", err)
+		}
+		log.Error(err, "Unable to fetch TLS profile from APIServer (not running on OpenShift, or APIServer/cluster object missing?); falling back to default TLS profile")
+	} else {
+		p.profileSourceAvailable = true
+	}
+
 	p.initialProfile = profile
 
 	tlsConfigFunc, unsupported := tlspkg.NewTLSConfigFromProfile(profile)
@@ -90,32 +108,18 @@ func (p *clusterTLSPolicy) Apply(ctx context.Context, cfg *rest.Config, options 
 	return options, nil
 }
 
-// fetchProfile fetches the TLS profile from the cluster's APIServer resource
-// using k8sClient, falling back to the default profile if k8sClient is nil
-// (client construction failed) or the fetch itself errors (e.g. running on a
-// non-OpenShift cluster, or the APIServer CRD/object doesn't exist).
-//
-// It takes a client.Client (rather than a *rest.Config) precisely so it can
-// be unit tested against a fake client instead of a real cluster connection.
-func fetchProfile(ctx context.Context, k8sClient ctrlclient.Client) configv1.TLSProfileSpec {
-	if k8sClient == nil {
-		return defaultProfile()
-	}
-
-	profile, err := tlspkg.FetchAPIServerTLSProfile(ctx, k8sClient)
-	if err != nil {
-		log.Error(err, "Unable to fetch TLS profile from APIServer (not running on OpenShift, or APIServer/cluster object missing?); falling back to default TLS profile")
-		return defaultProfile()
-	}
-
-	return profile
-}
-
 // Watch registers a SecurityProfileWatcher that cancels ctx (triggering a
 // graceful manager shutdown, followed by a container restart that re-fetches
-// the profile) whenever the cluster's TLS profile changes from what was
-// observed in Apply.
-func (p *clusterTLSPolicy) Watch(ctx context.Context, mgr manager.Manager, cancel context.CancelFunc) error {
+// the profile) whenever the cluster's TLS profile changes.
+// no-op if the profile source is not available
+
+func (p *clusterTLSPolicy) WatchIfProfileAvailable(ctx context.Context, mgr manager.Manager, cancel context.CancelFunc) error {
+	if !p.profileSourceAvailable {
+		log.Info("Cluster TLS security profile was not read from a live APIServer object at startup; " +
+			"skipping profile-change watch to avoid stalling on a missing config.openshift.io/apiservers resource")
+		return nil
+	}
+
 	watcher := &tlspkg.SecurityProfileWatcher{
 		Client:                mgr.GetClient(),
 		InitialTLSProfileSpec: p.initialProfile,
@@ -126,18 +130,4 @@ func (p *clusterTLSPolicy) Watch(ctx context.Context, mgr manager.Manager, cance
 		},
 	}
 	return watcher.SetupWithManager(mgr)
-}
-
-// defaultProfile returns the profile controller-runtime-common treats as the
-// default (currently Intermediate) when the cluster has none configured.
-func defaultProfile() configv1.TLSProfileSpec {
-	// GetTLSProfileSpec(nil) never errors in the current implementation
-	// (it always returns the default profile), but check defensively
-	// rather than assume that never changes.
-	spec, err := tlspkg.GetTLSProfileSpec(nil)
-	if err != nil {
-		log.Error(err, "Unable to determine default TLS profile; TLS MinVersion will be left unset")
-		return configv1.TLSProfileSpec{}
-	}
-	return spec
 }

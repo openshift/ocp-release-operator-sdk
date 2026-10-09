@@ -182,8 +182,8 @@ func run(cmd *cobra.Command, f *flags.Flags) {
 	}
 
 	if registeredTLSPolicy != nil {
-		if err := registeredTLSPolicy.Watch(ctx, mgr, cancel); err != nil {
-			log.Error(err, "Failed to start cluster TLS policy watch.")
+		if err := registeredTLSPolicy.WatchIfProfileAvailable(ctx, mgr, cancel); err != nil {
+			log.Error(err, "Failed to start cluster TLS policy watch while a TLS Profile was successfully fetched earlier")
 			os.Exit(1)
 		}
 	}

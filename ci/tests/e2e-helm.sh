@@ -38,15 +38,6 @@ make install
 test_operator() {
     echo "Entered test_operator"
 
-    # wait for operator pod to run
-    if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager -n memcached-operator-system;
-    then
-        echo FAIL: for operator pod to run
-        kubectl describe pods
-        kubectl logs deployment/memcached-operator-controller-manager -c manager
-        exit 1
-    fi
-
     # verify that metrics service was created
     if ! timeout 60s bash -c -- "until kubectl get service/memcached-operator-controller-manager-metrics-service > /dev/null 2>&1; do sleep 1; done";
     then
@@ -141,7 +132,14 @@ EOF
 # available. Split out from the main flow so CI jobs that only need a running
 # operator (e.g. a TLS scanner step) can invoke deployment via DEPLOY_ONLY
 # without also running test_operator/undeploy below.
+#
+# overlay_dir (optional, defaults to config/default): lets callers deploy
+# from an alternate kustomize overlay instead of the standard one -- e.g. a
+# downstream-only script that wants to test with a patched RBAC set without
+# touching this file or the testdata fixture it points at.
 deploy_operator() {
+    local overlay_dir="${1:-config/default}"
+
     # Give the serviceaccount cluster role to create statefulsets
     if oc api-versions | grep openshift; then
         oc adm policy add-cluster-role-to-user cluster-admin -z default || :
@@ -149,7 +147,20 @@ deploy_operator() {
 
     # deploy operator
     echo "running make deploy"
-    make deploy IMG=$IMAGE
+    if [ "$overlay_dir" = "config/default" ]; then
+        make deploy "IMG=$IMAGE"
+    else
+        # same image-pin + build + apply sequence as the `deploy` Makefile
+        # target, just pointed at the caller-supplied overlay
+        make kustomize
+        if [ -x "./bin/kustomize" ]; then
+            KUSTOMIZE_BIN="$(pwd)/bin/kustomize"
+        else
+            KUSTOMIZE_BIN="$(command -v kustomize)"
+        fi
+        (cd config/manager && "$KUSTOMIZE_BIN" edit set image "controller=$IMAGE")
+        "$KUSTOMIZE_BIN" build "$overlay_dir" | kubectl apply -f -
+    fi
 
     # wait for operator pod to run
     if ! timeout 1m kubectl rollout status deployment/memcached-operator-controller-manager -n memcached-operator-system;
@@ -167,37 +178,49 @@ deploy_operator() {
     oc project memcached-operator-system
 }
 
-# use sample in testdata
-pushd $ROOTDIR/testdata/helm/memcached-operator
-ls
+# main runs the default end-to-end scenario: deploy, test, undeploy. Wrapped
+# in a function (instead of running inline at the bottom of the file) and
+# guarded below so that other downstream-only scripts can safely `source`
+# this file -- to reuse its env setup and the deploy_operator/test_operator
+# functions above -- without this default scenario auto-running as a side
+# effect of being sourced.
+main() {
+    # use sample in testdata
+    pushd "$ROOTDIR/testdata/helm/memcached-operator"
+    ls
 
-deploy_operator
+    deploy_operator
 
-if [ "${DEPLOY_ONLY:-false}" = "true" ]; then
-    echo "DEPLOY_ONLY=true: operator deployed; skipping test_operator, cleanup, and undeploy"
+    if [ "${DEPLOY_ONLY:-false}" = "true" ]; then
+        echo "DEPLOY_ONLY=true: operator deployed; skipping test_operator, cleanup, and undeploy"
+        popd
+        exit 0
+    fi
+
+    # Test the operator
+    echo "running test_operator"
+    test_operator
+
+    # clean up the clusterrolebinding for metrics
+    kubectl delete clusterrolebinding memcached-operator-metrics-reader-rolebinding
+
+    # remove_operator
+    echo "running make undeploy"
+    make undeploy
+
+    # the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
+    if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
+    then
+        echo FAIL: memcached-operator Deployment did not get garbage collected
+        kubectl describe pods
+        kubectl describe deployments
+        kubectl logs deployment/memcached-operator-controller-manager -c manager
+        exit 1
+    fi
+
     popd
-    exit 0
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main
 fi
-
-# Test the operator
-echo "running test_operator"
-test_operator
-
-# clean up the clusterrolebinding for metrics
-kubectl delete clusterrolebinding memcached-operator-metrics-reader-rolebinding
-
-# remove_operator
-echo "running make undeploy"
-make undeploy
-
-# the memcached-operator pods remain after the deployment is gone; wait until the pods are removed
-if ! timeout 60s bash -c -- "until kubectl get pods -l control-plane=controller-manager |& grep \"No resources found\"; do sleep 2; done";
-then
-    echo FAIL: memcached-operator Deployment did not get garbage collected
-    kubectl describe pods
-    kubectl describe deployments
-    kubectl logs deployment/memcached-operator-controller-manager -c manager
-    exit 1
-fi
-
-popd

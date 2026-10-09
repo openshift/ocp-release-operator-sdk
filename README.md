@@ -28,6 +28,10 @@ The downstream ci files are as follows:
 * release/helm - helm operator release files
 * release/sdk - sdk operator release files
 * vendor - unlike the upstream, we vendor in the dependencies downstream
+* internal/helm/openshifttls - downstream-only support for OpenShift's
+  centralized TLS security profile in the Helm operator's metrics server; see
+  [internal/helm/openshifttls/README.md](internal/helm/openshifttls/README.md)
+  for the RBAC operator authors must add manually to use it
 
 ## Syncing
 

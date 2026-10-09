@@ -22,7 +22,10 @@ test-e2e-helm: patch
 	./ci/tests/e2e-helm.sh
 	#./hack/tests/e2e-helm.sh
 
+test-e2e-helm-with-openshift-tls-rbac: patch
+	./ci/tests/e2e-helm-with-openshift-tls-rbac.sh
+
 test-subcommand: patch
 	./ci/tests/subcommand.sh
 
-.PHONY: patch build test-e2e-go test-e2e-helm patch test-subcommand
+.PHONY: patch build test-e2e-go test-e2e-helm test-e2e-helm-with-openshift-tls-rbac patch test-subcommand
