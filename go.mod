@@ -30,9 +30,9 @@ require (
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.4
 	github.com/thoas/go-funk v0.8.0
-	golang.org/x/mod v0.12.0
-	golang.org/x/text v0.14.0
-	golang.org/x/tools v0.13.0
+	golang.org/x/mod v0.17.0
+	golang.org/x/text v0.22.0
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 	gomodules.xyz/jsonpatch/v3 v3.0.1
 	helm.sh/helm/v3 v3.11.3
 	k8s.io/api v0.26.2
@@ -211,12 +211,12 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.6.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	gomodules.xyz/orderedmap v0.1.0 // indirect
@@ -262,3 +262,7 @@ replace (
 	k8s.io/client-go => github.com/openshift/kubernetes/staging/src/k8s.io/client-go v0.0.0-20231014053241-c7606e743ff1
 	k8s.io/kubectl => github.com/openshift/kubernetes/staging/src/k8s.io/kubectl v0.0.0-20231014053241-c7606e743ff1
 )
+
+// CVE-2026-27136: XSS via duplicate attributes in golang.org/x/net/html
+// Backported fix from v0.55.0 to Go 1.18-compatible fork
+replace golang.org/x/net => github.com/openshift-sustaining/net v0.35.0-sec.4
