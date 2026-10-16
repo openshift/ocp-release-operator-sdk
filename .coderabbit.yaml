@@ -1,0 +1,32 @@
+inheritance: true
+language: en-US
+reviews:
+  path_filters:
+    - "!vendor/**"
+    - "!internal/bindata/olm/manifests.go"
+    - "!internal/generate/packagemanifest/packagemanifestfakes/**"
+    - "!internal/generate/clusterserviceversion/bases/definitions/zz_generated.markerhelp.go"
+  path_instructions:
+    - path: "internal/helm/**"
+      instructions: >-
+        Check CR updates separately from chart-resource writes. Inspect returned
+        patch types rather than helper names. Preserve watch loader defaults and
+        duplicate-GVK rejection; use existing watch, controller, and release tests.
+    - path: "ci/**"
+      instructions: >-
+        Check patch ordering and the selected downstream build target. Do not
+        assume the root Makefile and downstream wrapper build the same binary set.
+    - path: "release/helm/**"
+      instructions: >-
+        Keep the copied Helm binary path consistent with build output and
+        entrypoint. Check vendored build settings when changing the builder stage.
+    - path: "ai-docs/**"
+      instructions: >-
+        Keep claims source-backed and distinct from support guarantees. Preserve
+        existing documentation links. Exclude review caches and source backups.
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "REVIEW.md"
+      - "AGENTS.md"
