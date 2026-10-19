@@ -1,0 +1,5 @@
+# AgentReady configuration for ocp-release-operator-sdk
+# See https://github.com/ambient-code/agentready for documentation
+excluded_attributes:
+  - architecture_decisions  # ADRs not standardized in this org
+  - openapi_specs           # CLI/runtime tool, not an API service

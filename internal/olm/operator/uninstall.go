@@ -37,6 +37,7 @@ const (
 	crdKind = "CustomResourceDefinition"
 )
 
+// Uninstall manages the removal of an OLM-installed operator and its associated resources.
 type Uninstall struct {
 	config *Configuration
 
@@ -49,6 +50,7 @@ type Uninstall struct {
 	Logf func(string, ...any)
 }
 
+// NewUninstall creates an Uninstall instance with the given configuration.
 func NewUninstall(cfg *Configuration) *Uninstall {
 	return &Uninstall{
 		config: cfg,
@@ -61,6 +63,7 @@ func (u *Uninstall) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&u.DeleteOperatorGroups, "delete-operator-groups", false, "If set to true, operator groups will be deleted")
 }
 
+// ErrPackageNotFound is returned when the specified operator package does not exist on the cluster.
 type ErrPackageNotFound struct {
 	PackageName string
 }

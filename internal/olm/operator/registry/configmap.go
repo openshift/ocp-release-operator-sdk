@@ -30,6 +30,7 @@ import (
 	"github.com/operator-framework/operator-sdk/internal/olm/operator/registry/configmap"
 )
 
+// ConfigMapCatalogCreator creates a CatalogSource backed by a ConfigMap containing operator manifests.
 type ConfigMapCatalogCreator struct {
 	Package *apimanifests.PackageManifest
 	Bundles []*apimanifests.Bundle
@@ -37,6 +38,7 @@ type ConfigMapCatalogCreator struct {
 	cfg *operator.Configuration
 }
 
+// NewConfigMapCatalogCreator creates a ConfigMapCatalogCreator with the given configuration.
 func NewConfigMapCatalogCreator(cfg *operator.Configuration) *ConfigMapCatalogCreator {
 	return &ConfigMapCatalogCreator{
 		cfg: cfg,

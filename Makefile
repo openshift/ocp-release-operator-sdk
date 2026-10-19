@@ -72,6 +72,47 @@ lint: setup-lint ## Run the lint check
 clean: ## Cleanup build artifacts and tool binaries.
 	rm -rf $(BUILD_DIR) dist $(TOOLS_DIR)
 
+##@ Verification
+
+.PHONY: setup
+setup: ## One-time bootstrap for a clean checkout (no cluster required).
+	git submodule update --init --recursive website/
+	$(GO) mod download
+	$(MAKE) setup-lint
+
+.PHONY: verify
+verify: ## Canonical pre-PR check (no cluster required).
+	$(MAKE) test-static
+	$(MAKE) build
+	$(MAKE) check-file-size
+
+.PHONY: verify-file
+verify-file: ## Fast checks for a single Go file (FILE=path required).
+	@test -n "$(FILE)" || (echo "Error: FILE is required, e.g. make verify-file FILE=internal/olm/client/client.go" && exit 1)
+	./hack/verify-file.sh "$(FILE)"
+
+PRECOMMIT_VERSION = 4.0.1
+
+.PHONY: setup-precommit
+setup-precommit: ## Install the pinned pre-commit version if not already on PATH.
+	@if command -v pre-commit >/dev/null 2>&1; then \
+		installed=$$(pre-commit --version | awk '{print $$2}'); \
+		if [ "$$installed" != "$(PRECOMMIT_VERSION)" ]; then \
+			echo "pre-commit version mismatch: installed $$installed, expected $(PRECOMMIT_VERSION); upgrading..."; \
+			python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"; \
+		fi; \
+	else \
+		python3 -m pip install --user "pre-commit==$(PRECOMMIT_VERSION)"; \
+	fi
+
+.PHONY: precommit
+precommit: setup-precommit ## Run pre-commit hooks on all files.
+	python3 -m pre_commit run --all-files
+
+.PHONY: check-file-size
+check-file-size: ## Check first-party Go files against size limit.
+	./hack/check-file-size.sh
+
 ##@ Build
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -166,7 +207,7 @@ test-docs: ## Test doc links
 	./hack/check-links.sh
 
 .PHONY: test-unit
-TEST_PKGS = $(shell $(GO) list ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
+TEST_PKGS = $(shell $(GO) list -tags=$(GO_BUILD_TAGS) ./... | grep -v -E 'github.com/operator-framework/operator-sdk/test/')
 test-unit: ## Run unit tests
 	CGO_ENABLED=1 $(GO) test -race -tags=$(GO_BUILD_TAGS) -coverprofile=coverage.out -covermode=atomic -short $(TEST_PKGS)
 
@@ -177,7 +218,8 @@ e2e_targets := test-e2e $(e2e_tests)
 .PHONY: test-e2e-setup
 export KIND_CLUSTER := osdk-test
 
-KUBEBUILDER_ASSETS = $(PWD)/$(shell $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest && $(shell $(GO) env GOPATH)/bin/setup-envtest use $(K8S_VERSION) --bin-dir tools/bin/ -p path)
+SETUP_ENVTEST_VERSION = v0.21.0
+KUBEBUILDER_ASSETS = $(PWD)/$(shell $(GO) install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION) && $(shell $(GO) env GOPATH)/bin/setup-envtest use $(K8S_VERSION) --bin-dir tools/bin/ -p path)
 test-e2e-setup:: build dev-install cluster-create
 
 .PHONY: cluster-create

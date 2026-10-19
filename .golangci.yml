@@ -1,6 +1,7 @@
 version: "2"
 linters:
   enable:
+    - depguard
     - dupl
     - ginkgolinter
     - goconst
@@ -31,6 +32,18 @@ linters:
       - builtin$
       - examples$
   settings:
+    depguard:
+      rules:
+        no-test-in-prod:
+          deny:
+            - pkg: "github.com/onsi/ginkgo"
+              desc: "ginkgo is only allowed in test files"
+            - pkg: "github.com/onsi/gomega"
+              desc: "gomega is only allowed in test files"
+          files:
+            - "!**/*_test.go"
+            - "!**/test/**"
+            - "!**/testutils/**"
     revive:
       rules:
         - name: var-naming

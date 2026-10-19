@@ -90,6 +90,7 @@ func (sc *SecurityContext) Type() string {
 	return "SecurityContext"
 }
 
+// IndexImageCatalogCreator creates a CatalogSource backed by an OLM index image.
 type IndexImageCatalogCreator struct {
 	SkipTLS         bool
 	SkipTLSVerify   bool
@@ -113,6 +114,7 @@ type IndexImageCatalogCreator struct {
 var _ CatalogCreator = &IndexImageCatalogCreator{}
 var _ CatalogUpdater = &IndexImageCatalogCreator{}
 
+// NewIndexImageCatalogCreator creates an IndexImageCatalogCreator with the given configuration.
 func NewIndexImageCatalogCreator(cfg *operator.Configuration) *IndexImageCatalogCreator {
 	return &IndexImageCatalogCreator{
 		cfg: cfg,

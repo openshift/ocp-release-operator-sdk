@@ -6,10 +6,26 @@ This is the downstream repo for the
 [Operator Framework's Operator SDK][upstream_repo]. The purpose of this repo is
 to build downstream Operator SDK for OpenShift releases.
 
+## Prerequisites / Quick Start
+
+- **Go 1.26.3+** (see `go.mod` for the exact version)
+- **make** as the build system
+- The build tag `containers_image_openpgp` is required for all Go commands:
+  ```
+  go build -tags containers_image_openpgp ./...
+  go test -tags containers_image_openpgp ./...
+  ```
+  The Makefile sets this automatically, so prefer `make build` and `make test-unit` over raw `go` commands.
+
 ## Documentation
 
 The downstream documentation can be found: [Downstream Docs][downstream_docs].
 You can also refer to the upstream [Operator SDK website][sdk-docs].
+
+For contributors and AI agents, see:
+
+- [AGENTS.md](AGENTS.md) -- Repository conventions, build targets, and architectural context
+- [CLAUDE.md](CLAUDE.md) -- Quick reference for AI agents (commands, build tags, conventions)
 
 ## License
 
@@ -23,6 +39,7 @@ This repo is a mirror of the upstream
 The downstream ci files are as follows:
 
 * ci - contains the CI related build files
+* docs - contains development guidelines for contributors and AI agents
 * patches - contains the patches applied to downstream builds
 * release/ansible - ansible operator release files
 * release/helm - helm operator release files
@@ -32,57 +49,6 @@ The downstream ci files are as follows:
 ## Syncing
 
 When an upstream release is ready, you can sync down that release downstream.
-
-This midstream primarily ships the **Helm Operator** image for OpenShift
-(`release/helm/`). Upstream Operator SDK tags are merged into this repo with
-[`UPSTREAM-MERGE.sh`](./UPSTREAM-MERGE.sh). Downstream-only packaging for the
-`operator-sdk` binary was removed (OAPE-110); Ansible scaffolding comes from an
-external plugin module.
-
-### Automatic rebase (periodic)
-
-A Prow periodic (OAPE-829) runs [`hack/auto-rebase.sh`](./hack/auto-rebase.sh)
-weekly against `main`. A custom script is used because this repo rebases via
-**git merge** (not `git rebase` like rebasebot) and discovers releases by
-selecting the newest `v*` tag beyond [`UPSTREAM-VERSION`](./UPSTREAM-VERSION)
-rather than tracking a branch. That wrapper:
-
-1. Compares [`UPSTREAM-VERSION`](./UPSTREAM-VERSION) to the newest upstream
-   `v*` release tag on `operator-framework/operator-sdk`.
-2. If a newer tag exists (and no rebase branch/PR already covers it), runs
-   `./UPSTREAM-MERGE.sh <tag> main`.
-3. Updates golang builder pins in `.ci-operator.yaml` and
-   `release/helm/Dockerfile` if the upstream golang version changed.
-4. Verifies patches and build with `make -f ci/prow.Makefile patch build`.
-5. Pushes `$tag-rebase-main` and opens a PR. If the gate failed, a **draft**
-   PR is opened and the periodic exits non-zero so CI alerts. It does **not**
-   auto-merge.
-
-**Still manual after the bot opens a PR:** review conflict fallout, fix or drop
-patches that no longer apply, add any needed `UPSTREAM: <carry>:` commits, and
-merge. ART image-consistency bumps for Dockerfiles are unrelated and continue
-separately.
-
-**CI credentials:** the periodic uses the OAPE team's GitHub App
-(`openshift-app-platform-shift-bot`) via the existing `test-credentials`
-secret `openshift-app-platform-shift-github-bot` — the same bot used by
-`openshift-eng/oape-ai-e2e`. The App must be **installed** on
-`openshift/ocp-release-operator-sdk` with `contents:write` and
-`pull_requests:write` permissions.
-
-**Prerequisites:** `git`, `gh` (GitHub CLI), `make`.
-
-Local dry-run (no push/PR):
-
-```bash
-DRY_RUN=1 ./hack/auto-rebase.sh
-```
-
-Force a specific tag (for testing):
-
-```bash
-OVERRIDE_TAG=v1.42.3 DRY_RUN=1 ./hack/auto-rebase.sh
-```
 
 ### Verify upstream
 
@@ -117,7 +83,7 @@ you want. In this steps below we will sync `v1.4.1` to `main`.
 
 To build simply use the `UPSTREAM-MERGE.sh` script.
 
-`./UPSTREAM-MERGE.sh <UPSTREAM-TAG>`
+`./UPSTREAM-MEGE.sh <UPSTREAM-TAG>`
 
 Here is an example run using upstream tag `v1.4.1`
 
@@ -369,7 +335,7 @@ Let's walk through an example. Assume we need to patch
    git push origin bugxxx
    ```
 
-[downstream_docs]:https://docs.openshift.com/container-platform/4.6/operators/operator_sdk/osdk-getting-started.html
+[downstream_docs]:https://docs.openshift.com/container-platform/latest/operators/operator_sdk/osdk-getting-started.html
 [upstream_repo]:https://github.com/operator-framework/operator-sdk/
 [license_file]:./LICENSE
 [sdk-docs]: https://sdk.operatorframework.io

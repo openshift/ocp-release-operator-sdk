@@ -44,8 +44,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
+// ErrOLMNotInstalled is returned when no OLM installation is detected on the cluster.
 var ErrOLMNotInstalled = errors.New("no existing installation found")
 
+// Scheme is the runtime scheme used for OLM API type registration.
 var Scheme = scheme.Scheme
 
 // custom error struct to capture deployment errors
@@ -86,10 +88,12 @@ func init() {
 	}
 }
 
+// Client wraps a controller-runtime client for OLM-specific operations.
 type Client struct {
 	KubeClient client.Client
 }
 
+// NewClientForConfig creates a new OLM client from the given REST config and HTTP client.
 func NewClientForConfig(cfg *rest.Config, httpClient *http.Client) (*Client, error) {
 	rm, err := apiutil.NewDynamicRESTMapper(cfg, httpClient)
 	if err != nil {

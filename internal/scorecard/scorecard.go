@@ -31,12 +31,14 @@ import (
 	registryutil "github.com/operator-framework/operator-sdk/internal/registry"
 )
 
+// TestRunner defines the interface for executing scorecard tests in a target environment.
 type TestRunner interface {
 	Initialize(context.Context) error
 	RunTest(context.Context, v1alpha3.TestConfiguration, bool) (*v1alpha3.TestStatus, error)
 	Cleanup(context.Context) error
 }
 
+// Scorecard orchestrates the execution of scorecard test suites against an operator bundle.
 type Scorecard struct {
 	Config      v1alpha3.Configuration
 	Selector    labels.Selector
@@ -45,6 +47,7 @@ type Scorecard struct {
 	PodSecurity bool
 }
 
+// PodTestRunner executes scorecard tests as Kubernetes pods on a live cluster.
 type PodTestRunner struct {
 	Namespace      string
 	ServiceAccount string
@@ -60,6 +63,7 @@ type PodTestRunner struct {
 	PodSecurity   bool
 }
 
+// FakeTestRunner is a test double for TestRunner used in unit tests.
 type FakeTestRunner struct {
 	Sleep      time.Duration
 	TestStatus *v1alpha3.TestStatus
@@ -282,6 +286,7 @@ func (r FakeTestRunner) RunTest(ctx context.Context, _ v1alpha3.TestConfiguratio
 	}
 }
 
+// ConfigDocLink returns the URL to the scorecard configuration documentation.
 func ConfigDocLink() string {
 	return "https://sdk.operatorframework.io/docs/scorecard/"
 }

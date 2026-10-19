@@ -20,10 +20,12 @@ import (
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 )
 
+// CatalogCreator creates OLM CatalogSource resources for operator installation.
 type CatalogCreator interface {
 	CreateCatalog(ctx context.Context, name string) (*v1alpha1.CatalogSource, error)
 }
 
+// CatalogUpdater updates an existing CatalogSource and its associated Subscription.
 type CatalogUpdater interface {
 	UpdateCatalog(ctx context.Context, cs *v1alpha1.CatalogSource, subscription *v1alpha1.Subscription) error
 }

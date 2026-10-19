@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Configuration holds the runtime settings for OLM operator commands (run bundle, cleanup, etc.).
 type Configuration struct {
 	Namespace      string
 	ServiceAccount string

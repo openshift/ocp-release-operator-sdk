@@ -130,3 +130,41 @@ tags
 
 # Python cache (Ansible molecule)
 test/ansible/plugins/filter/__pycache__/
+
+# Profiling / coverage
+*.prof
+*.pprof
+cpu.out
+mem.out
+coverage.html
+
+# Local env
+.env
+.env.*
+
+# Python test caches (helper scripts)
+**/__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# Tool temp output
+tools/bin/.cache/
+.tmp/
+
+# Node.js (commitlint)
+node_modules/
+
+# Coverage output
+cover.out
+coverage.out
+coverage.txt
+
+# Editor swap files
+*.swp
+*.swo
+
+# General logs
+*.log
+
+# Pattern for tooling; vendor/ is intentionally committed downstream
+# vendor/
