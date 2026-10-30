@@ -22,9 +22,14 @@ import (
 
 	"github.com/operator-framework/operator-sdk/internal/cmd/helm-operator/run"
 	"github.com/operator-framework/operator-sdk/internal/cmd/helm-operator/version"
+
+	// Downstream import to register openshifttls policy
+	"github.com/operator-framework/operator-sdk/internal/helm/openshifttls"
 )
 
 func main() {
+	// Downstream Register the openshifttls policy
+	run.RegisterClusterTLSPolicy(openshifttls.New())
 	root := cobra.Command{
 		Short: "Reconcile an Helm operator project using helm",
 		Long: `This binary runs a Helm operator that reconciles Kubernetes resources
