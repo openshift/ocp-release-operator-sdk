@@ -51,5 +51,4 @@ knowledge_base:
   pull_requests_scope: auto
   code_guidelines:
     - filePatterns:
-        - "REVIEW.md"
         - "AGENTS.md"
