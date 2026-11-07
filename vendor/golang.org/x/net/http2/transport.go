@@ -2843,6 +2843,9 @@ func (rl *clientConnReadLoop) processSettingsNoWrite(f *SettingsFrame) error {
 
 	var seenMaxConcurrentStreams bool
 	err := f.ForeachSetting(func(s Setting) error {
+		if err := s.Valid(); err != nil {
+			return err
+		}
 		switch s.ID {
 		case SettingMaxFrameSize:
 			cc.maxFrameSize = s.Val
