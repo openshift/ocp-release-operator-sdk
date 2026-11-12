@@ -59,19 +59,19 @@ func TestParseWarningHeader_NormalText(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result, remainder, err := utilnet.ParseWarningHeader(tc.header)
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("Unexpected error: %v", err)
 			}
 			if remainder != "" {
-				t.Errorf("unexpected remainder: %q", remainder)
+				t.Errorf("Unexpected remainder: %q", remainder)
 			}
 			if result.Code != tc.code {
-				t.Errorf("code: got %d, want %d", result.Code, tc.code)
+				t.Errorf("Code: got %d, want %d", result.Code, tc.code)
 			}
 			if result.Agent != tc.agent {
-				t.Errorf("agent: got %q, want %q", result.Agent, tc.agent)
+				t.Errorf("Agent: got %q, want %q", result.Agent, tc.agent)
 			}
 			if result.Text != tc.text {
-				t.Errorf("text: got %q, want %q", result.Text, tc.text)
+				t.Errorf("Text: got %q, want %q", result.Text, tc.text)
 			}
 		})
 	}
@@ -89,11 +89,11 @@ func TestParseWarningHeader_RFC2047Literal(t *testing.T) {
 
 	result, _, err := utilnet.ParseWarningHeader(header)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Unexpected error: %v", err)
 	}
 	// After RFC2047 decoding removal: text stays in encoded form
 	if result.Text != encodedText {
-		t.Errorf("expected literal encoded text %q, got %q", encodedText, result.Text)
+		t.Errorf("Expected literal encoded text %q, got %q", encodedText, result.Text)
 	}
 }
 
