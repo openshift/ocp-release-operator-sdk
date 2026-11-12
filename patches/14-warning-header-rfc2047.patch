@@ -1,0 +1,30 @@
+diff -up ./vendor/k8s.io/apimachinery/pkg/util/net/http.go.rfc2047-removal ./vendor/k8s.io/apimachinery/pkg/util/net/http.go
+--- ./vendor/k8s.io/apimachinery/pkg/util/net/http.go.rfc2047-removal
++++ ./vendor/k8s.io/apimachinery/pkg/util/net/http.go
+@@ -23,7 +23,6 @@
+ 	"errors"
+ 	"fmt"
+ 	"io"
+-	"mime"
+ 	"net"
+ 	"net/http"
+ 	"net/url"
+@@ -505,7 +504,6 @@
+
+ var (
+ 	codeMatcher = regexp.MustCompile(`^[0-9]{3}$`)
+-	wordDecoder = &mime.WordDecoder{}
+ )
+
+ // ParseWarningHeader extracts one RFC2616 14.46 warning from the specified header,
+@@ -567,10 +565,6 @@
+ 	if err != nil {
+ 		return WarningHeader{}, "", fmt.Errorf("invalid warning header: %v", err)
+ 	}
+-	// tolerate RFC2047-encoded text from warnings produced according to RFC2616
+-	if decodedText, err := wordDecoder.DecodeHeader(text); err == nil {
+-		text = decodedText
+-	}
+ 	if !utf8.ValidString(text) || hasAnyRunes(text, unicode.IsControl) {
+ 		return WarningHeader{}, "", errors.New("invalid warning header: invalid text")
+ 	}
