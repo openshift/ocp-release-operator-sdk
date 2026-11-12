@@ -114,7 +114,7 @@ func TestParseWarningHeader_ManyInvalidEncodedWords(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		utilnet.ParseWarningHeader(header)
+		_, _, _ = utilnet.ParseWarningHeader(header)
 		close(done)
 	}()
 
