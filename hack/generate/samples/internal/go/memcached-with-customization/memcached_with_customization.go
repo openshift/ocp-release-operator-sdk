@@ -52,7 +52,7 @@ func GenerateSample(binaryPath, samplesPath string) {
 		errorInfo += monitoringString
 	}
 
-	log.Infof("%s", logInfo)
+	log.Infof(logInfo)
 	ctx, err := pkg.NewSampleContext(binaryPath, filepath.Join(samplesPath, "memcached-operator"), "GO111MODULE=on")
 	pkg.CheckError(errorInfo, err)
 
@@ -71,7 +71,7 @@ func (mh *Memcached) Prepare() {
 		logInfo += monitoringString
 	}
 
-	log.Infof("%s", logInfo)
+	log.Infof(logInfo)
 	mh.ctx.Destroy()
 
 	log.Infof("creating directory")

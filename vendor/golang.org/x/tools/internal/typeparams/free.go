@@ -6,6 +6,8 @@ package typeparams
 
 import (
 	"go/types"
+
+	"golang.org/x/tools/internal/aliases"
 )
 
 // Free is a memoization of the set of free type parameters within a
@@ -35,20 +37,8 @@ func (w *Free) Has(typ types.Type) (res bool) {
 	case nil, *types.Basic: // TODO(gri) should nil be handled here?
 		break
 
-	case *types.Alias:
-		if t.TypeParams().Len() > t.TypeArgs().Len() {
-			return true // This is an uninstantiated Alias.
-		}
-		// The expansion of an alias can have free type parameters,
-		// whether or not the alias itself has type parameters:
-		//
-		//   func _[K comparable]() {
-		//     type Set      = map[K]bool // free(Set)      = {K}
-		//     type MapTo[V] = map[K]V    // free(Map[foo]) = {V}
-		//   }
-		//
-		// So, we must Unalias.
-		return w.Has(types.Unalias(t))
+	case *aliases.Alias:
+		return w.Has(aliases.Unalias(t))
 
 	case *types.Array:
 		return w.Has(t.Elem())
@@ -68,7 +58,7 @@ func (w *Free) Has(typ types.Type) (res bool) {
 
 	case *types.Tuple:
 		n := t.Len()
-		for i := range n {
+		for i := 0; i < n; i++ {
 			if w.Has(t.At(i).Type()) {
 				return true
 			}
@@ -108,8 +98,9 @@ func (w *Free) Has(typ types.Type) (res bool) {
 
 	case *types.Named:
 		args := t.TypeArgs()
+		// TODO(taking): this does not match go/types/infer.go. Check with rfindley.
 		if params := t.TypeParams(); params.Len() > args.Len() {
-			return true // this is an uninstantiated named type.
+			return true
 		}
 		for i, n := 0, args.Len(); i < n; i++ {
 			if w.Has(args.At(i)) {

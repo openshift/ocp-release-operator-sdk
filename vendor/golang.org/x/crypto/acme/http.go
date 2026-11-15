@@ -66,7 +66,7 @@ func (c *Client) retryTimer() *retryTimer {
 // The n argument is always bounded between 1 and 30.
 // The returned value is always greater than 0.
 func defaultBackoff(n int, r *http.Request, res *http.Response) time.Duration {
-	const maxVal = 10 * time.Second
+	const max = 10 * time.Second
 	var jitter time.Duration
 	if x, err := rand.Int(rand.Reader, big.NewInt(1000)); err == nil {
 		// Set the minimum to 1ms to avoid a case where
@@ -86,7 +86,10 @@ func defaultBackoff(n int, r *http.Request, res *http.Response) time.Duration {
 		n = 30
 	}
 	d := time.Duration(1<<uint(n-1))*time.Second + jitter
-	return min(d, maxVal)
+	if d > max {
+		return max
+	}
+	return d
 }
 
 // retryAfter parses a Retry-After HTTP header value,
@@ -128,7 +131,7 @@ func wantStatus(codes ...int) resOkay {
 func (c *Client) get(ctx context.Context, url string, ok resOkay) (*http.Response, error) {
 	retry := c.retryTimer()
 	for {
-		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +231,7 @@ func (c *Client) postNoRetry(ctx context.Context, key crypto.Signer, url string,
 	if err != nil {
 		return nil, nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(b))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return nil, nil, err
 	}

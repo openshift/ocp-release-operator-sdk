@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// renewJitter is the maximum deviation from Manager.RenewBefore.
+const renewJitter = time.Hour
+
 // domainRenewal tracks the state used by the periodic timers
 // renewing a single domain's cert.
 type domainRenewal struct {
@@ -27,13 +30,13 @@ type domainRenewal struct {
 // defined by the certificate expiration time exp.
 //
 // If the timer is already started, calling start is a noop.
-func (dr *domainRenewal) start(notBefore, notAfter time.Time) {
+func (dr *domainRenewal) start(exp time.Time) {
 	dr.timerMu.Lock()
 	defer dr.timerMu.Unlock()
 	if dr.timer != nil {
 		return
 	}
-	dr.timer = time.AfterFunc(dr.next(notBefore, notAfter), dr.renew)
+	dr.timer = time.AfterFunc(dr.next(exp), dr.renew)
 }
 
 // stop stops the cert renewal timer and waits for any in-flight calls to renew
@@ -76,7 +79,7 @@ func (dr *domainRenewal) renew() {
 	// TODO: rotate dr.key at some point?
 	next, err := dr.do(ctx)
 	if err != nil {
-		next = time.Hour / 2
+		next = renewJitter / 2
 		next += time.Duration(pseudoRand.int63n(int64(next)))
 	}
 	testDidRenewLoop(next, err)
@@ -104,8 +107,8 @@ func (dr *domainRenewal) do(ctx context.Context) (time.Duration, error) {
 	// a race is likely unavoidable in a distributed environment
 	// but we try nonetheless
 	if tlscert, err := dr.m.cacheGet(ctx, dr.ck); err == nil {
-		next := dr.next(tlscert.Leaf.NotBefore, tlscert.Leaf.NotAfter)
-		if next > 0 {
+		next := dr.next(tlscert.Leaf.NotAfter)
+		if next > dr.m.renewBefore()+renewJitter {
 			signer, ok := tlscert.PrivateKey.(crypto.Signer)
 			if ok {
 				state := &certState{
@@ -136,23 +139,18 @@ func (dr *domainRenewal) do(ctx context.Context) (time.Duration, error) {
 		return 0, err
 	}
 	dr.updateState(state)
-	return dr.next(leaf.NotBefore, leaf.NotAfter), nil
+	return dr.next(leaf.NotAfter), nil
 }
 
-// next returns the wait time before the next renewal should start.
-// If manager.RenewBefore is set, it uses that capped at 30 days,
-// otherwise it uses a default of 1/3 of the cert lifetime.
-// It builds in a jitter of 10% of the renew threshold, capped at 1 hour.
-func (dr *domainRenewal) next(notBefore, notAfter time.Time) time.Duration {
-	threshold := min(notAfter.Sub(notBefore)/3, 30*24*time.Hour)
-	if dr.m.RenewBefore > 0 {
-		threshold = min(dr.m.RenewBefore, 30*24*time.Hour)
+func (dr *domainRenewal) next(expiry time.Time) time.Duration {
+	d := expiry.Sub(dr.m.now()) - dr.m.renewBefore()
+	// add a bit of randomness to renew deadline
+	n := pseudoRand.int63n(int64(renewJitter))
+	d -= time.Duration(n)
+	if d < 0 {
+		return 0
 	}
-	maxJitter := min(threshold/10, time.Hour)
-	jitter := pseudoRand.int63n(int64(maxJitter))
-	renewAt := notAfter.Add(-(threshold - time.Duration(jitter)))
-	renewWait := renewAt.Sub(dr.m.now())
-	return max(0, renewWait)
+	return d
 }
 
 var testDidRenewLoop = func(next time.Duration, err error) {}
