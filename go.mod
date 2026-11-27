@@ -305,4 +305,4 @@ require (
 )
 
 // CVE-2026-33814
-replace golang.org/x/net => github.com/openshift-sustaining/net v0.43.0-sec.3
+replace golang.org/x/net => github.com/openshift-sustaining/net v0.43.0-sec.4
