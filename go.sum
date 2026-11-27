@@ -435,8 +435,8 @@ github.com/opencontainers/runc v1.1.12 h1:BOIssBaW1La0/qbNZHXOOa71dZfZEQOzW7dqQf
 github.com/opencontainers/runc v1.1.12/go.mod h1:S+lQwSfncpBha7XTy/5lBwWgm5+y5Ma/O44Ekby9FK8=
 github.com/opencontainers/runtime-spec v1.1.0 h1:HHUyrt9mwHUjtasSbXSMvs4cyFxh+Bll4AjJ9odEGpg=
 github.com/opencontainers/runtime-spec v1.1.0/go.mod h1:jwyrGlmzljRJv/Fgzds9SsS/C5hL+LL3ko9hs6T5lQ0=
-github.com/openshift-sustaining/net v0.35.0-sec.3 h1:nW/Z0HE4s5hRH3RDbaAjiNhJQY4ho0OL9/N+wyNUNdQ=
-github.com/openshift-sustaining/net v0.35.0-sec.3/go.mod h1:EglIi67kWsHKlRzzVMUD93VMSWGFOMSZgxFjparz1Qk=
+github.com/openshift-sustaining/net v0.35.0-sec.4 h1:Iby7f5aipaxoDnCzIaMGfVDjy4Qopq2L12fDzjcSx1U=
+github.com/openshift-sustaining/net v0.35.0-sec.4/go.mod h1:EglIi67kWsHKlRzzVMUD93VMSWGFOMSZgxFjparz1Qk=
 github.com/operator-framework/ansible-operator-plugins v1.35.0 h1:ranI6NhcnAl2sokuwWI0OYqtcT/1fPIfEfWcMFLXUBg=
 github.com/operator-framework/ansible-operator-plugins v1.35.0/go.mod h1:ehsR1S7COaxHD54t7/1CXuvnTkSiMxUqgJhTGVcH6Fs=
 github.com/operator-framework/api v0.23.0 h1:kHymOwcHBpBVujT49SKOCd4EVG7Odwj4wl3NbOR2LLA=
