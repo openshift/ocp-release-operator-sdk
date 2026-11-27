@@ -261,4 +261,4 @@ require (
 replace google.golang.org/grpc => github.com/openshift-sustaining/grpc-go v1.64.1-sec.1
 
 // CVE-2026-33814
-replace golang.org/x/net => github.com/openshift-sustaining/net v0.35.0-sec.3
+replace golang.org/x/net => github.com/openshift-sustaining/net v0.35.0-sec.4
